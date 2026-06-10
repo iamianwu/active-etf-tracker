@@ -1,5 +1,9 @@
 {
-  "scripts": {"dev": "next dev", "build": "next build", "start": "next start"},
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
   "dependencies": {
     "@types/node": "20.11.30",
     "@types/react": "18.2.67",
@@ -8,7 +12,8 @@
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "recharts": "2.12.7",
-    "typescript": "5.4.5"
+    "typescript": "5.4.5",
+    "@supabase/supabase-js": "^2.45.0"
   },
   "devDependencies": {}
 }

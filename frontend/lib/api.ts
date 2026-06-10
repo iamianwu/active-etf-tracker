@@ -1,18 +1,400 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "";
+import { createClient } from "@supabase/supabase-js";
 
-export async function apiGet(path: string) {
-  const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const ETF_NAMES: Record<string, string> = {
+  "00980A": "主動野村臺灣優選",
+  "00981A": "主動統一台股增長",
+  "00982A": "主動群益台灣強棒",
+  "00983A": "主動中信ARK創新",
+  "00984A": "主動安聯台灣高息",
+  "00985A": "主動野村台灣50",
+  "00986A": "主動元大臺灣價值",
+  "00987A": "主動凱基台灣精選",
+  "00988A": "主動統一全球創新",
+  "00989A": "主動復華未來50",
+  "00990A": "主動永豐臺灣ESG",
+  "00991A": "主動富邦未來車",
+  "00992A": "主動國泰台灣領袖",
+  "00993A": "主動台新台灣成長",
+  "00994A": "主動第一金台股優",
+  "00995A": "主動兆豐台灣科技",
+  "00996A": "主動群益科技高息",
+  "00997A": "主動中信台灣成長",
+  "00999A": "主動台新全球AI",
+  "00400A": "主動野村全球優選",
+  "00401A": "主動統一美國增長",
+  "00403A": "主動統一升級50",
+};
+
+function isNormalStockCode(code: string) {
+  return /^[0-9]{4}$/.test(String(code || ""));
 }
 
-export async function apiPost(path: string) {
-  const headers: Record<string, string> = {};
-  if (ADMIN_PASSWORD) headers["x-admin-password"] = ADMIN_PASSWORD;
-  const res = await fetch(`${API_BASE}${path}`, { method: "POST", headers, cache: "no-store" });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+async function selectAll(table: string) {
+  const out: any[] = [];
+  const pageSize = 1000;
+
+  for (let from = 0; ; from += pageSize) {
+    const to = from + pageSize - 1;
+    const { data, error } = await supabase.from(table).select("*").range(from, to);
+    if (error) throw new Error(`${table}: ${error.message}`);
+
+    const rows = data || [];
+    out.push(...rows);
+
+    if (rows.length < pageSize) break;
+  }
+
+  return out;
+}
+
+async function loadBaseData() {
+  const [holdings, etfQuotes, stockQuotes] = await Promise.all([
+    selectAll("holdings"),
+    selectAll("etf_quotes"),
+    selectAll("stock_quotes"),
+  ]);
+
+  const etfQuoteMap: Record<string, any> = {};
+  for (const q of etfQuotes) etfQuoteMap[q.etf_code] = q;
+
+  const stockQuoteMap: Record<string, any> = {};
+  for (const q of stockQuotes) stockQuoteMap[q.stock_code] = q;
+
+  return { holdings, etfQuoteMap, stockQuoteMap };
+}
+
+function latestDateByEtf(holdings: any[]) {
+  const m: Record<string, string> = {};
+  for (const h of holdings) {
+    const code = h.etf_code;
+    const d = String(h.data_date || "");
+    if (!m[code] || d > m[code]) m[code] = d;
+  }
+  return m;
+}
+
+function latestHoldings(holdings: any[]) {
+  const latest = latestDateByEtf(holdings);
+  return holdings.filter((h) => String(h.data_date) === latest[h.etf_code]);
+}
+
+function previousDateForEtf(holdings: any[], etfCode: string, date: string) {
+  const dates = Array.from(
+    new Set(
+      holdings
+        .filter((h) => h.etf_code === etfCode && String(h.data_date) < date)
+        .map((h) => String(h.data_date))
+    )
+  ).sort();
+
+  return dates.length ? dates[dates.length - 1] : null;
+}
+
+function computeEtfChanges(holdings: any[], etfCode: string, date: string, prevDate: string | null) {
+  if (!prevDate) return [];
+
+  const curr = holdings.filter((h) => h.etf_code === etfCode && String(h.data_date) === date);
+  const prev = holdings.filter((h) => h.etf_code === etfCode && String(h.data_date) === prevDate);
+
+  const currMap: Record<string, any> = {};
+  const prevMap: Record<string, any> = {};
+
+  for (const r of curr) currMap[r.stock_code] = r;
+  for (const r of prev) prevMap[r.stock_code] = r;
+
+  const out: any[] = [];
+
+  for (const code of Object.keys(currMap)) {
+    if (!isNormalStockCode(code)) continue;
+
+    const r = currMap[code];
+    const p = prevMap[code];
+
+    let status = "";
+    let delta_shares = 0;
+    let delta_weight = 0;
+
+    if (!p) {
+      status = "新增";
+      delta_shares = Number(r.shares || 0);
+      delta_weight = Number(r.weight || 0);
+    } else {
+      delta_shares = Number(r.shares || 0) - Number(p.shares || 0);
+      delta_weight = Number(r.weight || 0) - Number(p.weight || 0);
+
+      if (delta_shares > 0) status = "加碼";
+      else if (delta_shares < 0) status = "減碼";
+      else if (Math.abs(delta_weight) > 1e-9) status = "權重變動";
+      else continue;
+    }
+
+    out.push({ ...r, status, delta_shares, delta_weight });
+  }
+
+  for (const code of Object.keys(prevMap)) {
+    if (!isNormalStockCode(code) || currMap[code]) continue;
+
+    const p = prevMap[code];
+    out.push({
+      ...p,
+      data_date: date,
+      status: "刪除",
+      shares: 0,
+      weight: 0,
+      delta_shares: -Number(p.shares || 0),
+      delta_weight: -Number(p.weight || 0),
+    });
+  }
+
+  const order: Record<string, number> = { 新增: 0, 刪除: 1, 加碼: 2, 減碼: 3, 權重變動: 4 };
+  return out.sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
+}
+
+function summarizeChanges(changes: any[]) {
+  return {
+    新增: changes.filter((x) => x.status === "新增").length,
+    刪除: changes.filter((x) => x.status === "刪除").length,
+    加碼: changes.filter((x) => x.status === "加碼").length,
+    減碼: changes.filter((x) => x.status === "減碼").length,
+    權重變動: changes.filter((x) => x.status === "權重變動").length,
+  };
+}
+
+async function getEtfs() {
+  const { holdings, etfQuoteMap } = await loadBaseData();
+  const rows = latestHoldings(holdings);
+
+  const grouped: Record<string, any> = {};
+
+  for (const h of rows) {
+    const code = h.etf_code;
+    if (!grouped[code]) {
+      const q = etfQuoteMap[code] || {};
+      grouped[code] = {
+        etf_code: code,
+        etf_name: q.etf_name || ETF_NAMES[code] || code,
+        data_date: h.data_date,
+        holding_count: 0,
+        stock_weight: 0,
+        price: q.price ?? null,
+        change_pct: q.change_pct ?? null,
+        volume: q.volume ?? null,
+        amount: q.amount ?? null,
+        aum_billion: q.aum_billion ?? null,
+      };
+    }
+
+    if (isNormalStockCode(h.stock_code)) {
+      grouped[code].holding_count += 1;
+      grouped[code].stock_weight += Number(h.weight || 0);
+    }
+  }
+
+  return Object.values(grouped).sort((a: any, b: any) => String(a.etf_code).localeCompare(String(b.etf_code)));
+}
+
+async function getEtfDetail(etfCode: string) {
+  const { holdings, etfQuoteMap, stockQuoteMap } = await loadBaseData();
+  const latest = latestDateByEtf(holdings);
+  const date = latest[etfCode];
+
+  if (!date) return { etf_code: etfCode, error: "no data" };
+
+  const prev = previousDateForEtf(holdings, etfCode, date);
+  const q = etfQuoteMap[etfCode] || {};
+  const changes = computeEtfChanges(holdings, etfCode, date, prev);
+
+  const h = holdings
+    .filter((r) => r.etf_code === etfCode && String(r.data_date) === date)
+    .map((r) => {
+      const sq = stockQuoteMap[r.stock_code] || {};
+      const price = sq.price ?? null;
+      return {
+        ...r,
+        price,
+        change_pct: sq.change_pct ?? null,
+        market_value_billion: price ? Number(r.shares || 0) * Number(price) / 100000000 : null,
+      };
+    })
+    .sort((a, b) => Number(b.weight || 0) - Number(a.weight || 0));
+
+  return {
+    etf_code: etfCode,
+    etf_name: q.etf_name || ETF_NAMES[etfCode] || etfCode,
+    data_date: date,
+    previous_date: prev,
+    quote: q,
+    holdings: h,
+    change_summary: summarizeChanges(changes),
+    changes,
+  };
+}
+
+async function getConstituentSummary() {
+  const { holdings, stockQuoteMap } = await loadBaseData();
+  const rows = latestHoldings(holdings).filter((h) => isNormalStockCode(h.stock_code));
+
+  const grouped: Record<string, any> = {};
+
+  for (const r of rows) {
+    const code = r.stock_code;
+    const sq = stockQuoteMap[code] || {};
+
+    if (!grouped[code]) {
+      grouped[code] = {
+        stock_code: code,
+        stock_name: r.stock_name,
+        etf_count: 0,
+        total_weight: 0,
+        total_shares: 0,
+        price: sq.price ?? null,
+        change_pct: sq.change_pct ?? null,
+        etfs: [],
+      };
+    }
+
+    grouped[code].etf_count += 1;
+    grouped[code].total_weight += Number(r.weight || 0);
+    grouped[code].total_shares += Number(r.shares || 0);
+    grouped[code].etfs.push(`${r.etf_code}:${Number(r.weight || 0).toFixed(2)}`);
+  }
+
+  const out = Object.values(grouped).map((g: any) => {
+    g.market_value_billion = g.price ? g.total_shares * Number(g.price) / 100000000 : null;
+    g.etfs = g.etfs.join(", ");
+    return g;
+  });
+
+  return out.sort((a: any, b: any) =>
+    Number(b.market_value_billion || 0) - Number(a.market_value_billion || 0) ||
+    Number(b.etf_count || 0) - Number(a.etf_count || 0) ||
+    Number(b.total_weight || 0) - Number(a.total_weight || 0)
+  );
+}
+
+async function getStockDetail(stockCode: string) {
+  const { holdings, etfQuoteMap, stockQuoteMap } = await loadBaseData();
+  const latest = latestDateByEtf(holdings);
+  const quote = stockQuoteMap[stockCode] || {};
+
+  const rows = holdings
+    .filter((h) => h.stock_code === stockCode && String(h.data_date) === latest[h.etf_code])
+    .map((r) => {
+      const q = etfQuoteMap[r.etf_code] || {};
+      const price = quote.price ?? null;
+      return {
+        ...r,
+        etf_name: q.etf_name || ETF_NAMES[r.etf_code] || r.etf_code,
+        market_value_billion: price ? Number(r.shares || 0) * Number(price) / 100000000 : null,
+      };
+    })
+    .sort((a, b) => Number(b.weight || 0) - Number(a.weight || 0));
+
+  const history = holdings
+    .filter((h) => h.stock_code === stockCode)
+    .sort((a, b) => String(b.data_date).localeCompare(String(a.data_date)) || String(a.etf_code).localeCompare(String(b.etf_code)))
+    .slice(0, 200);
+
+  const name = rows[0]?.stock_name || quote.stock_name || stockCode;
+
+  return {
+    stock_code: stockCode,
+    stock_name: name,
+    quote,
+    summary: {
+      etf_count: new Set(rows.map((r) => r.etf_code)).size,
+      total_shares: rows.reduce((s, r) => s + Number(r.shares || 0), 0),
+      total_weight: rows.reduce((s, r) => s + Number(r.weight || 0), 0),
+      market_value_billion: rows.reduce((s, r) => s + Number(r.market_value_billion || 0), 0),
+    },
+    etfs: rows,
+    history,
+  };
+}
+
+async function getSignals(signalType?: string | null) {
+  const { holdings } = await loadBaseData();
+  const latest = latestDateByEtf(holdings);
+
+  let changes: any[] = [];
+
+  for (const etf of Object.keys(latest)) {
+    const d = latest[etf];
+    const prev = previousDateForEtf(holdings, etf, d);
+    if (d && prev) changes.push(...computeEtfChanges(holdings, etf, d, prev));
+  }
+
+  const typeMap: Record<string, string> = {
+    added: "新增",
+    removed: "刪除",
+    increased: "加碼",
+    decreased: "減碼",
+  };
+
+  if (signalType && typeMap[signalType]) {
+    changes = changes.filter((c) => c.status === typeMap[signalType]);
+  }
+
+  const byStock: Record<string, any> = {};
+
+  for (const c of changes) {
+    if (!byStock[c.stock_code]) {
+      byStock[c.stock_code] = {
+        stock_code: c.stock_code,
+        stock_name: c.stock_name,
+        delta_shares: 0,
+        delta_weight: 0,
+        count: 0,
+        statuses: [],
+      };
+    }
+
+    byStock[c.stock_code].delta_shares += Number(c.delta_shares || 0);
+    byStock[c.stock_code].delta_weight += Number(c.delta_weight || 0);
+    byStock[c.stock_code].count += 1;
+    byStock[c.stock_code].statuses.push(`${c.etf_code} ${c.status}`);
+  }
+
+  const aggregate = Object.values(byStock).sort(
+    (a: any, b: any) => Math.abs(Number(b.delta_shares || 0)) - Math.abs(Number(a.delta_shares || 0))
+  );
+
+  return {
+    summary: summarizeChanges(changes),
+    changes,
+    aggregate,
+  };
+}
+
+export async function apiGet(path: string) {
+  const u = new URL(path, "https://local");
+
+  if (u.pathname === "/etfs") return getEtfs();
+
+  if (u.pathname.startsWith("/etfs/")) {
+    return getEtfDetail(decodeURIComponent(u.pathname.split("/")[2]));
+  }
+
+  if (u.pathname === "/holdings") return getConstituentSummary();
+
+  if (u.pathname.startsWith("/stocks/")) {
+    return getStockDetail(decodeURIComponent(u.pathname.split("/")[2]));
+  }
+
+  if (u.pathname === "/signals") {
+    return getSignals(u.searchParams.get("type"));
+  }
+
+  throw new Error(`Unknown API path: ${path}`);
+}
+
+export async function apiPost(_path: string) {
+  throw new Error("此免費部署版不支援前端手動更新；請用 GitHub Actions 更新資料。");
 }
 
 export function fmt(n: any, digits = 2, empty = "-") {
