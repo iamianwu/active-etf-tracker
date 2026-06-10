@@ -148,9 +148,7 @@
 
 /* 這裡貼我上一則給你的 stock-mobile-page 那整段 CSS */
 
-cd ~/Downloads/pocket_etf_cloud_postgres_ready/pocket_etf_cloud
 
-cat >> frontend/app/globals.css <<'EOF'
 .stock-mobile-page{
   padding:0 0 28px 0;
   background:#fff;
