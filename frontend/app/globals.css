@@ -145,3 +145,328 @@
   .result-row b{font-size:20px}
   .result-meta{font-size:14px}
 }
+
+/* 這裡貼我上一則給你的 stock-mobile-page 那整段 CSS */
+
+cd ~/Downloads/pocket_etf_cloud_postgres_ready/pocket_etf_cloud
+
+cat >> frontend/app/globals.css <<'EOF'
+.stock-mobile-page{
+  padding:0 0 28px 0;
+  background:#fff;
+  min-height:100vh;
+}
+
+.stock-mobile-header{
+  display:grid;
+  grid-template-columns:40px 1fr 40px;
+  align-items:center;
+  padding:10px 18px 8px;
+  border-bottom:1px solid var(--line);
+  position:sticky;
+  top:0;
+  background:#fff;
+  z-index:20;
+}
+
+.stock-back-btn{
+  font-size:34px;
+  text-decoration:none;
+  color:var(--text);
+  line-height:1;
+}
+
+.stock-mobile-title{
+  text-align:center;
+}
+
+.stock-mobile-code{
+  font-size:28px;
+  font-weight:900;
+  line-height:1.1;
+}
+
+.stock-mobile-name{
+  font-size:18px;
+  color:#6e7580;
+  margin-top:2px;
+}
+
+.stock-top-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0;
+  border-bottom:10px solid #f3f4f6;
+}
+
+.stock-top-card{
+  padding:22px 18px;
+  text-align:center;
+  position:relative;
+}
+
+.stock-top-card + .stock-top-card{
+  border-left:1px solid var(--line);
+}
+
+.stock-top-label{
+  font-size:16px;
+  color:#444b56;
+  margin-bottom:10px;
+}
+
+.stock-top-value{
+  font-size:40px;
+  font-weight:900;
+  line-height:1.1;
+}
+
+.stock-top-sub{
+  margin-top:10px;
+  font-size:18px;
+  font-weight:800;
+}
+
+.stock-block{
+  padding:22px 18px;
+  border-bottom:10px solid #f3f4f6;
+}
+
+.stock-block-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+}
+
+.stock-block-head h3{
+  margin:0;
+  font-size:22px;
+}
+
+.stock-info-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.stock-info-btn{
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  border:2px solid #9097a3;
+  background:#fff;
+  color:#9097a3;
+  font-weight:900;
+  cursor:pointer;
+  font-size:16px;
+}
+
+.stock-chart-card{
+  background:#fff;
+}
+
+.stock-chart-box{
+  width:100%;
+  height:280px;
+}
+
+.stock-mini-metrics{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:0;
+  border-top:1px solid var(--line);
+  margin-top:12px;
+}
+
+.stock-mini-metric{
+  text-align:center;
+  padding:14px 8px 6px;
+}
+
+.stock-mini-metric .label{
+  color:#6e7580;
+  font-size:14px;
+  margin-bottom:8px;
+}
+
+.stock-mini-metric .value{
+  font-size:18px;
+  font-weight:900;
+}
+
+.stock-empty-card{
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:18px;
+  color:#7b8491;
+  background:#fafafa;
+}
+
+.stock-summary-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  margin-bottom:14px;
+}
+
+.stock-summary-item{
+  text-align:center;
+  padding:18px 10px;
+}
+
+.stock-summary-item + .stock-summary-item{
+  border-left:1px solid var(--line);
+}
+
+.stock-summary-item .label{
+  color:#6e7580;
+  font-size:14px;
+  margin-bottom:8px;
+}
+
+.stock-summary-item .value{
+  font-size:22px;
+  font-weight:900;
+}
+
+.stock-list-head{
+  display:grid;
+  grid-template-columns:1.5fr 1fr .8fr;
+  gap:12px;
+  background:#f3f4f6;
+  padding:12px 14px;
+  font-size:14px;
+  font-weight:800;
+  color:#4d5560;
+}
+
+.stock-list-head .mid{
+  text-align:center;
+}
+
+.stock-list-head .right{
+  text-align:right;
+}
+
+.stock-holding-list{
+  border-bottom:1px solid var(--line);
+}
+
+.stock-holding-row{
+  display:grid;
+  grid-template-columns:1.5fr 1fr .8fr;
+  gap:12px;
+  align-items:center;
+  padding:18px 14px;
+  border-top:1px solid var(--line);
+  text-decoration:none;
+  color:var(--text);
+}
+
+.stock-holding-row .left .code{
+  font-size:24px;
+  font-weight:900;
+  color:var(--text);
+  margin:0 0 4px 0;
+}
+
+.stock-holding-row .left .name{
+  font-size:16px;
+  color:#666d78;
+}
+
+.stock-holding-row .mid{
+  text-align:center;
+}
+
+.stock-holding-row .mid .primary{
+  font-size:22px;
+  font-weight:900;
+  line-height:1.2;
+}
+
+.stock-holding-row .mid .secondary{
+  font-size:16px;
+  color:#666d78;
+  margin-top:4px;
+}
+
+.stock-holding-row .right{
+  text-align:right;
+  font-size:22px;
+  font-weight:900;
+}
+
+.stock-modal-mask{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.28);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:100;
+  padding:20px;
+}
+
+.stock-modal{
+  width:min(560px, 100%);
+  background:#fff;
+  border-radius:20px;
+  padding:28px 22px 22px;
+}
+
+.stock-modal-title{
+  font-size:22px;
+  font-weight:900;
+  text-align:center;
+  margin-bottom:20px;
+}
+
+.stock-modal-text{
+  font-size:18px;
+  line-height:1.8;
+  color:#323844;
+  margin-bottom:22px;
+}
+
+.stock-modal-btn{
+  width:100%;
+  border:none;
+  background:#6b92dc;
+  color:#fff;
+  border-radius:16px;
+  padding:18px 16px;
+  font-size:18px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+@media (max-width: 720px){
+  .stock-mobile-code{
+    font-size:24px;
+  }
+
+  .stock-top-value{
+    font-size:34px;
+  }
+
+  .stock-summary-item .value{
+    font-size:18px;
+  }
+
+  .stock-holding-row .left .code{
+    font-size:20px;
+  }
+
+  .stock-holding-row .mid .primary,
+  .stock-holding-row .right{
+    font-size:18px;
+  }
+
+  .stock-list-head{
+    font-size:13px;
+  }
+}
