@@ -80,12 +80,25 @@ def update_one_etf(etf_code: str, dt_range: int = 1) -> dict[str, Any]:
 
 def update_all_etfs(dt_range: int = 1, sleep_sec: float = 0.5) -> dict[str, Any]:
     out = []
-    for code in ETF_CODES:
+    print(f"Start update_all_etfs: dt_range={dt_range}, total={len(ETF_CODES)}", flush=True)
+
+    for i, code in enumerate(ETF_CODES, start=1):
+        print(f"[{i}/{len(ETF_CODES)}] Fetching {code}...", flush=True)
+
         try:
-            out.append(update_one_etf(code, dt_range=dt_range))
+            result = update_one_etf(code, dt_range=dt_range)
+            out.append(result)
+            print(
+                f"[{i}/{len(ETF_CODES)}] Done {code}: rows={result.get('rows')}, dates={result.get('dates')}",
+                flush=True
+            )
         except Exception as e:
             out.append({"etf_code": code, "error": str(e)})
+            print(f"[{i}/{len(ETF_CODES)}] Error {code}: {e}", flush=True)
+
         time.sleep(sleep_sec)
+
+    print("All ETF update finished.", flush=True)
     return {"updated_at": datetime.now().isoformat(timespec="seconds"), "results": out}
 
 def seed_demo_data():
