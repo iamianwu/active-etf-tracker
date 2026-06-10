@@ -1,0 +1,41 @@
+name: Update ETF Data
+
+on:
+  # GitHub cron uses UTC. 10:10 UTC = 18:10 Taiwan time.
+  schedule:
+    - cron: "10 10 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      dt_range:
+        description: "Pocket DTRange. 1=latest, 90=history backfill"
+        required: false
+        default: "1"
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Update ETF data
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DT_RANGE: ${{ github.event.inputs.dt_range || '1' }}
+          SLEEP_SEC: "0.8"
+        run: |
+          cd backend
+          python -m app.jobs.update_all
