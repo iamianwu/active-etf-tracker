@@ -24,6 +24,7 @@ const ETF_NAMES: Record<string, string> = {
   "00995A": "主動兆豐台灣科技",
   "00996A": "主動群益科技高息",
   "00997A": "主動中信台灣成長",
+  "00998A": "主動台新台灣科技",
   "00999A": "主動台新全球AI",
   "00400A": "主動野村全球優選",
   "00401A": "主動統一美國增長",
@@ -34,13 +35,16 @@ function isNormalStockCode(code: string) {
   return /^[0-9]{4}$/.test(String(code || ""));
 }
 
-async function selectAll(table: string) {
+async function selectAll(table: string, order?: { column: string; ascending?: boolean }) {
   const out: any[] = [];
   const pageSize = 1000;
 
   for (let from = 0; ; from += pageSize) {
     const to = from + pageSize - 1;
-    const { data, error } = await supabase.from(table).select("*").range(from, to);
+    let q = supabase.from(table).select("*").range(from, to);
+    if (order) q = q.order(order.column, { ascending: order.ascending ?? true });
+
+    const { data, error } = await q;
     if (error) throw new Error(`${table}: ${error.message}`);
 
     const rows = data || [];
@@ -70,11 +74,13 @@ async function loadBaseData() {
 
 function latestDateByEtf(holdings: any[]) {
   const m: Record<string, string> = {};
+
   for (const h of holdings) {
     const code = h.etf_code;
     const d = String(h.data_date || "");
     if (!m[code] || d > m[code]) m[code] = d;
   }
+
   return m;
 }
 
@@ -127,9 +133,9 @@ function computeEtfChanges(holdings: any[], etfCode: string, date: string, prevD
       delta_shares = Number(r.shares || 0) - Number(p.shares || 0);
       delta_weight = Number(r.weight || 0) - Number(p.weight || 0);
 
+      // V2: 資金交易明細只看真正股數變動，不把「只有權重變動」當成交易。
       if (delta_shares > 0) status = "加碼";
       else if (delta_shares < 0) status = "減碼";
-      else if (Math.abs(delta_weight) > 1e-9) status = "權重變動";
       else continue;
     }
 
@@ -151,7 +157,7 @@ function computeEtfChanges(holdings: any[], etfCode: string, date: string, prevD
     });
   }
 
-  const order: Record<string, number> = { 新增: 0, 刪除: 1, 加碼: 2, 減碼: 3, 權重變動: 4 };
+  const order: Record<string, number> = { 新增: 0, 刪除: 1, 加碼: 2, 減碼: 3 };
   return out.sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
 }
 
@@ -161,18 +167,17 @@ function summarizeChanges(changes: any[]) {
     刪除: changes.filter((x) => x.status === "刪除").length,
     加碼: changes.filter((x) => x.status === "加碼").length,
     減碼: changes.filter((x) => x.status === "減碼").length,
-    權重變動: changes.filter((x) => x.status === "權重變動").length,
   };
 }
 
 async function getEtfs() {
   const { holdings, etfQuoteMap } = await loadBaseData();
   const rows = latestHoldings(holdings);
-
   const grouped: Record<string, any> = {};
 
   for (const h of rows) {
     const code = h.etf_code;
+
     if (!grouped[code]) {
       const q = etfQuoteMap[code] || {};
       grouped[code] = {
@@ -279,6 +284,7 @@ async function getConstituentSummary() {
 
 async function getStockDetail(stockCode: string) {
   const { holdings, etfQuoteMap, stockQuoteMap } = await loadBaseData();
+
   const latest = latestDateByEtf(holdings);
   const quote = stockQuoteMap[stockCode] || {};
 
@@ -298,7 +304,22 @@ async function getStockDetail(stockCode: string) {
   const history = holdings
     .filter((h) => h.stock_code === stockCode)
     .sort((a, b) => String(b.data_date).localeCompare(String(a.data_date)) || String(a.etf_code).localeCompare(String(b.etf_code)))
-    .slice(0, 200);
+    .slice(0, 300);
+
+  const [{ data: priceHistory }, { data: institutional }] = await Promise.all([
+    supabase
+      .from("stock_price_history")
+      .select("*")
+      .eq("stock_code", stockCode)
+      .order("trade_date", { ascending: true })
+      .limit(160),
+    supabase
+      .from("institutional_flows")
+      .select("*")
+      .eq("stock_code", stockCode)
+      .order("trade_date", { ascending: false })
+      .limit(80),
+  ]);
 
   const name = rows[0]?.stock_name || quote.stock_name || stockCode;
 
@@ -314,11 +335,13 @@ async function getStockDetail(stockCode: string) {
     },
     etfs: rows,
     history,
+    price_history: priceHistory || [],
+    institutional: institutional || [],
   };
 }
 
 async function getSignals(signalType?: string | null) {
-  const { holdings } = await loadBaseData();
+  const { holdings, stockQuoteMap } = await loadBaseData();
   const latest = latestDateByEtf(holdings);
 
   let changes: any[] = [];
@@ -328,6 +351,9 @@ async function getSignals(signalType?: string | null) {
     const prev = previousDateForEtf(holdings, etf, d);
     if (d && prev) changes.push(...computeEtfChanges(holdings, etf, d, prev));
   }
+
+  // V2: 只保留新增、刪除、加碼、減碼。
+  changes = changes.filter((c: any) => ["新增", "刪除", "加碼", "減碼"].includes(c.status));
 
   const typeMap: Record<string, string> = {
     added: "新增",
@@ -343,26 +369,57 @@ async function getSignals(signalType?: string | null) {
   const byStock: Record<string, any> = {};
 
   for (const c of changes) {
-    if (!byStock[c.stock_code]) {
-      byStock[c.stock_code] = {
-        stock_code: c.stock_code,
+    const stockCode = c.stock_code;
+    const q = stockQuoteMap?.[stockCode] || {};
+    const price = Number(q.price || 0);
+    const deltaShares = Number(c.delta_shares || 0);
+    const deltaWeight = Number(c.delta_weight || 0);
+    const deltaValue = price ? deltaShares * price / 100000000 : null;
+
+    if (!byStock[stockCode]) {
+      byStock[stockCode] = {
+        stock_code: stockCode,
         stock_name: c.stock_name,
+        price: price || null,
         delta_shares: 0,
         delta_weight: 0,
+        delta_value_billion: 0,
+        has_price: false,
         count: 0,
+        increase_etf_count: 0,
+        decrease_etf_count: 0,
+        add_etf_count: 0,
+        remove_etf_count: 0,
         statuses: [],
       };
     }
 
-    byStock[c.stock_code].delta_shares += Number(c.delta_shares || 0);
-    byStock[c.stock_code].delta_weight += Number(c.delta_weight || 0);
-    byStock[c.stock_code].count += 1;
-    byStock[c.stock_code].statuses.push(`${c.etf_code} ${c.status}`);
+    const b = byStock[stockCode];
+
+    b.delta_shares += deltaShares;
+    b.delta_weight += deltaWeight;
+    b.count += 1;
+    b.statuses.push(`${c.etf_code} ${c.status}`);
+
+    if (deltaValue !== null) {
+      b.delta_value_billion += deltaValue;
+      b.has_price = true;
+    }
+
+    if (c.status === "加碼") b.increase_etf_count += 1;
+    if (c.status === "減碼") b.decrease_etf_count += 1;
+    if (c.status === "新增") b.add_etf_count += 1;
+    if (c.status === "刪除") b.remove_etf_count += 1;
   }
 
-  const aggregate = Object.values(byStock).sort(
-    (a: any, b: any) => Math.abs(Number(b.delta_shares || 0)) - Math.abs(Number(a.delta_shares || 0))
-  );
+  const aggregate = Object.values(byStock).map((x: any) => ({
+    ...x,
+    delta_value_billion: x.has_price ? x.delta_value_billion : null,
+  })).sort((a: any, b: any) => {
+    const av = a.delta_value_billion !== null ? Math.abs(Number(a.delta_value_billion || 0)) : Math.abs(Number(a.delta_shares || 0));
+    const bv = b.delta_value_billion !== null ? Math.abs(Number(b.delta_value_billion || 0)) : Math.abs(Number(b.delta_shares || 0));
+    return bv - av;
+  });
 
   return {
     summary: summarizeChanges(changes),
