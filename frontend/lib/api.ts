@@ -35,6 +35,20 @@ function isNormalStockCode(code: string) {
   return /^[0-9]{4}$/.test(String(code || ""));
 }
 
+function fmtDateMMDD(dateStr: string | null | undefined) {
+  if (!dateStr) return "";
+  const s = String(dateStr);
+  if (s.includes("-")) {
+    const [, m, d] = s.split("-");
+    return `${m}/${d}`;
+  }
+  if (s.includes("/")) {
+    const parts = s.split("/");
+    return `${parts[1]?.padStart(2, "0")}/${parts[2]?.padStart(2, "0")}`;
+  }
+  return s;
+}
+
 async function selectAll(table: string, order?: { column: string; ascending?: boolean }) {
   const out: any[] = [];
   const pageSize = 1000;
@@ -45,7 +59,11 @@ async function selectAll(table: string, order?: { column: string; ascending?: bo
     if (order) q = q.order(order.column, { ascending: order.ascending ?? true });
 
     const { data, error } = await q;
-    if (error) throw new Error(`${table}: ${error.message}`);
+    if (error) {
+      // V2 新表若還沒建，不要讓整站爆掉
+      if (String(error.message || "").includes("Could not find the table")) return [];
+      throw new Error(`${table}: ${error.message}`);
+    }
 
     const rows = data || [];
     out.push(...rows);
@@ -133,7 +151,7 @@ function computeEtfChanges(holdings: any[], etfCode: string, date: string, prevD
       delta_shares = Number(r.shares || 0) - Number(p.shares || 0);
       delta_weight = Number(r.weight || 0) - Number(p.weight || 0);
 
-      // V2: 資金交易明細只看真正股數變動，不把「只有權重變動」當成交易。
+      // V3：資金交易明細只看真正股數變動，不把只有權重變動列為交易。
       if (delta_shares > 0) status = "加碼";
       else if (delta_shares < 0) status = "減碼";
       else continue;
@@ -343,16 +361,28 @@ async function getStockDetail(stockCode: string) {
 async function getSignals(signalType?: string | null) {
   const { holdings, stockQuoteMap } = await loadBaseData();
   const latest = latestDateByEtf(holdings);
+  const etfCodes = Object.keys(latest).sort();
+
+  const dataDate = etfCodes.length
+    ? etfCodes.map((c) => latest[c]).sort().slice(-1)[0]
+    : null;
+
+  const fetchedEtfCount = dataDate
+    ? etfCodes.filter((code) => latest[code] === dataDate).length
+    : 0;
+
+  const staleEtfs = dataDate
+    ? etfCodes.filter((code) => latest[code] !== dataDate).map((code) => ({ etf_code: code, data_date: latest[code] }))
+    : [];
 
   let changes: any[] = [];
 
-  for (const etf of Object.keys(latest)) {
+  for (const etf of etfCodes) {
     const d = latest[etf];
     const prev = previousDateForEtf(holdings, etf, d);
     if (d && prev) changes.push(...computeEtfChanges(holdings, etf, d, prev));
   }
 
-  // V2: 只保留新增、刪除、加碼、減碼。
   changes = changes.filter((c: any) => ["新增", "刪除", "加碼", "減碼"].includes(c.status));
 
   const typeMap: Record<string, string> = {
@@ -386,6 +416,8 @@ async function getSignals(signalType?: string | null) {
         delta_value_billion: 0,
         has_price: false,
         count: 0,
+        buy_etf_count: 0,
+        sell_etf_count: 0,
         increase_etf_count: 0,
         decrease_etf_count: 0,
         add_etf_count: 0,
@@ -406,10 +438,22 @@ async function getSignals(signalType?: string | null) {
       b.has_price = true;
     }
 
-    if (c.status === "加碼") b.increase_etf_count += 1;
-    if (c.status === "減碼") b.decrease_etf_count += 1;
-    if (c.status === "新增") b.add_etf_count += 1;
-    if (c.status === "刪除") b.remove_etf_count += 1;
+    if (c.status === "加碼") {
+      b.increase_etf_count += 1;
+      b.buy_etf_count += 1;
+    }
+    if (c.status === "新增") {
+      b.add_etf_count += 1;
+      b.buy_etf_count += 1;
+    }
+    if (c.status === "減碼") {
+      b.decrease_etf_count += 1;
+      b.sell_etf_count += 1;
+    }
+    if (c.status === "刪除") {
+      b.remove_etf_count += 1;
+      b.sell_etf_count += 1;
+    }
   }
 
   const aggregate = Object.values(byStock).map((x: any) => ({
@@ -422,6 +466,11 @@ async function getSignals(signalType?: string | null) {
   });
 
   return {
+    data_date: dataDate,
+    data_date_mmdd: fmtDateMMDD(dataDate),
+    fetched_etf_count: fetchedEtfCount,
+    total_etf_count: etfCodes.length,
+    stale_etfs: staleEtfs,
     summary: summarizeChanges(changes),
     changes,
     aggregate,

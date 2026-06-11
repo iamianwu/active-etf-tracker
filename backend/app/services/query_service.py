@@ -20,6 +20,19 @@ def previous_date_for_etf(conn, etf_code: str, date: str) -> str | None:
     return row["d"] if row else None
 
 
+def _mmdd(date_str: str | None) -> str:
+    if not date_str:
+        return ""
+    s = str(date_str)
+    if "-" in s:
+        parts = s.split("-")
+        return f"{parts[1]}/{parts[2]}"
+    if "/" in s:
+        parts = s.split("/")
+        return f"{parts[1].zfill(2)}/{parts[2].zfill(2)}"
+    return s
+
+
 def compute_etf_changes(conn, etf_code: str, date: str, prev_date: str | None = None) -> list[dict[str, Any]]:
     if not prev_date:
         prev_date = previous_date_for_etf(conn, etf_code, date)
@@ -47,7 +60,7 @@ def compute_etf_changes(conn, etf_code: str, date: str, prev_date: str | None = 
             delta_shares = (r["shares"] or 0) - (p["shares"] or 0)
             delta_weight = (r["weight"] or 0) - (p["weight"] or 0)
 
-            # V2：只看真正股數變動，不把「只有權重變動」當成交易。
+            # V3：只看真正股數變動，不把只有權重變動當成交易。
             if delta_shares > 0:
                 status = "加碼"
             elif delta_shares < 0:
@@ -255,9 +268,17 @@ def get_signals(signal_type: str | None = None) -> dict[str, Any]:
     with get_conn() as conn:
         changes = []
         etfs = [r["etf_code"] for r in conn.execute("SELECT DISTINCT etf_code FROM holdings").fetchall()]
-
+        latest_map = {}
         for etf in etfs:
             d = latest_date_for_etf(conn, etf)
+            if d:
+                latest_map[etf] = d
+
+        data_date = max(latest_map.values()) if latest_map else None
+        fetched_etf_count = sum(1 for d in latest_map.values() if d == data_date) if data_date else 0
+        stale_etfs = [{"etf_code": k, "data_date": v} for k, v in latest_map.items() if v != data_date]
+
+        for etf, d in latest_map.items():
             prev = previous_date_for_etf(conn, etf, d) if d else None
             if d and prev:
                 changes.extend(compute_etf_changes(conn, etf, d, prev))
@@ -280,6 +301,8 @@ def get_signals(signal_type: str | None = None) -> dict[str, Any]:
             "delta_value_billion": 0,
             "has_price": False,
             "count": 0,
+            "buy_etf_count": 0,
+            "sell_etf_count": 0,
             "increase_etf_count": 0,
             "decrease_etf_count": 0,
             "add_etf_count": 0,
@@ -307,12 +330,16 @@ def get_signals(signal_type: str | None = None) -> dict[str, Any]:
 
             if c["status"] == "加碼":
                 b["increase_etf_count"] += 1
-            elif c["status"] == "減碼":
-                b["decrease_etf_count"] += 1
+                b["buy_etf_count"] += 1
             elif c["status"] == "新增":
                 b["add_etf_count"] += 1
+                b["buy_etf_count"] += 1
+            elif c["status"] == "減碼":
+                b["decrease_etf_count"] += 1
+                b["sell_etf_count"] += 1
             elif c["status"] == "刪除":
                 b["remove_etf_count"] += 1
+                b["sell_etf_count"] += 1
 
         aggregate = []
         for x in by_stock.values():
@@ -328,6 +355,11 @@ def get_signals(signal_type: str | None = None) -> dict[str, Any]:
         aggregate = sorted(aggregate, key=money_or_shares_score, reverse=True)
 
         return {
+            "data_date": data_date,
+            "data_date_mmdd": _mmdd(data_date),
+            "fetched_etf_count": fetched_etf_count,
+            "total_etf_count": len(etfs),
+            "stale_etfs": stale_etfs,
             "summary": summarize_changes(changes),
             "changes": changes,
             "aggregate": aggregate,
