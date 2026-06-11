@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { fmt, fmt0, signedClass } from '@/lib/api';
+import { fmt, fmt0, signedClass, num } from '@/lib/etfData';
 
 type Mode = 'quote' | 'return' | 'basic';
 type SortKey =
@@ -19,56 +19,41 @@ type SortKey =
   | 'region';
 type SortDir = 'asc' | 'desc';
 
-function n(v: any) {
-  if (v === null || v === undefined || v === '') return null;
-  const x = Number(v);
-  return Number.isFinite(x) ? x : null;
-}
-
 function hasPrice(row: any) {
-  const price = n(row.price);
+  const price = num(row.price);
   return price !== null && price > 0;
 }
 
-function calcAmountBillion(row: any) {
-  if (!hasPrice(row)) return null;
-
-  const amount = n(row.amount);
-  if (amount !== null && amount > 0) return amount / 100000000;
-
-  const price = n(row.price);
-  const volume = n(row.volume);
-  if (price !== null && volume !== null && price > 0 && volume > 0) {
-    return price * volume * 1000 / 100000000;
-  }
-
+function amountBillion(row: any) {
+  const amount = num(row.amount);
+  if (amount && amount > 0) return amount / 100000000;
   return null;
 }
 
 function displayVolume(row: any) {
   if (!hasPrice(row)) return '-';
-  const volume = n(row.volume);
-  if (volume === null || volume <= 0) return '-';
+  const volume = num(row.volume);
+  if (!volume || volume <= 0) return '-';
   return fmt0(volume);
 }
 
 function displayAmount(row: any) {
-  const amountB = calcAmountBillion(row);
-  if (amountB === null) return '-';
-  return `${fmt(amountB, 2)} 億`;
+  const amount = amountBillion(row);
+  if (amount === null) return '-';
+  return `${fmt(amount, 2)} 億`;
 }
 
 function displayPrice(row: any) {
-  const price = n(row.price);
-  if (price === null || price <= 0) return '-';
+  const price = num(row.price);
+  if (!price || price <= 0) return '-';
   return fmt(price, price >= 1000 ? 0 : 2);
 }
 
 function displayChange(row: any) {
   if (!hasPrice(row)) return '-';
 
-  const change = n(row.change);
-  const pct = n(row.change_pct);
+  const change = num(row.change);
+  const pct = num(row.change_pct);
 
   if (change === null && pct === null) return '-';
 
@@ -83,22 +68,20 @@ function displayChange(row: any) {
 }
 
 function displayPct(v: any, digits = 1) {
-  const x = n(v);
+  const x = num(v);
   if (x === null) return '-';
   return `${fmt(x, digits)}%`;
 }
 
 function displaySignedPct(v: any, digits = 1) {
-  const x = n(v);
+  const x = num(v);
   if (x === null) return '-';
   return `${x > 0 ? '+' : ''}${fmt(x, digits)}%`;
 }
 
 function displayAum(row: any) {
-  const aum = n(row.aum_billion);
-  if (aum !== null && aum > 0) {
-    return `${fmt0(aum)} 億`;
-  }
+  const aum = num(row.aum_billion);
+  if (aum && aum > 0) return `${fmt0(aum)} 億`;
   return '-';
 }
 
@@ -112,26 +95,26 @@ function inferRegion(row: any) {
 
 function sortValue(row: any, key: SortKey) {
   if (key === 'code') return `${row.etf_code || ''}${row.etf_name || ''}`;
-  if (key === 'price') return n(row.price) ?? -Infinity;
-  if (key === 'change_pct') return n(row.change_pct) ?? -Infinity;
-  if (key === 'volume') return n(row.volume) ?? -Infinity;
-  if (key === 'amount') return calcAmountBillion(row) ?? -Infinity;
-  if (key === 'week_return') return n(row.week_return) ?? -Infinity;
-  if (key === 'total_return') return n(row.total_return) ?? -Infinity;
-  if (key === 'dividend_yield') return n(row.dividend_yield) ?? -Infinity;
-  if (key === 'aum') return n(row.aum_billion) ?? -Infinity;
-  if (key === 'expense') return n(row.expense_ratio) ?? Infinity;
+  if (key === 'price') return num(row.price) ?? -Infinity;
+  if (key === 'change_pct') return num(row.change_pct) ?? -Infinity;
+  if (key === 'volume') return num(row.volume) ?? -Infinity;
+  if (key === 'amount') return amountBillion(row) ?? -Infinity;
+  if (key === 'week_return') return num(row.week_return) ?? -Infinity;
+  if (key === 'total_return') return num(row.total_return) ?? -Infinity;
+  if (key === 'dividend_yield') return num(row.dividend_yield) ?? -Infinity;
+  if (key === 'aum') return num(row.aum_billion) ?? -Infinity;
+  if (key === 'expense') return num(row.expense_ratio) ?? Infinity;
   if (key === 'region') return inferRegion(row);
   return '';
 }
 
 function Candle({ pct, price }: { pct: any; price: any }) {
-  const p = n(price);
-  const x = n(pct);
-  const cls = p === null || p <= 0 ? 'flat' : x === null ? 'flat' : x >= 0 ? 'up' : 'down';
+  const p = num(price);
+  const x = num(pct);
+  const cls = !p || p <= 0 ? 'flat' : x === null ? 'flat' : x >= 0 ? 'up' : 'down';
 
   return (
-    <span className={`etf-v9-candle ${cls}`}>
+    <span className={`etf-v11-candle ${cls}`}>
       <i />
       <b />
     </span>
@@ -183,7 +166,7 @@ export default function EtfListClient({ rows }: { rows: any[] }) {
     const active = sortKey === id;
 
     return (
-      <button type="button" className={`etf-v9-sort-head ${active ? 'active' : ''}`} onClick={() => toggleSort(id)}>
+      <button type="button" className={`etf-v11-sort-head ${active ? 'active' : ''}`} onClick={() => toggleSort(id)}>
         <span>{children}</span>
         <span className="sort-arrows">
           <span className={active && sortDir === 'asc' ? 'on' : ''}>▲</span>
@@ -194,21 +177,21 @@ export default function EtfListClient({ rows }: { rows: any[] }) {
   }
 
   return (
-    <main className="page etf-v9-page">
+    <main className="page etf-v11-page">
       <h2>ETF 列表</h2>
 
-      <div className="etf-v9-topbar">
-        <div className="etf-v9-count">共 {fmt0(sortedRows.length)} 檔，每檔 ETF 可點進詳情。</div>
+      <div className="etf-v11-topbar">
+        <div className="etf-v11-count">共 {fmt0(sortedRows.length)} 檔，每檔 ETF 可點進詳情。</div>
 
-        <div className="etf-v9-segment">
+        <div className="etf-v11-segment">
           <button className={mode === 'quote' ? 'active' : ''} onClick={() => setModeAndDefaultSort('quote')}>即時</button>
           <button className={mode === 'return' ? 'active' : ''} onClick={() => setModeAndDefaultSort('return')}>報酬</button>
           <button className={mode === 'basic' ? 'active' : ''} onClick={() => setModeAndDefaultSort('basic')}>基本</button>
         </div>
       </div>
 
-      <div className="etf-v9-table-wrap">
-        <table className={`table etf-v9-table mode-${mode}`}>
+      <div className="etf-v11-table-wrap">
+        <table className={`table etf-v11-table mode-${mode}`}>
           <thead>
             {mode === 'quote' && (
               <tr>
@@ -216,7 +199,7 @@ export default function EtfListClient({ rows }: { rows: any[] }) {
                 <th><SortHead id="price">股價</SortHead></th>
                 <th><SortHead id="change_pct">漲跌幅</SortHead></th>
                 <th>
-                  <div className="etf-v9-double-head">
+                  <div className="etf-v11-double-head">
                     <SortHead id="volume">今成交量</SortHead>
                     <SortHead id="amount">成交金額</SortHead>
                   </div>
@@ -245,18 +228,18 @@ export default function EtfListClient({ rows }: { rows: any[] }) {
 
           <tbody>
             {sortedRows.map((r: any) => {
-              const cp = n(r.change_pct);
-              const price = n(r.price);
+              const cp = num(r.change_pct);
+              const price = num(r.price);
               const validPrice = price !== null && price > 0;
               const limitUp = validPrice && cp !== null && cp >= 9.5;
               const limitDown = validPrice && cp !== null && cp <= -9.5;
 
               return (
                 <tr key={r.etf_code}>
-                  <td className="etf-v9-name-cell">
+                  <td className="etf-v11-name-cell">
                     <Link href={`/etf/${r.etf_code}`}>
                       <Candle pct={r.change_pct} price={r.price} />
-                      <span className="etf-v9-name-text">
+                      <span className="etf-v11-name-text">
                         <b>{r.etf_code}</b>
                         <small>{r.etf_name}</small>
                       </span>
@@ -265,17 +248,17 @@ export default function EtfListClient({ rows }: { rows: any[] }) {
 
                   {mode === 'quote' && (
                     <>
-                      <td className="etf-v9-price-cell">
-                        <span className={`etf-v9-price ${limitUp ? 'limit-up' : ''} ${limitDown ? 'limit-down' : ''} ${validPrice ? signedClass(r.change_pct) : 'muted'}`}>
+                      <td className="etf-v11-price-cell">
+                        <span className={`etf-v11-price ${limitUp ? 'limit-up' : ''} ${limitDown ? 'limit-down' : ''} ${validPrice ? signedClass(r.change_pct) : 'muted'}`}>
                           {displayPrice(r)}
                         </span>
                       </td>
 
-                      <td className={`etf-v9-change-cell ${validPrice ? signedClass(r.change_pct) : 'muted'}`}>
+                      <td className={`etf-v11-change-cell ${validPrice ? signedClass(r.change_pct) : 'muted'}`}>
                         {displayChange(r).split('\n').map((x, i) => <div key={i}>{x}</div>)}
                       </td>
 
-                      <td className="etf-v9-volume-cell">
+                      <td className="etf-v11-volume-cell">
                         <b>{displayVolume(r)}</b>
                         <small>({displayAmount(r)})</small>
                       </td>

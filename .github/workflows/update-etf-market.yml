@@ -3,13 +3,13 @@ name: Update Pocket ETF Market Data
 on:
   workflow_dispatch:
   schedule:
-    # 台灣時間 18:20，台股收盤後更新 ETF 行情與基本資料
+    # 台灣時間 18:20，台股收盤後更新 ETF 行情、歷史、基本資料
     - cron: "20 10 * * 1-5"
 
 jobs:
   update-pocket-etf-market:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - uses: actions/checkout@v4
