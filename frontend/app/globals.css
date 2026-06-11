@@ -2208,3 +2208,160 @@
     padding:10px 18px;
   }
 }
+/* ===== Holdings V8 ===== */
+.holdings-v8-page h2{
+  margin-bottom:22px;
+}
+
+.holdings-v8-count{
+  font-size:20px;
+  font-weight:800;
+  color:#7b8491;
+  margin-bottom:22px;
+}
+
+.holdings-v8-table-wrap{
+  width:100%;
+  overflow-x:auto;
+}
+
+.holdings-v8-table{
+  width:100%;
+  min-width:760px;
+  table-layout:fixed;
+  border-collapse:collapse;
+}
+
+.holdings-v8-table thead th{
+  background:#f3f4f6;
+  position:sticky;
+  top:0;
+  z-index:20;
+  box-shadow:0 1px 0 var(--line);
+}
+
+.holdings-v8-table th,
+.holdings-v8-table td{
+  vertical-align:middle;
+}
+
+.holdings-v8-table th:nth-child(1),
+.holdings-v8-table td:nth-child(1){
+  width:32%;
+  text-align:left;
+}
+
+.holdings-v8-table th:nth-child(2),
+.holdings-v8-table td:nth-child(2){
+  width:20%;
+  text-align:right;
+}
+
+.holdings-v8-table th:nth-child(3),
+.holdings-v8-table td:nth-child(3){
+  width:26%;
+  text-align:right;
+}
+
+.holdings-v8-table th:nth-child(4),
+.holdings-v8-table td:nth-child(4){
+  width:22%;
+  text-align:right;
+}
+
+.holdings-v8-table td:first-child b{
+  display:block;
+  font-size:22px;
+  line-height:1.2;
+}
+
+.holdings-v8-table .code{
+  color:#7b8491;
+  font-weight:900;
+  margin-top:5px;
+}
+
+.holdings-v8-table td b{
+  font-size:22px;
+}
+
+.holdings-sort-head{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  width:100%;
+  border:0;
+  background:transparent;
+  padding:0;
+  color:inherit;
+  font:inherit;
+  font-weight:900;
+  cursor:pointer;
+  line-height:1.15;
+}
+
+.holdings-v8-table th:nth-child(n+2) .holdings-sort-head{
+  justify-content:flex-end;
+}
+
+.holdings-price-head,
+.holdings-value-head,
+.holdings-etf-head{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  align-items:flex-end;
+}
+
+.sort-arrows{
+  display:inline-flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:0;
+  line-height:.72;
+  font-size:12px;
+  color:#9aa2ad;
+  vertical-align:middle;
+}
+
+.sort-arrows .on,
+.holdings-sort-head.active .sort-arrows .on{
+  color:#4d5560;
+}
+
+.holdings-price-cell{
+  font-weight:900;
+}
+
+.holdings-price-box{
+  display:inline-block;
+  padding:2px 6px;
+  border-radius:3px;
+  font-size:22px;
+  line-height:1.2;
+}
+
+.holdings-price-box.limit-up{
+  background:#df5555;
+  color:#fff !important;
+}
+
+.holdings-price-box.limit-down{
+  background:#35a77f;
+  color:#fff !important;
+}
+
+@media(max-width:720px){
+  .holdings-v8-table{
+    min-width:720px;
+  }
+
+  .holdings-v8-table td:first-child b,
+  .holdings-v8-table td b{
+    font-size:20px;
+  }
+
+  .holdings-price-box{
+    font-size:20px;
+  }
+}

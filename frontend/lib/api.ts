@@ -306,12 +306,18 @@ async function getEtfDetail(etfCode: string) {
 async function getConstituentSummary() {
   const { holdings, stockQuoteMap } = await loadBaseData();
   const rows = latestHoldings(holdings).filter((h) => isNormalStockCode(h.stock_code));
+  const stockCodes = Array.from(new Set(rows.map((r) => r.stock_code)));
+  const fallbackPriceMap = await loadLatestPriceHistoryMap(stockCodes);
 
   const grouped: Record<string, any> = {};
 
   for (const r of rows) {
     const code = r.stock_code;
     const sq = stockQuoteMap[code] || {};
+    const fallback = fallbackPriceMap[code] || {};
+    const price = sq.price ?? fallback.price ?? null;
+    const changePct = sq.change_pct ?? fallback.change_pct ?? null;
+    const quoteDate = sq.updated_at ?? fallback.trade_date ?? null;
 
     if (!grouped[code]) {
       grouped[code] = {
@@ -320,8 +326,9 @@ async function getConstituentSummary() {
         etf_count: 0,
         total_weight: 0,
         total_shares: 0,
-        price: sq.price ?? null,
-        change_pct: sq.change_pct ?? null,
+        price,
+        change_pct: changePct,
+        quote_date: quoteDate,
         etfs: [],
       };
     }
