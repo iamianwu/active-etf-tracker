@@ -8,6 +8,12 @@ import requests
 
 from ..database import get_conn, init_db, normal_stock_condition
 
+try:
+    from ..config import ETF_CODES, ETF_NAMES
+except Exception:
+    ETF_CODES = []
+    ETF_NAMES = {}
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 Chrome/120 Safari/537.36",
     "Accept": "application/json,text/plain,*/*",
@@ -52,7 +58,7 @@ def get_latest_stock_universe() -> list[dict[str, str]]:
 def fetch_yahoo_quote_batch(codes: list[str]) -> dict[str, dict[str, Any]]:
     """
     先查 .TW，再查 .TWO。
-    回傳 key 是 4 碼股票代號。
+    回傳 key 是代號。
     """
     out: dict[str, dict[str, Any]] = {}
 
@@ -82,13 +88,17 @@ def fetch_yahoo_quote_batch(codes: list[str]) -> dict[str, dict[str, Any]]:
                 if price is None:
                     continue
 
+                volume = _to_float(item.get("regularMarketVolume"))
+                amount = price * volume if price is not None and volume is not None else None
+
                 out[code] = {
-                    "stock_code": code,
-                    "stock_name": item.get("longName") or item.get("shortName") or code,
+                    "code": code,
+                    "name": item.get("longName") or item.get("shortName") or code,
                     "price": price,
                     "change": _to_float(item.get("regularMarketChange")),
                     "change_pct": _to_float(item.get("regularMarketChangePercent")),
-                    "volume": _to_float(item.get("regularMarketVolume")),
+                    "volume": volume,
+                    "amount": amount,
                     "market": suffix,
                 }
         except Exception:
@@ -98,7 +108,7 @@ def fetch_yahoo_quote_batch(codes: list[str]) -> dict[str, dict[str, Any]]:
 
     return out
 
-def save_quotes(quotes: dict[str, dict[str, Any]], name_map: dict[str, str]) -> int:
+def save_stock_quotes(quotes: dict[str, dict[str, Any]], name_map: dict[str, str]) -> int:
     if not quotes:
         return 0
 
@@ -107,7 +117,7 @@ def save_quotes(quotes: dict[str, dict[str, Any]], name_map: dict[str, str]) -> 
 
     with get_conn() as conn:
         for code, q in quotes.items():
-            stock_name = name_map.get(code) or q.get("stock_name") or code
+            stock_name = name_map.get(code) or q.get("name") or code
             if conn.postgres:
                 conn.execute(
                     """
@@ -121,15 +131,7 @@ def save_quotes(quotes: dict[str, dict[str, Any]], name_map: dict[str, str]) -> 
                       volume=EXCLUDED.volume,
                       updated_at=EXCLUDED.updated_at
                     """,
-                    (
-                        code,
-                        stock_name,
-                        q.get("price"),
-                        q.get("change"),
-                        q.get("change_pct"),
-                        q.get("volume"),
-                        now,
-                    ),
+                    (code, stock_name, q.get("price"), q.get("change"), q.get("change_pct"), q.get("volume"), now),
                 )
             else:
                 conn.execute(
@@ -137,13 +139,60 @@ def save_quotes(quotes: dict[str, dict[str, Any]], name_map: dict[str, str]) -> 
                     INSERT OR REPLACE INTO stock_quotes(stock_code, stock_name, price, change, change_pct, volume, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
+                    (code, stock_name, q.get("price"), q.get("change"), q.get("change_pct"), q.get("volume"), now),
+                )
+
+    return len(quotes)
+
+def save_etf_quotes(quotes: dict[str, dict[str, Any]]) -> int:
+    if not quotes:
+        return 0
+
+    now = datetime.now().isoformat(timespec="seconds")
+    init_db()
+
+    with get_conn() as conn:
+        for code, q in quotes.items():
+            etf_name = ETF_NAMES.get(code) or q.get("name") or code
+            if conn.postgres:
+                conn.execute(
+                    """
+                    INSERT INTO etf_quotes(etf_code, etf_name, price, change, change_pct, volume, amount, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (etf_code) DO UPDATE SET
+                      etf_name=EXCLUDED.etf_name,
+                      price=EXCLUDED.price,
+                      change=EXCLUDED.change,
+                      change_pct=EXCLUDED.change_pct,
+                      volume=EXCLUDED.volume,
+                      amount=EXCLUDED.amount,
+                      updated_at=EXCLUDED.updated_at
+                    """,
                     (
                         code,
-                        stock_name,
+                        etf_name,
                         q.get("price"),
                         q.get("change"),
                         q.get("change_pct"),
                         q.get("volume"),
+                        q.get("amount"),
+                        now,
+                    ),
+                )
+            else:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO etf_quotes(etf_code, etf_name, price, change, change_pct, volume, amount, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        code,
+                        etf_name,
+                        q.get("price"),
+                        q.get("change"),
+                        q.get("change_pct"),
+                        q.get("volume"),
+                        q.get("amount"),
                         now,
                     ),
                 )
@@ -152,29 +201,49 @@ def save_quotes(quotes: dict[str, dict[str, Any]], name_map: dict[str, str]) -> 
 
 def update_live_quotes(chunk_size: int = 80) -> dict[str, Any]:
     stocks = get_latest_stock_universe()
-    codes = [x["stock_code"] for x in stocks]
-    name_map = {x["stock_code"]: x["stock_name"] for x in stocks}
+    stock_codes = [x["stock_code"] for x in stocks]
+    stock_name_map = {x["stock_code"]: x["stock_name"] for x in stocks}
 
-    all_quotes: dict[str, dict[str, Any]] = {}
+    all_stock_quotes: dict[str, dict[str, Any]] = {}
+    all_etf_quotes: dict[str, dict[str, Any]] = {}
 
-    print(f"Start update_live_quotes: stocks={len(codes)}", flush=True)
+    print(f"Start update_live_quotes: stocks={len(stock_codes)}, etfs={len(ETF_CODES)}", flush=True)
 
-    for i, chunk in enumerate(_chunks(codes, chunk_size), start=1):
-        print(f"[quote chunk {i}] fetching {len(chunk)} symbols", flush=True)
+    for i, chunk in enumerate(_chunks(stock_codes, chunk_size), start=1):
+        print(f"[stock quote chunk {i}] fetching {len(chunk)} symbols", flush=True)
         q = fetch_yahoo_quote_batch(chunk)
-        all_quotes.update(q)
-        print(f"[quote chunk {i}] got {len(q)} quotes", flush=True)
+        all_stock_quotes.update(q)
+        print(f"[stock quote chunk {i}] got {len(q)} quotes", flush=True)
         time.sleep(0.2)
 
-    saved = save_quotes(all_quotes, name_map)
-    missing = [c for c in codes if c not in all_quotes]
+    etf_codes = list(dict.fromkeys([str(x) for x in ETF_CODES if x]))
+    for i, chunk in enumerate(_chunks(etf_codes, chunk_size), start=1):
+        print(f"[ETF quote chunk {i}] fetching {len(chunk)} symbols", flush=True)
+        q = fetch_yahoo_quote_batch(chunk)
+        all_etf_quotes.update(q)
+        print(f"[ETF quote chunk {i}] got {len(q)} quotes", flush=True)
+        time.sleep(0.2)
 
-    print(f"Finished update_live_quotes: saved={saved}, missing={len(missing)}", flush=True)
+    saved_stocks = save_stock_quotes(all_stock_quotes, stock_name_map)
+    saved_etfs = save_etf_quotes(all_etf_quotes)
+
+    missing_stocks = [c for c in stock_codes if c not in all_stock_quotes]
+    missing_etfs = [c for c in etf_codes if c not in all_etf_quotes]
+
+    print(
+        f"Finished update_live_quotes: saved_stocks={saved_stocks}, saved_etfs={saved_etfs}, "
+        f"missing_stocks={len(missing_stocks)}, missing_etfs={len(missing_etfs)}",
+        flush=True,
+    )
 
     return {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
-        "total_codes": len(codes),
-        "saved": saved,
-        "missing_count": len(missing),
-        "missing_sample": missing[:30],
+        "total_stock_codes": len(stock_codes),
+        "saved_stocks": saved_stocks,
+        "missing_stock_count": len(missing_stocks),
+        "missing_stock_sample": missing_stocks[:30],
+        "total_etf_codes": len(etf_codes),
+        "saved_etfs": saved_etfs,
+        "missing_etf_count": len(missing_etfs),
+        "missing_etf_sample": missing_etfs[:30],
     }
