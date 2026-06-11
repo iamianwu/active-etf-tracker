@@ -103,7 +103,7 @@ async function loadLatestPriceHistoryMap(stockCodes: string[]) {
 
       const { data, error } = await supabase
         .from("stock_price_history")
-        .select("stock_code,trade_date,close,change_pct")
+        .select("stock_code,trade_date,close,change_pct,volume")
         .in("stock_code", chunk)
         .order("trade_date", { ascending: false })
         .range(from, to);
@@ -123,6 +123,7 @@ async function loadLatestPriceHistoryMap(stockCodes: string[]) {
           out[code] = {
             price: r.close,
             change_pct: r.change_pct,
+            volume: r.volume,
             trade_date: r.trade_date,
           };
         }
@@ -439,6 +440,7 @@ async function getSignals(signalType?: string | null) {
     return {
       price: q.price ?? fallback.price ?? null,
       change_pct: q.change_pct ?? fallback.change_pct ?? null,
+      volume: q.volume ?? fallback.volume ?? null,
     };
   };
 
@@ -450,6 +452,7 @@ async function getSignals(signalType?: string | null) {
       ...c,
       price: q.price,
       change_pct: q.change_pct,
+      volume: q.volume,
       delta_value_billion: price ? deltaShares * price / 100000000 : null,
     };
   });
@@ -481,6 +484,7 @@ async function getSignals(signalType?: string | null) {
         stock_name: c.stock_name,
         price: c.price ?? null,
         change_pct: c.change_pct ?? null,
+        volume: c.volume ?? null,
         current_shares: 0,
         previous_shares: 0,
         delta_shares: 0,

@@ -52,7 +52,7 @@ function signedAmount(v: any) {
 function signedLots(v: any) {
   const lots = Number(v || 0) / 1000;
   const prefix = lots > 0 ? '+' : lots < 0 ? '-' : '';
-  return `${prefix}${fmt0(Math.abs(lots))} 張`;
+  return `${prefix}${fmt0(Math.abs(lots))}`;
 }
 
 function statusClass(status: string) {
@@ -305,7 +305,7 @@ export default function SignalsClient({ data, initialFilter = null }: { data: an
   }
 
   return (
-    <main className="page signals-v5-page">
+    <main className="page signals-v7-page">
       <div className="signals-title-block">
         <h2>{mmdd ? `${mmdd} 今日訊號` : '今日訊號'}</h2>
         <div className={`signals-data-status ${complete ? 'ok' : 'warn'}`}>
@@ -338,8 +338,17 @@ export default function SignalsClient({ data, initialFilter = null }: { data: an
         </button>
       </div>
 
-      <div className="signal-v5-table-wrap">
-        <table className="table signal-v5-table">
+      <div className="signal-v7-table-wrap">
+        <table className="table signal-v7-table">
+          <colgroup>
+            <col className="c-stock" />
+            <col className="c-price" />
+            <col className="c-status" />
+            <col className="c-amount" />
+            <col className="c-etf" />
+            <col className="c-shares" />
+            <col className="c-mag" />
+          </colgroup>
           <thead>
             <tr>
               <th><SortHead id="stock">標的</SortHead></th>
@@ -351,9 +360,9 @@ export default function SignalsClient({ data, initialFilter = null }: { data: an
               </th>
               <th><SortHead id="status">狀態</SortHead></th>
               <th><SortHead id="amount">金額</SortHead></th>
-              <th><SortHead id="etf_count">ETF檔數</SortHead></th>
-              <th><SortHead id="delta_shares">變動張數</SortHead></th>
-              <th><SortHead id="magnitude">變動幅度</SortHead></th>
+              <th><SortHead id="etf_count">ETF</SortHead></th>
+              <th><SortHead id="delta_shares">張數</SortHead></th>
+              <th><SortHead id="magnitude">幅度</SortHead></th>
             </tr>
           </thead>
           <tbody>
@@ -367,7 +376,7 @@ export default function SignalsClient({ data, initialFilter = null }: { data: an
 
               return (
                 <tr key={`${r.stock_code}-${r.status}`}>
-                  <td>
+                  <td className="stock-cell">
                     <Link href={`/stock/${r.stock_code}`}>
                       <b>{r.stock_name}</b>
                       <div className="code">{r.stock_code}</div>
@@ -375,13 +384,13 @@ export default function SignalsClient({ data, initialFilter = null }: { data: an
                   </td>
                   <td className="price-cell">
                     <div className={`price-box ${limitUp ? 'limit-up' : ''} ${limitDown ? 'limit-down' : ''}`}>
-                      {r.price == null ? '-' : fmt(r.price, 1)}
+                      {r.price == null ? '-' : fmt(r.price, Number(r.price) >= 1000 ? 0 : 1)}
                     </div>
                     <div className={signedClass(r.change_pct)}>
                       {r.change_pct == null ? '-' : `${cp > 0 ? '+' : ''}${fmt(cp, 2)}%`}
                     </div>
                   </td>
-                  <td>
+                  <td className="status-cell">
                     <span className={`badge ${statusClass(r.status)}`}>
                       {r.status}
                     </span>
@@ -390,7 +399,7 @@ export default function SignalsClient({ data, initialFilter = null }: { data: an
                     {amount === null || amount === undefined ? '-' : signedAmount(amount)}
                   </td>
                   <td>
-                    <b>{fmt0(r.etf_count)} 檔</b>
+                    <b>{fmt0(r.etf_count)}檔</b>
                     <div className="small-muted">買賣 {buy}:{sell}</div>
                   </td>
                   <td className={signedClass(r.delta_shares)}>
