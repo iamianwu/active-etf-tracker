@@ -1,0 +1,313 @@
+/* ===== Signals V5 UI ===== */
+.signals-v5-page .signals-title-block{
+  margin-bottom:22px;
+}
+
+.signals-title-block h2{
+  margin-bottom:6px;
+}
+
+.signals-data-status{
+  color:#7b8491;
+  font-size:15px;
+  font-weight:700;
+}
+
+.signals-data-status.ok{
+  color:#76808d;
+}
+
+.signals-data-status.warn{
+  color:#b88700;
+}
+
+.focus-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  margin-bottom:28px;
+}
+
+.focus-card{
+  display:block;
+  text-decoration:none;
+  color:var(--text);
+  border-radius:18px;
+  padding:22px 24px;
+  min-height:150px;
+  border:1px solid var(--line);
+  background:#fff;
+}
+
+.focus-card.red{
+  background:#fff5f5;
+}
+
+.focus-card.green{
+  background:#f3fbf8;
+}
+
+.focus-card-title{
+  font-size:25px;
+  font-weight:900;
+  margin-bottom:18px;
+  position:relative;
+  padding-left:14px;
+}
+
+.focus-card-title::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:5px;
+  width:5px;
+  height:30px;
+  border-radius:4px;
+  background:#e25353;
+}
+
+.focus-card.green .focus-card-title::before{
+  background:#36aa84;
+}
+
+.focus-card-body{
+  display:grid;
+  grid-template-columns:1fr 1.25fr;
+  gap:18px;
+  align-items:center;
+}
+
+.focus-stock b{
+  display:block;
+  font-size:22px;
+  line-height:1.2;
+}
+
+.focus-stock span{
+  display:block;
+  margin-top:6px;
+  color:#7b8491;
+  font-size:18px;
+  font-weight:900;
+}
+
+.focus-metrics{
+  font-size:20px;
+  line-height:1.9;
+}
+
+.focus-metrics .nowrap{
+  white-space:nowrap;
+}
+
+.focus-metrics span{
+  color:#8b95a3;
+  font-weight:900;
+}
+
+.focus-metrics b{
+  font-weight:900;
+}
+
+.focus-empty{
+  color:#7b8491;
+  font-weight:800;
+}
+
+.status-pill-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:14px;
+  margin:10px 0 24px;
+}
+
+.status-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border-radius:999px;
+  padding:12px 20px;
+  border:2px solid #d6dbe2;
+  text-decoration:none;
+  color:#5d6570;
+  font-size:22px;
+  font-weight:900;
+  background:#fff;
+  cursor:pointer;
+  transition:opacity .12s ease, transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+
+.status-pill b{
+  font-size:24px;
+}
+
+.status-pill.add{
+  color:#a88b00;
+  border-color:#bfa000;
+  background:#fffdf2;
+}
+
+.status-pill.remove{
+  color:#6d737b;
+  border-color:#aab0b8;
+  background:#fafafa;
+}
+
+.status-pill.inc{
+  color:#e25353;
+  border-color:#e25353;
+  background:#fff8f8;
+}
+
+.status-pill.dec{
+  color:#36aa84;
+  border-color:#36aa84;
+  background:#f4fffb;
+}
+
+.status-pill.active{
+  box-shadow:0 0 0 4px rgba(59,130,246,.12);
+  transform:translateY(-1px);
+}
+
+.status-pill.inactive{
+  opacity:.45;
+  color:#7b8491;
+  border-color:#e5e7eb;
+  background:#f3f4f6;
+  box-shadow:none;
+}
+
+.signal-v5-table-wrap{
+  overflow-x:auto;
+}
+
+.signal-v5-table{
+  min-width:1120px;
+}
+
+.signal-v5-table th,
+.signal-v5-table td{
+  vertical-align:middle;
+  white-space:nowrap;
+}
+
+.signal-v5-table th:nth-child(n+2),
+.signal-v5-table td:nth-child(n+2){
+  text-align:right;
+}
+
+.signal-v5-table th:nth-child(3),
+.signal-v5-table td:nth-child(3){
+  text-align:center;
+}
+
+.signal-v5-table th:nth-child(n+2) .sort-head{
+  justify-content:flex-end;
+}
+
+.signal-v5-table th:nth-child(3) .sort-head{
+  justify-content:center;
+}
+
+.sort-head{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  width:100%;
+  border:0;
+  background:transparent;
+  padding:0;
+  color:inherit;
+  font:inherit;
+  font-weight:900;
+  cursor:pointer;
+  line-height:1.15;
+}
+
+.price-sort-head{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  align-items:flex-end;
+}
+
+.price-sort-head .sort-head{
+  justify-content:flex-end;
+}
+
+.sort-arrows{
+  display:inline-flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:0;
+  line-height:.78;
+  font-size:13px;
+  color:#9aa2ad;
+  vertical-align:middle;
+}
+
+.sort-arrows .on,
+.sort-head.active .sort-arrows .on{
+  color:#4d5560;
+}
+
+.price-cell{
+  font-weight:900;
+}
+
+.price-box{
+  display:inline-block;
+  padding:2px 6px;
+  border-radius:3px;
+  font-size:22px;
+  line-height:1.2;
+}
+
+.price-box.limit-up{
+  background:#df5555;
+  color:#fff;
+}
+
+.price-box.limit-down{
+  background:#35a77f;
+  color:#fff;
+}
+
+.small-muted{
+  margin-top:4px;
+  color:#8b95a3;
+  font-size:13px;
+  font-weight:700;
+}
+
+@media(max-width:720px){
+  .focus-grid{
+    grid-template-columns:1fr;
+  }
+
+  .focus-card{
+    padding:20px 18px;
+  }
+
+  .focus-card-title{
+    font-size:24px;
+  }
+
+  .focus-card-body{
+    grid-template-columns:1fr 1.25fr;
+  }
+
+  .focus-stock b{
+    font-size:20px;
+  }
+
+  .focus-metrics{
+    font-size:18px;
+  }
+
+  .status-pill{
+    font-size:20px;
+    padding:10px 18px;
+  }
+}

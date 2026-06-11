@@ -89,6 +89,52 @@ async function loadBaseData() {
   return { holdings, etfQuoteMap, stockQuoteMap };
 }
 
+async function loadLatestPriceHistoryMap(stockCodes: string[]) {
+  const uniqueCodes = Array.from(new Set(stockCodes.filter(Boolean)));
+  const out: Record<string, any> = {};
+  const pageSize = 1000;
+  const chunkSize = 80;
+
+  for (let i = 0; i < uniqueCodes.length; i += chunkSize) {
+    const chunk = uniqueCodes.slice(i, i + chunkSize);
+
+    for (let from = 0; ; from += pageSize) {
+      const to = from + pageSize - 1;
+
+      const { data, error } = await supabase
+        .from("stock_price_history")
+        .select("stock_code,trade_date,close,change_pct")
+        .in("stock_code", chunk)
+        .order("trade_date", { ascending: false })
+        .range(from, to);
+
+      if (error) {
+        if (String(error.message || "").includes("Could not find the table")) return out;
+        break;
+      }
+
+      const rows = data || [];
+
+      for (const r of rows) {
+        const code = String(r.stock_code || "");
+        if (!code) continue;
+
+        if (!out[code] || String(r.trade_date || "") > String(out[code].trade_date || "")) {
+          out[code] = {
+            price: r.close,
+            change_pct: r.change_pct,
+            trade_date: r.trade_date,
+          };
+        }
+      }
+
+      if (rows.length < pageSize) break;
+    }
+  }
+
+  return out;
+}
+
 function latestDateByEtf(holdings: any[]) {
   const m: Record<string, string> = {};
 
@@ -150,7 +196,6 @@ function computeEtfChanges(holdings: any[], etfCode: string, date: string, prevD
       delta_shares = Number(r.shares || 0) - Number(p.shares || 0);
       delta_weight = Number(r.weight || 0) - Number(p.weight || 0);
 
-      // V4：只看真正股數變動，不把只有權重變動列為交易。
       if (delta_shares > 0) status = "加碼";
       else if (delta_shares < 0) status = "減碼";
       else continue;
@@ -384,11 +429,16 @@ async function getSignals(signalType?: string | null) {
 
   changes = changes.filter((c: any) => ["新增", "刪除", "加碼", "減碼"].includes(c.status));
 
+  const signalStockCodes = Array.from(new Set(changes.map((c: any) => c.stock_code).filter(Boolean)));
+  const historyPriceMap = await loadLatestPriceHistoryMap(signalStockCodes);
+
   const quoteFor = (stockCode: string) => {
     const q = stockQuoteMap?.[stockCode] || {};
+    const fallback = historyPriceMap?.[stockCode] || {};
+
     return {
-      price: q.price ?? null,
-      change_pct: q.change_pct ?? null,
+      price: q.price ?? fallback.price ?? null,
+      change_pct: q.change_pct ?? fallback.change_pct ?? null,
     };
   };
 

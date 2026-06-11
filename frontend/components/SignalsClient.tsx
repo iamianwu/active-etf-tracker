@@ -5,8 +5,8 @@ import { useMemo, useState } from 'react';
 import { fmt, fmt0, signedClass } from '@/lib/api';
 
 const STATUS_LIST = ['新增', '刪除', '加碼', '減碼'] as const;
-type FilterStatus = typeof STATUS_LIST[number] | null;
-type SortKey = 'stock' | 'price' | 'status' | 'amount' | 'etf_count' | 'delta_shares' | 'magnitude';
+type FilterStatus = typeof STATUS_LIST[number];
+type SortKey = 'stock' | 'price' | 'change_pct' | 'status' | 'amount' | 'etf_count' | 'delta_shares' | 'magnitude';
 type SortDir = 'asc' | 'desc';
 
 function countFromStatuses(x: any, keyword: string) {
@@ -80,15 +80,8 @@ function displayMagnitude(row: any) {
   return `${prefix}${fmt(n, 1)}%`;
 }
 
-function rowStatusForFilter(row: any, filter: FilterStatus) {
-  if (filter) return filter;
-  return row.status || '混合';
-}
-
-function buildRows(data: any, filter: FilterStatus) {
-  const source = filter
-    ? (data.changes || []).filter((x: any) => x.status === filter)
-    : data.changes || [];
+function buildRows(data: any, selectedStatuses: Set<FilterStatus>) {
+  const source = (data.changes || []).filter((x: any) => selectedStatuses.has(x.status));
 
   const map = new Map<string, any>();
 
@@ -125,6 +118,7 @@ function buildRows(data: any, filter: FilterStatus) {
         add_etf_count: 0,
         remove_etf_count: 0,
         statuses: [],
+        status_set: new Set<string>(),
       });
     }
 
@@ -135,6 +129,7 @@ function buildRows(data: any, filter: FilterStatus) {
     r.delta_weight += Number(c.delta_weight || 0);
     r.etf_codes.push(c.etf_code);
     r.statuses.push(`${c.etf_code} ${c.status}`);
+    r.status_set.add(c.status);
 
     if (deltaValue !== null) {
       r.delta_value_billion += deltaValue;
@@ -163,11 +158,10 @@ function buildRows(data: any, filter: FilterStatus) {
     const etfCodes = Array.from(new Set(r.etf_codes || []));
     const magnitude = r.previous_shares ? (r.delta_shares / r.previous_shares) * 100 : null;
 
-    let status = filter || '混合';
-    if (!filter) {
-      if (r.delta_shares > 0) status = r.add_etf_count > 0 && r.increase_etf_count === 0 ? '新增' : '加碼';
-      else if (r.delta_shares < 0) status = r.remove_etf_count > 0 && r.decrease_etf_count === 0 ? '刪除' : '減碼';
-    }
+    let status = '混合';
+    if (r.status_set.size === 1) status = Array.from(r.status_set)[0] as string;
+    else if (r.delta_shares > 0) status = r.add_etf_count > 0 && r.increase_etf_count === 0 ? '新增' : '加碼';
+    else if (r.delta_shares < 0) status = r.remove_etf_count > 0 && r.decrease_etf_count === 0 ? '刪除' : '減碼';
 
     return {
       ...r,
@@ -183,6 +177,7 @@ function buildRows(data: any, filter: FilterStatus) {
 function sortValue(row: any, key: SortKey) {
   if (key === 'stock') return `${row.stock_code || ''}${row.stock_name || ''}`;
   if (key === 'price') return Number(row.price || 0);
+  if (key === 'change_pct') return Number(row.change_pct || 0);
   if (key === 'status') return row.status || '';
   if (key === 'amount') return Number(row.delta_value_billion || 0);
   if (key === 'etf_count') return Number(row.etf_count || 0);
@@ -232,8 +227,9 @@ function FocusCard({
   );
 }
 
-export default function SignalsClient({ data, initialFilter = null }: { data: any; initialFilter?: FilterStatus }) {
-  const [filter, setFilter] = useState<FilterStatus>(initialFilter);
+export default function SignalsClient({ data, initialFilter = null }: { data: any; initialFilter?: FilterStatus | null }) {
+  const defaultStatuses: FilterStatus[] = initialFilter ? [initialFilter] : ['新增', '刪除', '加碼', '減碼'];
+  const [selectedStatuses, setSelectedStatuses] = useState<FilterStatus[]>(defaultStatuses);
   const [sortKey, setSortKey] = useState<SortKey>('amount');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
@@ -261,8 +257,10 @@ export default function SignalsClient({ data, initialFilter = null }: { data: an
       Math.abs(Number(b.delta_shares || 0)) - Math.abs(Number(a.delta_shares || 0))
     )[0];
 
+  const selectedSet = useMemo(() => new Set(selectedStatuses), [selectedStatuses]);
+
   const rows = useMemo(() => {
-    const built = buildRows(data, filter);
+    const built = buildRows(data, selectedSet);
     return built.sort((a: any, b: any) => {
       const av = sortValue(a, sortKey);
       const bv = sortValue(b, sortKey);
@@ -273,7 +271,7 @@ export default function SignalsClient({ data, initialFilter = null }: { data: an
 
       return sortDir === 'asc' ? cmp : -cmp;
     });
-  }, [data, filter, sortKey, sortDir]);
+  }, [data, selectedSet, sortKey, sortDir]);
 
   const mmdd = data.data_date_mmdd || '';
   const complete = Number(data.fetched_etf_count || 0) === Number(data.total_etf_count || 0);
@@ -299,12 +297,15 @@ export default function SignalsClient({ data, initialFilter = null }: { data: an
     );
   }
 
-  function handleFilter(next: FilterStatus) {
-    setFilter(filter === next ? null : next);
+  function toggleFilter(status: FilterStatus) {
+    setSelectedStatuses((prev) => {
+      if (prev.includes(status)) return prev.filter((x) => x !== status);
+      return [...prev, status];
+    });
   }
 
   return (
-    <main className="page signals-v4-page">
+    <main className="page signals-v5-page">
       <div className="signals-title-block">
         <h2>{mmdd ? `${mmdd} 今日訊號` : '今日訊號'}</h2>
         <div className={`signals-data-status ${complete ? 'ok' : 'warn'}`}>
@@ -323,26 +324,31 @@ export default function SignalsClient({ data, initialFilter = null }: { data: an
       <h3>資金交易明細：共 {rows.length} 檔</h3>
 
       <div className="status-pill-row">
-        <button className={`status-pill add ${filter === '新增' ? 'active' : ''}`} onClick={() => handleFilter('新增')}>
+        <button className={`status-pill add ${selectedSet.has('新增') ? 'active' : 'inactive'}`} onClick={() => toggleFilter('新增')}>
           <span>新增</span><b>{data.summary?.['新增'] || 0}</b>
         </button>
-        <button className={`status-pill remove ${filter === '刪除' ? 'active' : ''}`} onClick={() => handleFilter('刪除')}>
+        <button className={`status-pill remove ${selectedSet.has('刪除') ? 'active' : 'inactive'}`} onClick={() => toggleFilter('刪除')}>
           <span>刪除</span><b>{data.summary?.['刪除'] || 0}</b>
         </button>
-        <button className={`status-pill inc ${filter === '加碼' ? 'active' : ''}`} onClick={() => handleFilter('加碼')}>
+        <button className={`status-pill inc ${selectedSet.has('加碼') ? 'active' : 'inactive'}`} onClick={() => toggleFilter('加碼')}>
           <span>加碼</span><b>{data.summary?.['加碼'] || 0}</b>
         </button>
-        <button className={`status-pill dec ${filter === '減碼' ? 'active' : ''}`} onClick={() => handleFilter('減碼')}>
+        <button className={`status-pill dec ${selectedSet.has('減碼') ? 'active' : 'inactive'}`} onClick={() => toggleFilter('減碼')}>
           <span>減碼</span><b>{data.summary?.['減碼'] || 0}</b>
         </button>
       </div>
 
-      <div className="signal-v4-table-wrap">
-        <table className="table signal-v4-table">
+      <div className="signal-v5-table-wrap">
+        <table className="table signal-v5-table">
           <thead>
             <tr>
               <th><SortHead id="stock">標的</SortHead></th>
-              <th><SortHead id="price">股價<br />漲跌幅</SortHead></th>
+              <th>
+                <div className="price-sort-head">
+                  <SortHead id="price">股價</SortHead>
+                  <SortHead id="change_pct">漲跌幅</SortHead>
+                </div>
+              </th>
               <th><SortHead id="status">狀態</SortHead></th>
               <th><SortHead id="amount">金額</SortHead></th>
               <th><SortHead id="etf_count">ETF檔數</SortHead></th>
@@ -355,13 +361,12 @@ export default function SignalsClient({ data, initialFilter = null }: { data: an
               const cp = Number(r.change_pct || 0);
               const limitUp = cp >= 9.5;
               const limitDown = cp <= -9.5;
-              const rowStatus = rowStatusForFilter(r, filter);
               const amount = r.delta_value_billion;
               const buy = Number(r.buy_etf_count || 0);
               const sell = Number(r.sell_etf_count || 0);
 
               return (
-                <tr key={`${r.stock_code}-${rowStatus}`}>
+                <tr key={`${r.stock_code}-${r.status}`}>
                   <td>
                     <Link href={`/stock/${r.stock_code}`}>
                       <b>{r.stock_name}</b>
@@ -377,8 +382,8 @@ export default function SignalsClient({ data, initialFilter = null }: { data: an
                     </div>
                   </td>
                   <td>
-                    <span className={`badge ${statusClass(rowStatus)}`}>
-                      {rowStatus}
+                    <span className={`badge ${statusClass(r.status)}`}>
+                      {r.status}
                     </span>
                   </td>
                   <td className={signedClass(amount)}>
