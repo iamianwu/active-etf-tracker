@@ -20,26 +20,35 @@ type SortKey =
 type SortDir = 'asc' | 'desc';
 
 function n(v: any) {
+  if (v === null || v === undefined || v === '') return null;
   const x = Number(v);
   return Number.isFinite(x) ? x : null;
 }
 
+function hasPrice(row: any) {
+  const price = n(row.price);
+  return price !== null && price > 0;
+}
+
 function calcAmountBillion(row: any) {
+  if (!hasPrice(row)) return null;
+
   const amount = n(row.amount);
   if (amount !== null && amount > 0) return amount / 100000000;
 
   const price = n(row.price);
   const volume = n(row.volume);
   if (price !== null && volume !== null && price > 0 && volume > 0) {
-    return price * volume / 100000000;
+    return price * volume * 1000 / 100000000;
   }
 
   return null;
 }
 
 function displayVolume(row: any) {
+  if (!hasPrice(row)) return '-';
   const volume = n(row.volume);
-  if (volume === null) return '-';
+  if (volume === null || volume <= 0) return '-';
   return fmt0(volume);
 }
 
@@ -51,11 +60,13 @@ function displayAmount(row: any) {
 
 function displayPrice(row: any) {
   const price = n(row.price);
-  if (price === null) return '-';
+  if (price === null || price <= 0) return '-';
   return fmt(price, price >= 1000 ? 0 : 2);
 }
 
 function displayChange(row: any) {
+  if (!hasPrice(row)) return '-';
+
   const change = n(row.change);
   const pct = n(row.change_pct);
 
@@ -65,9 +76,7 @@ function displayChange(row: any) {
     ? ''
     : `${change > 0 ? '▲' : change < 0 ? '▼' : ''}${fmt(Math.abs(change), Math.abs(change) >= 10 ? 1 : 2)}`;
 
-  const pctText = pct === null
-    ? ''
-    : `${pct > 0 ? '' : pct < 0 ? '' : ''}${fmt(Math.abs(pct), 2)}%`;
+  const pctText = pct === null ? '' : `${fmt(Math.abs(pct), 2)}%`;
 
   if (changeText && pctText) return `${changeText}\n${pctText}`;
   return changeText || pctText;
@@ -76,7 +85,7 @@ function displayChange(row: any) {
 function displayPct(v: any, digits = 1) {
   const x = n(v);
   if (x === null) return '-';
-  return `${x > 0 ? '' : ''}${fmt(x, digits)}%`;
+  return `${fmt(x, digits)}%`;
 }
 
 function displaySignedPct(v: any, digits = 1) {
@@ -90,12 +99,6 @@ function displayAum(row: any) {
   if (aum !== null && aum > 0) {
     return `${fmt0(aum)} 億`;
   }
-
-  const amount = n(row.aum);
-  if (amount !== null && amount > 0) {
-    return `${fmt0(amount)} 億`;
-  }
-
   return '-';
 }
 
@@ -113,18 +116,19 @@ function sortValue(row: any, key: SortKey) {
   if (key === 'change_pct') return n(row.change_pct) ?? -Infinity;
   if (key === 'volume') return n(row.volume) ?? -Infinity;
   if (key === 'amount') return calcAmountBillion(row) ?? -Infinity;
-  if (key === 'week_return') return n(row.week_return ?? row.return_1w) ?? -Infinity;
-  if (key === 'total_return') return n(row.total_return ?? row.return_since_inception) ?? -Infinity;
+  if (key === 'week_return') return n(row.week_return) ?? -Infinity;
+  if (key === 'total_return') return n(row.total_return) ?? -Infinity;
   if (key === 'dividend_yield') return n(row.dividend_yield) ?? -Infinity;
-  if (key === 'aum') return n(row.aum_billion ?? row.aum) ?? -Infinity;
+  if (key === 'aum') return n(row.aum_billion) ?? -Infinity;
   if (key === 'expense') return n(row.expense_ratio) ?? Infinity;
   if (key === 'region') return inferRegion(row);
   return '';
 }
 
-function Candle({ pct }: { pct: any }) {
+function Candle({ pct, price }: { pct: any; price: any }) {
+  const p = n(price);
   const x = n(pct);
-  const cls = x === null ? 'flat' : x >= 0 ? 'up' : 'down';
+  const cls = p === null || p <= 0 ? 'flat' : x === null ? 'flat' : x >= 0 ? 'up' : 'down';
 
   return (
     <span className={`etf-v9-candle ${cls}`}>
@@ -242,14 +246,16 @@ export default function EtfListClient({ rows }: { rows: any[] }) {
           <tbody>
             {sortedRows.map((r: any) => {
               const cp = n(r.change_pct);
-              const limitUp = cp !== null && cp >= 9.5;
-              const limitDown = cp !== null && cp <= -9.5;
+              const price = n(r.price);
+              const validPrice = price !== null && price > 0;
+              const limitUp = validPrice && cp !== null && cp >= 9.5;
+              const limitDown = validPrice && cp !== null && cp <= -9.5;
 
               return (
                 <tr key={r.etf_code}>
                   <td className="etf-v9-name-cell">
                     <Link href={`/etf/${r.etf_code}`}>
-                      <Candle pct={r.change_pct} />
+                      <Candle pct={r.change_pct} price={r.price} />
                       <span className="etf-v9-name-text">
                         <b>{r.etf_code}</b>
                         <small>{r.etf_name}</small>
@@ -260,12 +266,12 @@ export default function EtfListClient({ rows }: { rows: any[] }) {
                   {mode === 'quote' && (
                     <>
                       <td className="etf-v9-price-cell">
-                        <span className={`etf-v9-price ${limitUp ? 'limit-up' : ''} ${limitDown ? 'limit-down' : ''} ${signedClass(r.change_pct)}`}>
+                        <span className={`etf-v9-price ${limitUp ? 'limit-up' : ''} ${limitDown ? 'limit-down' : ''} ${validPrice ? signedClass(r.change_pct) : 'muted'}`}>
                           {displayPrice(r)}
                         </span>
                       </td>
 
-                      <td className={`etf-v9-change-cell ${signedClass(r.change_pct)}`}>
+                      <td className={`etf-v9-change-cell ${validPrice ? signedClass(r.change_pct) : 'muted'}`}>
                         {displayChange(r).split('\n').map((x, i) => <div key={i}>{x}</div>)}
                       </td>
 
@@ -278,9 +284,9 @@ export default function EtfListClient({ rows }: { rows: any[] }) {
 
                   {mode === 'return' && (
                     <>
-                      <td className={signedClass(r.week_return ?? r.return_1w)}>{displaySignedPct(r.week_return ?? r.return_1w, 1)}</td>
-                      <td className={signedClass(r.total_return ?? r.return_since_inception)}>
-                        <b>{displaySignedPct(r.total_return ?? r.return_since_inception, 1)}</b>
+                      <td className={signedClass(r.week_return)}>{displaySignedPct(r.week_return, 1)}</td>
+                      <td className={signedClass(r.total_return)}>
+                        <b>{displaySignedPct(r.total_return, 1)}</b>
                         <small>{r.inception_date ? `(${r.inception_date})` : ''}</small>
                       </td>
                       <td>

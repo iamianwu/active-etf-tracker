@@ -1,0 +1,33 @@
+name: Update Pocket ETF Market Data
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 台灣時間 18:20，台股收盤後更新 ETF 行情與基本資料
+    - cron: "20 10 * * 1-5"
+
+jobs:
+  update-pocket-etf-market:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Update Pocket ETF market data
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python -m app.jobs.update_etf_market
