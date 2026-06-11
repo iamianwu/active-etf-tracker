@@ -1330,3 +1330,519 @@
     padding:10px 18px;
   }
 }
+/* ===== Stock detail V6 ===== */
+.stock-v6-page{
+  background:#fff;
+  min-height:100vh;
+  padding-bottom:34px;
+}
+
+.stock-v6-header{
+  display:grid;
+  grid-template-columns:44px 1fr 44px;
+  align-items:center;
+  padding:12px 18px 10px;
+  border-bottom:1px solid var(--line);
+  position:sticky;
+  top:0;
+  background:#fff;
+  z-index:20;
+}
+
+.stock-v6-back{
+  font-size:36px;
+  text-decoration:none;
+  color:var(--text);
+  line-height:1;
+}
+
+.stock-v6-title{
+  text-align:center;
+  min-width:0;
+}
+
+.stock-v6-code{
+  font-size:30px;
+  font-weight:900;
+  line-height:1.05;
+}
+
+.stock-v6-name{
+  font-size:19px;
+  color:#6e7580;
+  margin-top:3px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.stock-v6-top-stats{
+  display:grid;
+  grid-template-columns:1fr 1px 1fr;
+  align-items:center;
+  background:#fff;
+  border-bottom:10px solid #f3f4f6;
+  padding:26px 0;
+}
+
+.stock-v6-top-card{
+  text-align:center;
+  padding:0 18px;
+}
+
+.stock-v6-top-label{
+  font-size:20px;
+  font-weight:900;
+  color:#2f3742;
+  margin-bottom:12px;
+}
+
+.stock-v6-top-price{
+  font-size:54px;
+  font-weight:900;
+  line-height:1.05;
+  color:#1f2430;
+}
+
+.stock-v6-top-price.volume{
+  color:#1f2430;
+}
+
+.stock-v6-top-sub{
+  margin-top:10px;
+  font-size:22px;
+  font-weight:900;
+}
+
+.stock-v6-chip{
+  display:inline-block;
+  margin-left:10px;
+  padding:4px 10px;
+  border-radius:10px;
+  background:#f5f5f6;
+  font-size:19px;
+  line-height:1.2;
+}
+
+.stock-v6-divider{
+  width:1px;
+  height:118px;
+  background:var(--line);
+}
+
+.stock-v6-section{
+  padding:26px 22px;
+  border-bottom:10px solid #f3f4f6;
+}
+
+.stock-v6-section-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+  margin-bottom:18px;
+}
+
+.stock-v6-section-head h3{
+  margin:0;
+  font-size:28px;
+  font-weight:900;
+}
+
+.stock-v6-segment{
+  display:flex;
+  background:#f1f3f6;
+  border-radius:999px;
+  padding:4px;
+}
+
+.stock-v6-segment button{
+  border:none;
+  background:transparent;
+  padding:8px 16px;
+  border-radius:999px;
+  font-weight:900;
+  color:#69707a;
+  cursor:pointer;
+}
+
+.stock-v6-segment button.active{
+  background:#fff;
+  color:#4c8bef;
+  box-shadow:0 1px 6px rgba(0,0,0,.08);
+}
+
+.stock-v6-chart-box{
+  width:100%;
+  height:330px;
+}
+
+.stock-v6-return-row{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  margin-top:18px;
+  border-top:1px solid var(--line);
+  background:#fff;
+}
+
+.stock-v6-return-item{
+  text-align:center;
+  padding:18px 10px;
+  position:relative;
+  font-size:28px;
+  font-weight:900;
+}
+
+.stock-v6-return-item:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  right:0;
+  top:18px;
+  bottom:18px;
+  width:1px;
+  background:var(--line);
+}
+
+.stock-v6-return-label{
+  font-size:18px;
+  color:#6b7280;
+  font-weight:900;
+  margin-bottom:10px;
+}
+
+.stock-v6-chart-summary{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  border:1px solid var(--line);
+  border-radius:16px;
+  overflow:hidden;
+  margin-bottom:14px;
+}
+
+.stock-v6-chart-summary div{
+  text-align:center;
+  padding:14px 10px;
+}
+
+.stock-v6-chart-summary div + div{
+  border-left:1px solid var(--line);
+}
+
+.stock-v6-chart-summary span{
+  display:block;
+  color:#6e7580;
+  font-size:14px;
+  margin-bottom:7px;
+}
+
+.stock-v6-chart-summary b{
+  font-size:22px;
+}
+
+.stock-v6-empty{
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fafafa;
+  color:#7b8491;
+  padding:20px;
+  line-height:1.7;
+}
+
+.stock-v6-info-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.stock-v6-info-btn{
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  border:2px solid #9097a3;
+  background:#fff;
+  color:#9097a3;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.stock-v6-summary-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  margin-bottom:16px;
+}
+
+.stock-v6-summary-grid div{
+  text-align:center;
+  padding:20px 8px;
+}
+
+.stock-v6-summary-grid div + div{
+  border-left:1px solid var(--line);
+}
+
+.stock-v6-summary-grid span{
+  display:block;
+  color:#6e7580;
+  font-size:18px;
+  margin-bottom:8px;
+  font-weight:900;
+}
+
+.stock-v6-summary-grid b{
+  font-size:28px;
+}
+
+.stock-v6-table-head{
+  display:grid;
+  grid-template-columns:1.45fr 1fr .75fr;
+  gap:12px;
+  background:#f3f4f6;
+  padding:13px 14px;
+  color:#4d5560;
+  font-size:15px;
+  font-weight:900;
+}
+
+.stock-v6-table-head div:nth-child(2){
+  text-align:center;
+}
+
+.stock-v6-table-head div:nth-child(3){
+  text-align:right;
+}
+
+.stock-v6-etf-list{
+  border-bottom:1px solid var(--line);
+}
+
+.stock-v6-etf-row{
+  display:grid;
+  grid-template-columns:1.45fr 1fr .75fr;
+  gap:12px;
+  align-items:center;
+  padding:18px 14px;
+  border-top:1px solid var(--line);
+  text-decoration:none;
+  color:var(--text);
+}
+
+.stock-v6-etf-row div:first-child b{
+  display:block;
+  font-size:23px;
+  line-height:1.15;
+}
+
+.stock-v6-etf-row span{
+  display:block;
+  color:#666d78;
+  font-size:15px;
+  margin-top:4px;
+}
+
+.stock-v6-etf-row div:nth-child(2){
+  text-align:center;
+}
+
+.stock-v6-etf-row div:nth-child(2) b{
+  font-size:21px;
+}
+
+.stock-v6-etf-row .weight{
+  text-align:right;
+  font-size:22px;
+  font-weight:900;
+}
+
+.stock-v6-inst-table-wrap{
+  overflow-x:auto;
+  border:1px solid var(--line);
+  border-radius:16px;
+}
+
+.stock-v6-inst-table{
+  width:100%;
+  min-width:620px;
+  border-collapse:collapse;
+}
+
+.stock-v6-inst-table th{
+  background:#f3f4f6;
+  color:#4d5560;
+  font-size:14px;
+  padding:12px 8px;
+  text-align:right;
+}
+
+.stock-v6-inst-table th:first-child{
+  text-align:left;
+}
+
+.stock-v6-inst-table td{
+  border-top:1px solid var(--line);
+  padding:13px 8px;
+  font-size:16px;
+  text-align:right;
+}
+
+.stock-v6-inst-table td:first-child{
+  text-align:left;
+  color:#6e7580;
+}
+
+.stock-v6-modal-mask{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.28);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:100;
+  padding:20px;
+}
+
+.stock-v6-modal{
+  width:min(560px, 100%);
+  background:#fff;
+  border-radius:20px;
+  padding:28px 22px 22px;
+}
+
+.stock-v6-modal-title{
+  font-size:22px;
+  font-weight:900;
+  text-align:center;
+  margin-bottom:20px;
+}
+
+.stock-v6-modal-text{
+  font-size:18px;
+  line-height:1.8;
+  color:#323844;
+  margin-bottom:22px;
+}
+
+.stock-v6-modal-btn{
+  width:100%;
+  border:none;
+  background:#6b92dc;
+  color:#fff;
+  border-radius:16px;
+  padding:18px 16px;
+  font-size:18px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.up{
+  color:#db5555 !important;
+}
+
+.down{
+  color:#35a77f !important;
+}
+
+.flat{
+  color:#6b7280 !important;
+}
+
+.stock-sort-head{
+  justify-content:inherit;
+}
+
+.stock-v6-table-head .sort-head{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  border:0;
+  background:transparent;
+  padding:0;
+  color:inherit;
+  font:inherit;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.stock-v6-table-head div:nth-child(2) .sort-head{
+  justify-content:center;
+}
+
+.stock-v6-table-head div:nth-child(3) .sort-head{
+  justify-content:flex-end;
+}
+
+.sort-arrows.static{
+  display:inline-flex;
+  margin-left:4px;
+}
+
+@media(max-width:720px){
+  .stock-v6-code{
+    font-size:26px;
+  }
+
+  .stock-v6-name{
+    font-size:17px;
+  }
+
+  .stock-v6-top-price{
+    font-size:42px;
+  }
+
+  .stock-v6-top-sub{
+    font-size:18px;
+  }
+
+  .stock-v6-chip{
+    font-size:16px;
+    padding:4px 8px;
+  }
+
+  .stock-v6-divider{
+    height:96px;
+  }
+
+  .stock-v6-section{
+    padding:22px 18px;
+  }
+
+  .stock-v6-section-head h3{
+    font-size:24px;
+  }
+
+  .stock-v6-chart-box{
+    height:290px;
+  }
+
+  .stock-v6-return-label{
+    font-size:15px;
+  }
+
+  .stock-v6-return-item{
+    font-size:22px;
+    padding:15px 6px;
+  }
+
+  .stock-v6-summary-grid b{
+    font-size:22px;
+  }
+
+  .stock-v6-summary-grid span{
+    font-size:15px;
+  }
+
+  .stock-v6-table-head,
+  .stock-v6-etf-row{
+    grid-template-columns:1.3fr 1fr .7fr;
+  }
+
+  .stock-v6-etf-row div:first-child b{
+    font-size:20px;
+  }
+
+  .stock-v6-etf-row div:nth-child(2) b,
+  .stock-v6-etf-row .weight{
+    font-size:18px;
+  }
+}
