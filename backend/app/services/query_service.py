@@ -60,7 +60,6 @@ def compute_etf_changes(conn, etf_code: str, date: str, prev_date: str | None = 
             delta_shares = (r["shares"] or 0) - (p["shares"] or 0)
             delta_weight = (r["weight"] or 0) - (p["weight"] or 0)
 
-            # V3：只看真正股數變動，不把只有權重變動當成交易。
             if delta_shares > 0:
                 status = "加碼"
             elif delta_shares < 0:
@@ -91,178 +90,6 @@ def summarize_changes(changes: list[dict[str, Any]]) -> dict[str, int]:
     return {k: sum(1 for x in changes if x["status"] == k) for k in keys}
 
 
-def get_etf_list() -> list[dict[str, Any]]:
-    init_db()
-    with get_conn() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT h.etf_code, MAX(h.data_date) AS data_date, COUNT(*) AS holding_count,
-                   SUM(CASE WHEN {normal_stock_condition('h')} THEN h.weight ELSE 0 END) AS stock_weight,
-                   q.etf_name, q.price, q.change_pct, q.volume, q.amount, q.aum_billion
-            FROM holdings h
-            LEFT JOIN etf_quotes q ON q.etf_code = h.etf_code
-            WHERE h.data_date = (SELECT MAX(h2.data_date) FROM holdings h2 WHERE h2.etf_code=h.etf_code)
-            GROUP BY h.etf_code, q.etf_name, q.price, q.change_pct, q.volume, q.amount, q.aum_billion
-            ORDER BY h.etf_code
-            """
-        ).fetchall()
-        out = []
-        for r in rows:
-            d = dict(r)
-            d["etf_name"] = d.get("etf_name") or ETF_NAMES.get(d["etf_code"], d["etf_code"])
-            out.append(d)
-        return out
-
-
-def get_etf_detail(etf_code: str) -> dict[str, Any]:
-    init_db()
-    with get_conn() as conn:
-        d = latest_date_for_etf(conn, etf_code)
-        if not d:
-            return {"etf_code": etf_code, "error": "no data"}
-
-        prev = previous_date_for_etf(conn, etf_code, d)
-        holdings = rows_to_dicts(conn.execute(
-            """
-            SELECT h.*, sq.price, sq.change_pct,
-                   CASE WHEN sq.price IS NOT NULL THEN h.shares * sq.price / 100000000.0 ELSE NULL END AS market_value_billion
-            FROM holdings h
-            LEFT JOIN stock_quotes sq ON sq.stock_code=h.stock_code
-            WHERE h.etf_code=? AND h.data_date=?
-            ORDER BY h.weight DESC
-            """, (etf_code, d)
-        ).fetchall())
-
-        quote = conn.execute("SELECT * FROM etf_quotes WHERE etf_code=?", (etf_code,)).fetchone()
-        changes = compute_etf_changes(conn, etf_code, d, prev) if prev else []
-
-        return {
-            "etf_code": etf_code,
-            "etf_name": ETF_NAMES.get(etf_code, etf_code) if not quote else (quote["etf_name"] or ETF_NAMES.get(etf_code, etf_code)),
-            "data_date": d,
-            "previous_date": prev,
-            "quote": dict(quote) if quote else {},
-            "holdings": holdings,
-            "change_summary": summarize_changes(changes),
-            "changes": changes,
-        }
-
-
-def get_constituent_summary() -> list[dict[str, Any]]:
-    init_db()
-    with get_conn() as conn:
-        rows = rows_to_dicts(conn.execute(
-            f"""
-            SELECT h.stock_code, h.stock_name, h.etf_code, h.weight, h.shares,
-                   sq.price, sq.change_pct
-            FROM holdings h
-            LEFT JOIN stock_quotes sq ON sq.stock_code=h.stock_code
-            WHERE {normal_stock_condition('h')}
-              AND h.data_date = (SELECT MAX(h2.data_date) FROM holdings h2 WHERE h2.etf_code=h.etf_code)
-            """
-        ).fetchall())
-
-    grouped: dict[str, dict[str, Any]] = {}
-
-    for r in rows:
-        code = r["stock_code"]
-        if code not in grouped:
-            grouped[code] = {
-                "stock_code": code,
-                "stock_name": r["stock_name"],
-                "etf_count": 0,
-                "total_weight": 0.0,
-                "total_shares": 0.0,
-                "price": r.get("price"),
-                "change_pct": r.get("change_pct"),
-                "etfs": [],
-            }
-
-        g = grouped[code]
-        g["etf_count"] += 1
-        g["total_weight"] += float(r.get("weight") or 0)
-        g["total_shares"] += float(r.get("shares") or 0)
-        g["etfs"].append(f"{r['etf_code']}:{float(r.get('weight') or 0):.2f}")
-
-    out = []
-    for g in grouped.values():
-        price = g.get("price")
-        g["market_value_billion"] = (g["total_shares"] * float(price) / 100000000.0) if price else None
-        g["etfs"] = ", ".join(g["etfs"])
-        out.append(g)
-
-    return sorted(out, key=lambda x: (x.get("market_value_billion") or 0, x.get("etf_count") or 0, x.get("total_weight") or 0), reverse=True)
-
-
-def get_stock_detail(stock_code: str) -> dict[str, Any]:
-    init_db()
-    with get_conn() as conn:
-        quote = conn.execute("SELECT * FROM stock_quotes WHERE stock_code=?", (stock_code,)).fetchone()
-
-        rows = rows_to_dicts(conn.execute(
-            """
-            SELECT h.*, q.etf_name,
-                   CASE WHEN sq.price IS NOT NULL THEN h.shares * sq.price / 100000000.0 ELSE NULL END AS market_value_billion
-            FROM holdings h
-            LEFT JOIN etf_quotes q ON q.etf_code=h.etf_code
-            LEFT JOIN stock_quotes sq ON sq.stock_code=h.stock_code
-            WHERE h.stock_code=?
-              AND h.data_date = (SELECT MAX(h2.data_date) FROM holdings h2 WHERE h2.etf_code=h.etf_code)
-            ORDER BY h.weight DESC
-            """, (stock_code,)
-        ).fetchall())
-
-        hist = rows_to_dicts(conn.execute(
-            """
-            SELECT * FROM holdings WHERE stock_code=? ORDER BY data_date DESC, etf_code LIMIT 300
-            """, (stock_code,)
-        ).fetchall())
-
-        try:
-            price_history = rows_to_dicts(conn.execute(
-                """
-                SELECT trade_date, open, high, low, close, volume, change_pct, market
-                FROM stock_price_history
-                WHERE stock_code=?
-                ORDER BY trade_date ASC
-                LIMIT 160
-                """, (stock_code,)
-            ).fetchall())
-        except Exception:
-            price_history = []
-
-        try:
-            institutional = rows_to_dicts(conn.execute(
-                """
-                SELECT trade_date, foreign_net, investment_trust_net, dealer_net, total_net, source
-                FROM institutional_flows
-                WHERE stock_code=?
-                ORDER BY trade_date DESC, source
-                LIMIT 80
-                """, (stock_code,)
-            ).fetchall())
-        except Exception:
-            institutional = []
-
-        name = rows[0]["stock_name"] if rows else (quote["stock_name"] if quote else stock_code)
-
-        return {
-            "stock_code": stock_code,
-            "stock_name": name,
-            "quote": dict(quote) if quote else {},
-            "summary": {
-                "etf_count": len({r["etf_code"] for r in rows}),
-                "total_shares": sum((r["shares"] or 0) for r in rows),
-                "total_weight": sum((r["weight"] or 0) for r in rows),
-                "market_value_billion": sum((r["market_value_billion"] or 0) for r in rows),
-            },
-            "etfs": rows,
-            "history": hist,
-            "price_history": price_history,
-            "institutional": institutional,
-        }
-
-
 def get_signals(signal_type: str | None = None) -> dict[str, Any]:
     init_db()
     with get_conn() as conn:
@@ -285,22 +112,43 @@ def get_signals(signal_type: str | None = None) -> dict[str, Any]:
 
         changes = [c for c in changes if c["status"] in {"新增", "刪除", "加碼", "減碼"}]
 
+        quote_rows = conn.execute("SELECT stock_code, price, change_pct FROM stock_quotes").fetchall()
+        quote_map = {
+            r["stock_code"]: {"price": r["price"], "change_pct": r["change_pct"]}
+            for r in quote_rows
+        }
+
+        enriched = []
+        for c in changes:
+            q = quote_map.get(c["stock_code"], {})
+            price = q.get("price") or 0
+            delta_shares = c.get("delta_shares") or 0
+            enriched.append({
+                **c,
+                "price": q.get("price"),
+                "change_pct": q.get("change_pct"),
+                "delta_value_billion": delta_shares * price / 100000000.0 if price else None,
+            })
+        changes = enriched
+
         type_map = {"added": "新增", "removed": "刪除", "increased": "加碼", "decreased": "減碼"}
         if signal_type in type_map:
             changes = [c for c in changes if c["status"] == type_map[signal_type]]
-
-        quote_rows = conn.execute("SELECT stock_code, price FROM stock_quotes").fetchall()
-        price_map = {r["stock_code"]: (r["price"] or 0) for r in quote_rows}
 
         by_stock = defaultdict(lambda: {
             "stock_code": "",
             "stock_name": "",
             "price": None,
+            "change_pct": None,
+            "current_shares": 0,
+            "previous_shares": 0,
             "delta_shares": 0,
             "delta_weight": 0,
             "delta_value_billion": 0,
             "has_price": False,
             "count": 0,
+            "etf_count": 0,
+            "etf_codes": [],
             "buy_etf_count": 0,
             "sell_etf_count": 0,
             "increase_etf_count": 0,
@@ -312,16 +160,22 @@ def get_signals(signal_type: str | None = None) -> dict[str, Any]:
 
         for c in changes:
             b = by_stock[c["stock_code"]]
-            price = price_map.get(c["stock_code"]) or 0
+            price = c.get("price") or 0
             delta_shares = c.get("delta_shares") or 0
+            current_shares = c.get("shares") or 0
+            previous_shares = current_shares - delta_shares
             delta_value = delta_shares * price / 100000000.0 if price else None
 
             b["stock_code"] = c["stock_code"]
             b["stock_name"] = c["stock_name"]
             b["price"] = price or None
+            b["change_pct"] = c.get("change_pct")
+            b["current_shares"] += current_shares
+            b["previous_shares"] += previous_shares
             b["delta_shares"] += delta_shares
             b["delta_weight"] += c.get("delta_weight") or 0
             b["count"] += 1
+            b["etf_codes"].append(c["etf_code"])
             b["statuses"].append(f"{c['etf_code']} {c['status']}")
 
             if delta_value is not None:
@@ -343,8 +197,23 @@ def get_signals(signal_type: str | None = None) -> dict[str, Any]:
 
         aggregate = []
         for x in by_stock.values():
+            unique_etfs = list(dict.fromkeys(x.get("etf_codes") or []))
+            x["etf_codes"] = unique_etfs
+            x["etf_count"] = len(unique_etfs)
             if not x["has_price"]:
                 x["delta_value_billion"] = None
+            if x["previous_shares"]:
+                x["magnitude_pct"] = x["delta_shares"] / x["previous_shares"] * 100.0
+            else:
+                x["magnitude_pct"] = None
+
+            if x["delta_shares"] > 0:
+                x["status"] = "新增" if x["add_etf_count"] > 0 and x["increase_etf_count"] == 0 else "加碼"
+            elif x["delta_shares"] < 0:
+                x["status"] = "刪除" if x["remove_etf_count"] > 0 and x["decrease_etf_count"] == 0 else "減碼"
+            else:
+                x["status"] = "混合"
+
             aggregate.append(x)
 
         def money_or_shares_score(x):
