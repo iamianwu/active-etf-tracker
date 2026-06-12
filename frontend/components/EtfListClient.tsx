@@ -40,7 +40,7 @@ function displayVolume(row: any) {
 function displayAmount(row: any) {
   const amount = amountBillion(row);
   if (amount === null) return '-';
-  return `${fmt(amount, 2)} 億`;
+  return `${fmt(amount, 1)} 億`;
 }
 
 function displayPrice(row: any) {
@@ -177,18 +177,18 @@ export default function EtfListClient({ rows }: { rows: any[] }) {
   }
 
   return (
-    <main className="page etf-v11-page etf-v13-page">
-      <div className="etf-v13-head-row">
+    <main className="page etf-v11-page etf-v14-page">
+      <div className="etf-v14-title-line">
         <h2>ETF 列表</h2>
 
-        <div className="etf-v11-segment etf-v13-segment">
+        <div className="etf-v11-segment etf-v14-segment">
           <button className={mode === 'quote' ? 'active' : ''} onClick={() => setModeAndDefaultSort('quote')}>即時</button>
           <button className={mode === 'return' ? 'active' : ''} onClick={() => setModeAndDefaultSort('return')}>報酬</button>
           <button className={mode === 'basic' ? 'active' : ''} onClick={() => setModeAndDefaultSort('basic')}>基本</button>
         </div>
       </div>
 
-      <div className="etf-v11-count etf-v13-count">共 {fmt0(sortedRows.length)} 檔，每檔 ETF 可點進詳情。</div>
+      <div className="etf-v11-count etf-v14-count">共 {fmt0(sortedRows.length)} 檔，每檔 ETF 可點進詳情。</div>
 
       <div className="etf-v11-table-wrap">
         <table className={`table etf-v11-table mode-${mode}`}>
