@@ -13,7 +13,6 @@ import requests
 from ..database import get_conn, init_db, normal_stock_condition
 
 TAIPEI_TZ = ZoneInfo("Asia/Taipei")
-
 YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote"
 
 HEADERS = {
@@ -112,16 +111,14 @@ def ensure_quote_tables() -> None:
             rows = conn.execute("PRAGMA table_info(stock_quotes)").fetchall()
             cols = {r["name"] for r in rows}
 
-            add_cols = {
+            for col, typ in {
                 "change": "REAL",
                 "volume": "REAL",
                 "amount": "REAL",
                 "market": "TEXT",
                 "source": "TEXT",
                 "trade_date": "TEXT",
-            }
-
-            for col, typ in add_cols.items():
+            }.items():
                 if col not in cols:
                     conn.execute(f"ALTER TABLE stock_quotes ADD COLUMN {col} {typ}")
 
@@ -158,7 +155,6 @@ def ensure_quote_tables() -> None:
 
 def _all_holdings_rows() -> list[dict[str, Any]]:
     ensure_quote_tables()
-
     with get_conn() as conn:
         rows = conn.execute(
             f"""
@@ -168,18 +164,16 @@ def _all_holdings_rows() -> list[dict[str, Any]]:
             ORDER BY etf_code, data_date DESC, stock_code
             """
         ).fetchall()
-
     return [dict(r) for r in rows]
 
 
-def build_priority_codes(max_codes: int = 80) -> tuple[list[str], dict[str, str], dict[str, Any]]:
+def build_priority_codes(max_codes: int = 120, offset: int = 0) -> tuple[list[str], dict[str, str], dict[str, Any]]:
     """
-    目標：不要一次打所有股票，先補今日訊號會用到的股票。
-    優先順序：
-    1. 每檔 ETF 最新日 vs 前一日有異動的股票
-    2. 最新 holdings 權重大 / 張數大的股票
-    3. 環境變數 EXTRA_CODES 指定股票
-    4. 其他 holdings 股票
+    建立完整排序清單，然後可用 offset + max_codes 分批。
+    offset=0, max_codes=120 -> 第 1 批
+    offset=120, max_codes=120 -> 第 2 批
+    offset=240, max_codes=120 -> 第 3 批
+    max_codes<=0 -> 從 offset 之後全部
     """
     rows = _all_holdings_rows()
 
@@ -196,9 +190,7 @@ def build_priority_codes(max_codes: int = 80) -> tuple[list[str], dict[str, str]
     change_score: dict[str, float] = defaultdict(float)
     latest_weight_score: dict[str, float] = defaultdict(float)
     latest_share_score: dict[str, float] = defaultdict(float)
-
     latest_dates: dict[str, str] = {}
-    previous_dates: dict[str, str] = {}
 
     for etf, items in by_etf.items():
         dates = sorted({str(x.get("data_date") or "") for x in items if x.get("data_date")}, reverse=True)
@@ -208,49 +200,27 @@ def build_priority_codes(max_codes: int = 80) -> tuple[list[str], dict[str, str]
         latest = dates[0]
         prev = dates[1] if len(dates) > 1 else None
         latest_dates[etf] = latest
-        if prev:
-            previous_dates[etf] = prev
 
-        latest_map: dict[str, dict[str, Any]] = {
-            str(x.get("stock_code")): x for x in items if str(x.get("data_date")) == latest
-        }
-
-        prev_map: dict[str, dict[str, Any]] = {
-            str(x.get("stock_code")): x for x in items if prev and str(x.get("data_date")) == prev
-        }
+        latest_map = {str(x.get("stock_code")): x for x in items if str(x.get("data_date")) == latest}
+        prev_map = {str(x.get("stock_code")): x for x in items if prev and str(x.get("data_date")) == prev}
 
         all_codes = set(latest_map.keys()) | set(prev_map.keys())
-
         for code in all_codes:
             if not _normal_stock_code(code):
                 continue
-
             cur = latest_map.get(code)
             old = prev_map.get(code)
-
             cur_shares = float(cur.get("shares") or 0) if cur else 0.0
             old_shares = float(old.get("shares") or 0) if old else 0.0
             delta = cur_shares - old_shares
-
             if abs(delta) > 0:
-                # 用張數變動當今日訊號優先級。
                 change_score[code] += abs(delta)
 
         for code, cur in latest_map.items():
             if not _normal_stock_code(code):
                 continue
-
             latest_weight_score[code] += abs(float(cur.get("weight") or 0))
             latest_share_score[code] += abs(float(cur.get("shares") or 0))
-
-    # 使用者可用環境變數強制補特定股票
-    extra_codes_env = os.getenv("EXTRA_CODES", "")
-    extra_codes = [
-        re.sub(r"\D", "", x.strip())
-        for x in extra_codes_env.split(",")
-        if x.strip()
-    ]
-    extra_codes = [x for x in extra_codes if _normal_stock_code(x)]
 
     changed_sorted = sorted(change_score.keys(), key=lambda c: change_score[c], reverse=True)
     latest_weight_sorted = sorted(latest_weight_score.keys(), key=lambda c: latest_weight_score[c], reverse=True)
@@ -266,29 +236,28 @@ def build_priority_codes(max_codes: int = 80) -> tuple[list[str], dict[str, str]
                 seen.add(c)
                 ordered.append(c)
 
-    # 手動指定最高優先
-    add_many(extra_codes)
-
-    # 今日訊號股票
+    # 不需要 extra_codes。全都要，但仍維持「異動股 → 大權重 → 大張數 → 其他」排序。
     add_many(changed_sorted)
-
-    # 資金持股頁常看的股票
     add_many(latest_weight_sorted)
     add_many(latest_share_sorted)
-
-    # 其他
     add_many(all_sorted)
 
-    selected = ordered[:max_codes] if max_codes > 0 else ordered
+    offset = max(0, int(offset or 0))
+    if max_codes and max_codes > 0:
+        selected = ordered[offset:offset + max_codes]
+    else:
+        selected = ordered[offset:]
 
     meta = {
         "all_codes": len(names),
+        "ordered_codes": len(ordered),
         "changed_codes": len(changed_sorted),
-        "latest_weight_codes": len(latest_weight_sorted),
         "selected_codes": len(selected),
-        "latest_data_dates": sorted(set(latest_dates.values()), reverse=True)[:5],
-        "extra_codes": extra_codes,
+        "offset": offset,
         "max_codes": max_codes,
+        "has_more": offset + len(selected) < len(ordered),
+        "next_offset": offset + len(selected),
+        "latest_data_dates": sorted(set(latest_dates.values()), reverse=True)[:5],
     }
 
     return selected, names, meta
@@ -299,7 +268,6 @@ def load_symbol_cache(codes: list[str]) -> dict[str, str]:
         return {}
 
     ensure_quote_tables()
-
     with get_conn() as conn:
         rows = conn.execute(
             """
@@ -310,12 +278,11 @@ def load_symbol_cache(codes: list[str]) -> dict[str, str]:
         ).fetchall()
 
     cache: dict[str, str] = {}
-
     code_set = set(codes)
+
     for r in rows:
         code = str(r["stock_code"]).strip()
         symbol = str(r["symbol"]).strip()
-
         if code in code_set and _code_from_symbol(symbol) == code:
             cache[code] = symbol
 
@@ -327,7 +294,6 @@ def save_symbol_cache(quotes: dict[str, dict[str, Any]]) -> None:
         return
 
     now = _now_iso()
-
     with get_conn() as conn:
         for code, q in quotes.items():
             symbol = str(q.get("symbol") or "").strip()
@@ -335,7 +301,6 @@ def save_symbol_cache(quotes: dict[str, dict[str, Any]]) -> None:
                 continue
 
             market = _market_from_symbol(symbol)
-
             if conn.postgres:
                 conn.execute(
                     """
@@ -347,7 +312,7 @@ def save_symbol_cache(quotes: dict[str, dict[str, Any]]) -> None:
                       source=EXCLUDED.source,
                       updated_at=EXCLUDED.updated_at
                     """,
-                    (code, symbol, market, "yahoo_priority", now),
+                    (code, symbol, market, "yahoo_batches", now),
                 )
             else:
                 conn.execute(
@@ -355,14 +320,13 @@ def save_symbol_cache(quotes: dict[str, dict[str, Any]]) -> None:
                     INSERT OR REPLACE INTO stock_quote_symbols(stock_code, symbol, market, source, updated_at)
                     VALUES (?, ?, ?, ?, ?)
                     """,
-                    (code, symbol, market, "yahoo_priority", now),
+                    (code, symbol, market, "yahoo_batches", now),
                 )
 
 
 def _quote_to_item(q: dict[str, Any]) -> dict[str, Any] | None:
     symbol = str(q.get("symbol") or "")
     code = _code_from_symbol(symbol)
-
     if not code:
         return None
 
@@ -395,7 +359,7 @@ def _quote_to_item(q: dict[str, Any]) -> dict[str, Any] | None:
         "low": _to_float(q.get("regularMarketDayLow")),
         "market": _market_from_symbol(symbol),
         "trade_date": trade_date,
-        "source": "yahoo_priority",
+        "source": "yahoo_batches",
     }
 
 
@@ -405,10 +369,6 @@ def fetch_yahoo_symbols(
     sleep_sec: float = 8.0,
     max_retries: int = 1,
 ) -> tuple[dict[str, dict[str, Any]], bool]:
-    """
-    回傳 (quotes, rate_limited)
-    遇到 429 不丟錯，直接停止本輪 Yahoo 更新，保留已抓到資料。
-    """
     found: dict[str, dict[str, Any]] = {}
     rate_limited = False
 
@@ -439,11 +399,9 @@ def fetch_yahoo_symbols(
         for attempt in range(max_retries + 1):
             try:
                 print(
-                    f"Yahoo batch {idx}/{total_batches}, symbols={len(batch)}, "
-                    f"attempt={attempt + 1}, {batch[0]}..",
+                    f"Yahoo batch {idx}/{total_batches}, symbols={len(batch)}, attempt={attempt + 1}, {batch[0]}..",
                     flush=True,
                 )
-
                 r = requests.get(YAHOO_QUOTE_URL, params=params, headers=HEADERS, timeout=25)
 
                 if r.status_code == 429:
@@ -466,8 +424,8 @@ def fetch_yahoo_symbols(
                         continue
 
                     code = item["stock_code"]
-
                     old = found.get(code)
+
                     if old is None:
                         found[code] = item
                     else:
@@ -484,7 +442,7 @@ def fetch_yahoo_symbols(
                 time.sleep(sleep_sec * (attempt + 1))
 
         if not ok:
-            print("Yahoo appears rate limited. Stop this run and keep partial results.", flush=True)
+            print("Yahoo appears rate limited. Stop this batch and keep partial results.", flush=True)
             rate_limited = True
             break
 
@@ -496,7 +454,6 @@ def fetch_yahoo_symbols(
 def save_stock_quotes(quotes: dict[str, dict[str, Any]], fallback_names: dict[str, str]) -> int:
     now = _now_iso()
     saved = 0
-
     ensure_quote_tables()
 
     with get_conn() as conn:
@@ -524,17 +481,9 @@ def save_stock_quotes(quotes: dict[str, dict[str, Any]], fallback_names: dict[st
                       updated_at=EXCLUDED.updated_at
                     """,
                     (
-                        code,
-                        name,
-                        q.get("price"),
-                        q.get("change"),
-                        q.get("change_pct"),
-                        q.get("volume"),
-                        q.get("amount"),
-                        q.get("market"),
-                        q.get("source"),
-                        q.get("trade_date"),
-                        now,
+                        code, name, q.get("price"), q.get("change"), q.get("change_pct"),
+                        q.get("volume"), q.get("amount"), q.get("market"), q.get("source"),
+                        q.get("trade_date"), now,
                     ),
                 )
 
@@ -560,20 +509,9 @@ def save_stock_quotes(quotes: dict[str, dict[str, Any]], fallback_names: dict[st
                       updated_at=EXCLUDED.updated_at
                     """,
                     (
-                        code,
-                        q.get("trade_date"),
-                        name,
-                        q.get("open"),
-                        q.get("high"),
-                        q.get("low"),
-                        q.get("price"),
-                        q.get("change"),
-                        q.get("change_pct"),
-                        q.get("volume"),
-                        q.get("amount"),
-                        q.get("market"),
-                        q.get("source"),
-                        now,
+                        code, q.get("trade_date"), name, q.get("open"), q.get("high"), q.get("low"),
+                        q.get("price"), q.get("change"), q.get("change_pct"), q.get("volume"),
+                        q.get("amount"), q.get("market"), q.get("source"), now,
                     ),
                 )
             else:
@@ -586,17 +524,9 @@ def save_stock_quotes(quotes: dict[str, dict[str, Any]], fallback_names: dict[st
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
-                        code,
-                        name,
-                        q.get("price"),
-                        q.get("change"),
-                        q.get("change_pct"),
-                        q.get("volume"),
-                        q.get("amount"),
-                        q.get("market"),
-                        q.get("source"),
-                        q.get("trade_date"),
-                        now,
+                        code, name, q.get("price"), q.get("change"), q.get("change_pct"),
+                        q.get("volume"), q.get("amount"), q.get("market"), q.get("source"),
+                        q.get("trade_date"), now,
                     ),
                 )
 
@@ -609,20 +539,9 @@ def save_stock_quotes(quotes: dict[str, dict[str, Any]], fallback_names: dict[st
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
-                        code,
-                        q.get("trade_date"),
-                        name,
-                        q.get("open"),
-                        q.get("high"),
-                        q.get("low"),
-                        q.get("price"),
-                        q.get("change"),
-                        q.get("change_pct"),
-                        q.get("volume"),
-                        q.get("amount"),
-                        q.get("market"),
-                        q.get("source"),
-                        now,
+                        code, q.get("trade_date"), name, q.get("open"), q.get("high"), q.get("low"),
+                        q.get("price"), q.get("change"), q.get("change_pct"), q.get("volume"),
+                        q.get("amount"), q.get("market"), q.get("source"), now,
                     ),
                 )
 
@@ -633,26 +552,19 @@ def save_stock_quotes(quotes: dict[str, dict[str, Any]], fallback_names: dict[st
 
 
 def update_yahoo_priority_quotes(
-    max_codes: int = 80,
+    max_codes: int = 120,
+    offset: int = 0,
     batch_size: int = 6,
     sleep_sec: float = 8.0,
     max_retries: int = 1,
 ) -> dict[str, Any]:
-    """
-    Yahoo priority 版：
-    - 不打全部 266 檔。
-    - 先打今日訊號 / 異動股票。
-    - 再補資金持股權重高的股票。
-    - 每次最多 max_codes 檔。
-    """
     ensure_quote_tables()
 
-    codes, names, meta = build_priority_codes(max_codes=max_codes)
+    codes, names, meta = build_priority_codes(max_codes=max_codes, offset=offset)
 
     print(
-        f"Start Yahoo priority quotes: selected={len(codes)}, "
-        f"all={meta.get('all_codes')}, changed={meta.get('changed_codes')}, "
-        f"max_codes={max_codes}",
+        f"Start Yahoo batch quotes: selected={len(codes)}, offset={offset}, "
+        f"max_codes={max_codes}, all={meta.get('all_codes')}, has_more={meta.get('has_more')}",
         flush=True,
     )
 
@@ -661,7 +573,9 @@ def update_yahoo_priority_quotes(
             "updated_at": _now_iso(),
             "quotes_saved": 0,
             "selected_codes": 0,
+            "offset": offset,
             "rate_limited": False,
+            "meta": meta,
         }
 
     cache = load_symbol_cache(codes)
@@ -673,7 +587,6 @@ def update_yahoo_priority_quotes(
     quotes: dict[str, dict[str, Any]] = {}
     rate_limited = False
 
-    # 1) 已知道市場的 symbol 先查，最省。
     if cached_codes:
         found, limited = fetch_yahoo_symbols(
             [cache[c] for c in cached_codes],
@@ -684,7 +597,6 @@ def update_yahoo_priority_quotes(
         quotes.update(found)
         rate_limited = rate_limited or limited
 
-    # 2) 未知市場：先查 .TW。
     if not rate_limited and uncached_codes:
         found_tw, limited = fetch_yahoo_symbols(
             [f"{c}.TW" for c in uncached_codes],
@@ -695,7 +607,6 @@ def update_yahoo_priority_quotes(
         quotes.update(found_tw)
         rate_limited = rate_limited or limited
 
-    # 3) .TW 沒有的才查 .TWO。
     if not rate_limited and uncached_codes:
         still_missing = [c for c in uncached_codes if c not in quotes]
         if still_missing:
@@ -709,12 +620,11 @@ def update_yahoo_priority_quotes(
             rate_limited = rate_limited or limited
 
     saved = save_stock_quotes(quotes, names)
-
     missing_selected = [c for c in codes if c not in quotes]
 
     print(
-        f"Yahoo priority saved={saved}, missing_selected={len(missing_selected)}, "
-        f"rate_limited={rate_limited}",
+        f"Yahoo batch saved={saved}, missing_selected={len(missing_selected)}, "
+        f"rate_limited={rate_limited}, offset={offset}",
         flush=True,
     )
 
@@ -723,19 +633,22 @@ def update_yahoo_priority_quotes(
 
     return {
         "updated_at": _now_iso(),
-        "source": "yahoo_priority",
+        "source": "yahoo_batches",
         "quotes_saved": saved,
         "selected_codes": len(codes),
         "missing_selected_count": len(missing_selected),
         "missing_selected": missing_selected[:100],
         "rate_limited": rate_limited,
+        "offset": offset,
+        "max_codes": max_codes,
         "meta": meta,
     }
 
 
 if __name__ == "__main__":
     result = update_yahoo_priority_quotes(
-        max_codes=int(os.getenv("YAHOO_PRIORITY_MAX_CODES", "80")),
+        max_codes=int(os.getenv("YAHOO_PRIORITY_MAX_CODES", "120")),
+        offset=int(os.getenv("YAHOO_PRIORITY_OFFSET", "0")),
         batch_size=int(os.getenv("YAHOO_BATCH_SIZE", "6")),
         sleep_sec=float(os.getenv("YAHOO_SLEEP_SEC", "8.0")),
         max_retries=int(os.getenv("YAHOO_MAX_RETRIES", "1")),
