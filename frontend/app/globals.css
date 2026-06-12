@@ -4847,3 +4847,205 @@ a:focus-visible{
     font-size:13px !important;
   }
 }
+/* ===== V16 focus card price + money format =====
+   讓今日訊號焦點卡顯示：
+   - 股票名稱 代號
+   - 股價（漲跌幅）
+   - 資金動向：+/-XX億 (+/-XX張)
+   - 漲停紅底、跌停綠底
+*/
+
+.focus-card.red,
+.focus-card.in{
+  background:#fff7f7 !important;
+  border-color:#f3dddd !important;
+}
+
+.focus-card.green,
+.focus-card.out{
+  background:#f5fcf9 !important;
+  border-color:#dcefe8 !important;
+}
+
+.focus-card.red .focus-card-title,
+.focus-card.in .focus-card-title{
+  color:#222 !important;
+}
+
+.focus-card.green .focus-card-title,
+.focus-card.out .focus-card-title{
+  color:#222 !important;
+}
+
+.focus-card.red .focus-card-title::before,
+.focus-card.in .focus-card-title::before{
+  background:#df5555 !important;
+}
+
+.focus-card.green .focus-card-title::before,
+.focus-card.out .focus-card-title::before{
+  background:#35a77f !important;
+}
+
+.focus-name-line{
+  display:flex !important;
+  align-items:baseline !important;
+  gap:7px !important;
+  min-width:0 !important;
+}
+
+.focus-name-line b{
+  display:block !important;
+  min-width:0 !important;
+  max-width:150px !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+}
+
+.focus-name-line span{
+  color:#8b95a3 !important;
+  font-weight:700 !important;
+}
+
+.focus-price{
+  display:inline-flex !important;
+  align-items:baseline !important;
+  gap:4px !important;
+  margin-top:5px !important;
+  color:#222 !important;
+  font-weight:900 !important;
+  line-height:1.08 !important;
+}
+
+.focus-price span{
+  margin:0 !important;
+  color:inherit !important;
+  font-size:22px !important;
+  font-weight:900 !important;
+}
+
+.focus-price small{
+  color:inherit !important;
+  font-size:16px !important;
+  font-weight:800 !important;
+}
+
+.focus-price.red{
+  color:#df5555 !important;
+}
+
+.focus-price.green{
+  color:#35a77f !important;
+}
+
+.focus-price.limit-up,
+.focus-price.limit-down{
+  padding:2px 6px !important;
+  border-radius:4px !important;
+}
+
+.focus-price.limit-up{
+  color:#fff !important;
+  background:#df5555 !important;
+}
+
+.focus-price.limit-down{
+  color:#fff !important;
+  background:#35a77f !important;
+}
+
+.focus-metrics b{
+  white-space:nowrap !important;
+}
+
+.focus-card.red .focus-metrics b,
+.focus-card.in .focus-metrics b,
+.focus-card.red .focus-price:not(.limit-up):not(.limit-down),
+.focus-card.in .focus-price:not(.limit-up):not(.limit-down){
+  color:#df5555 !important;
+}
+
+.focus-card.green .focus-metrics b,
+.focus-card.out .focus-metrics b,
+.focus-card.green .focus-price:not(.limit-up):not(.limit-down),
+.focus-card.out .focus-price:not(.limit-up):not(.limit-down){
+  color:#35a77f !important;
+}
+
+/* 手機版更像 App：一張卡一列，左股票/股價，右資金動向 */
+@media(max-width:720px){
+  .focus-grid{
+    grid-template-columns:1fr !important;
+    gap:8px !important;
+  }
+
+  .focus-card{
+    padding:10px 12px !important;
+    border-radius:10px !important;
+  }
+
+  .focus-card-title{
+    font-size:18px !important;
+    margin-bottom:8px !important;
+  }
+
+  .focus-card-body{
+    grid-template-columns:minmax(0, 1fr) minmax(142px, .92fr) !important;
+    align-items:end !important;
+    gap:8px !important;
+  }
+
+  .focus-name-line b{
+    max-width:105px !important;
+    font-size:18px !important;
+  }
+
+  .focus-name-line span{
+    font-size:15px !important;
+  }
+
+  .focus-price{
+    margin-top:4px !important;
+  }
+
+  .focus-price span{
+    font-size:20px !important;
+  }
+
+  .focus-price small{
+    font-size:14px !important;
+  }
+
+  .focus-metrics{
+    font-size:13.5px !important;
+    line-height:1.55 !important;
+  }
+}
+
+@media(max-width:390px){
+  .focus-card-body{
+    grid-template-columns:minmax(0, 1fr) 136px !important;
+  }
+
+  .focus-name-line b{
+    max-width:96px !important;
+    font-size:17px !important;
+  }
+
+  .focus-name-line span{
+    font-size:14px !important;
+  }
+
+  .focus-price span{
+    font-size:18px !important;
+  }
+
+  .focus-price small{
+    font-size:13px !important;
+  }
+
+  .focus-metrics{
+    font-size:12.5px !important;
+  }
+}

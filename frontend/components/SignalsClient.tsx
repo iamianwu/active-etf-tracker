@@ -9,6 +9,12 @@ type FilterStatus = typeof STATUS_LIST[number];
 type SortKey = 'stock' | 'price' | 'change_pct' | 'status' | 'amount' | 'etf_count' | 'delta_shares' | 'magnitude';
 type SortDir = 'asc' | 'desc';
 
+function toNum(v: any): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 function countFromStatuses(x: any, keyword: string) {
   if (keyword === '加碼' && x.increase_etf_count !== undefined) return Number(x.increase_etf_count || 0);
   if (keyword === '減碼' && x.decrease_etf_count !== undefined) return Number(x.decrease_etf_count || 0);
@@ -29,19 +35,6 @@ function sortByMoneyOrSharesDesc(a: any, b: any) {
   return bv - av;
 }
 
-function stockMoveValue(x: any) {
-  const v = x?.delta_value_billion;
-
-  if (v !== null && v !== undefined && !Number.isNaN(Number(v)) && Number(v) !== 0) {
-    const prefix = Number(v) > 0 ? '+' : '';
-    return `${prefix}${fmt(v, 1)} 億`;
-  }
-
-  const lots = Number(x?.delta_shares || 0) / 1000;
-  const prefix = lots > 0 ? '+' : '';
-  return `${prefix}${fmt0(lots)} 張`;
-}
-
 function signedAmount(v: any) {
   if (v === null || v === undefined || Number.isNaN(Number(v))) return '-';
   const n = Number(v);
@@ -49,10 +42,28 @@ function signedAmount(v: any) {
   return `${prefix}${fmt(Math.abs(n), 2)} 億`;
 }
 
+function signedAmountOneDigit(v: any) {
+  if (v === null || v === undefined || Number.isNaN(Number(v))) return '-';
+  const n = Number(v);
+  const prefix = n > 0 ? '+' : n < 0 ? '-' : '';
+  return `${prefix}${fmt(Math.abs(n), 1)} 億`;
+}
+
 function signedLots(v: any) {
   const lots = Number(v || 0) / 1000;
   const prefix = lots > 0 ? '+' : lots < 0 ? '-' : '';
   return `${prefix}${fmt0(Math.abs(lots))}`;
+}
+
+function stockMoveValue(x: any) {
+  const amount = x?.delta_value_billion;
+  const lotsText = `${signedLots(x?.delta_shares)}張`;
+
+  if (amount !== null && amount !== undefined && !Number.isNaN(Number(amount)) && Number(amount) !== 0) {
+    return `${signedAmountOneDigit(amount)} (${lotsText})`;
+  }
+
+  return `- 億 (${lotsText})`;
 }
 
 function statusClass(status: string) {
@@ -186,6 +197,28 @@ function sortValue(row: any, key: SortKey) {
   return '';
 }
 
+function FocusPrice({ item }: { item: any }) {
+  const price = toNum(item?.price);
+  const cp = toNum(item?.change_pct);
+
+  if (price === null || cp === null || price <= 0) return null;
+
+  const isUp = cp > 0;
+  const isDown = cp < 0;
+  const limitUp = cp >= 9.5;
+  const limitDown = cp <= -9.5;
+
+  const priceText = price >= 1000 ? fmt(price, 0) : fmt(price, 1);
+  const pctText = `${isUp ? '+' : ''}${fmt(cp, 2)}%`;
+
+  return (
+    <div className={`focus-price ${isUp ? 'red' : isDown ? 'green' : ''} ${limitUp ? 'limit-up' : ''} ${limitDown ? 'limit-down' : ''}`}>
+      <span>{priceText}</span>
+      <small>({pctText})</small>
+    </div>
+  );
+}
+
 function FocusCard({
   title,
   item,
@@ -197,16 +230,20 @@ function FocusCard({
 }) {
   const buyCount = countFromStatuses(item || {}, '買');
   const sellCount = countFromStatuses(item || {}, '賣');
+  const cardTone = tone === 'red' ? 'in red' : 'out green';
 
   return (
-    <Link className={`focus-card ${tone}`} href={tone === 'red' ? '/signals/increased' : '/signals/decreased'}>
+    <Link className={`focus-card ${cardTone}`} href={tone === 'red' ? '/signals/increased' : '/signals/decreased'}>
       <div className="focus-card-title">{title}</div>
 
       {item ? (
         <div className="focus-card-body">
           <div className="focus-stock">
-            <b>{item.stock_name}</b>
-            <span>{item.stock_code}</span>
+            <div className="focus-name-line">
+              <b>{item.stock_name}</b>
+              <span>{item.stock_code}</span>
+            </div>
+            <FocusPrice item={item} />
           </div>
 
           <div className="focus-metrics">
