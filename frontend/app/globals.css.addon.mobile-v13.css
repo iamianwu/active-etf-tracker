@@ -1,0 +1,497 @@
+/* ===== V13 mobile table layout refinement =====
+   目標：
+   - 今日訊號卡片學習 App：手機改成更小、更密集
+   - 資金持股 / ETF列表：第一欄縮窄 + sticky，右側欄位像 App 一樣橫滑
+   - ETF列表：即時/報酬/基本跟標題同列
+*/
+
+/* 讓所有橫向表格用固定欄寬，而不是被第一欄撐開 */
+.signal-v7-table,
+.holdings-v8-table,
+.etf-v11-table,
+.etf-v11-op-table,
+.etf-v11-holding-table,
+.etf-v11-premium-table{
+  table-layout:fixed !important;
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+}
+
+/* 橫滑容器 */
+.signal-v7-table-wrap,
+.holdings-v8-table-wrap,
+.etf-v11-table-wrap{
+  overflow-x:auto !important;
+  overflow-y:visible !important;
+  -webkit-overflow-scrolling:touch !important;
+}
+
+/* sticky first column：像 App 一樣左側固定 */
+.signal-v7-table th:first-child,
+.signal-v7-table td:first-child,
+.holdings-v8-table th:first-child,
+.holdings-v8-table td:first-child,
+.etf-v11-table th:first-child,
+.etf-v11-table td:first-child,
+.etf-v11-op-table th:first-child,
+.etf-v11-op-table td:first-child,
+.etf-v11-holding-table th:first-child,
+.etf-v11-holding-table td:first-child,
+.etf-v11-premium-table th:first-child,
+.etf-v11-premium-table td:first-child{
+  position:sticky !important;
+  left:0 !important;
+  z-index:20 !important;
+  background:#fff !important;
+  box-shadow:8px 0 14px rgba(15,23,42,.10) !important;
+}
+
+/* sticky first column 的 header */
+.signal-v7-table thead th:first-child,
+.holdings-v8-table thead th:first-child,
+.etf-v11-table thead th:first-child,
+.etf-v11-op-table thead th:first-child,
+.etf-v11-holding-table thead th:first-child,
+.etf-v11-premium-table thead th:first-child{
+  z-index:45 !important;
+  background:#f3f4f6 !important;
+}
+
+/* sticky header */
+.signal-v7-table thead th,
+.holdings-v8-table thead th,
+.etf-v11-table thead th,
+.etf-v11-op-table thead th,
+.etf-v11-holding-table thead th,
+.etf-v11-premium-table thead th{
+  position:sticky !important;
+  top:0 !important;
+  z-index:35 !important;
+  background:#f3f4f6 !important;
+}
+
+/* ETF列表：標題與 segment 同列 */
+.etf-v13-head-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+.etf-v13-head-row h2{
+  margin:0 !important;
+}
+
+.etf-v13-segment{
+  flex:0 0 auto;
+}
+
+.etf-v13-count{
+  margin-bottom:14px !important;
+}
+
+/* ===== mobile ===== */
+@media(max-width:720px){
+  .page{
+    padding:10px 8px 28px !important;
+  }
+
+  .page h2,
+  .etf-v13-head-row h2{
+    font-size:28px !important;
+    line-height:1.15 !important;
+  }
+
+  /* 今日訊號頁：上方標題縮小 */
+  .signals-title-block h2{
+    font-size:30px !important;
+    margin-bottom:8px !important;
+  }
+
+  .signals-data-status{
+    font-size:15px !important;
+    line-height:1.35 !important;
+  }
+
+  /* 今日訊號：四張卡片變成 2 欄，學 App 的密集排版 */
+  .focus-grid{
+    display:grid !important;
+    grid-template-columns:1fr 1fr !important;
+    gap:10px !important;
+    margin:12px 0 16px !important;
+  }
+
+  .focus-card{
+    min-height:92px !important;
+    padding:10px 10px !important;
+    border-radius:12px !important;
+  }
+
+  .focus-card-title{
+    font-size:17px !important;
+    line-height:1.15 !important;
+    margin:0 0 8px !important;
+    padding-left:12px !important;
+  }
+
+  .focus-card-title::before{
+    width:4px !important;
+    height:22px !important;
+    top:1px !important;
+  }
+
+  .focus-card-body{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:4px !important;
+  }
+
+  .focus-stock b{
+    font-size:16px !important;
+    line-height:1.15 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+
+  .focus-stock span{
+    font-size:12px !important;
+    line-height:1.1 !important;
+  }
+
+  .focus-metrics{
+    font-size:12px !important;
+    line-height:1.45 !important;
+  }
+
+  .focus-metrics b{
+    display:inline !important;
+  }
+
+  .status-pill-row{
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    overflow-x:auto !important;
+    gap:8px !important;
+    padding-bottom:2px !important;
+    margin:8px 0 14px !important;
+  }
+
+  .status-pill{
+    flex:0 0 auto !important;
+    font-size:16px !important;
+    padding:7px 12px !important;
+    border-radius:999px !important;
+  }
+
+  .status-pill b{
+    font-size:18px !important;
+  }
+
+  /* 今日訊號表格：第一欄固定寬度，不再撐開 */
+  .signal-v7-table{
+    width:690px !important;
+    min-width:690px !important;
+    max-width:690px !important;
+  }
+
+  .signal-v7-table col.c-stock{width:96px !important;}
+  .signal-v7-table col.c-price{width:92px !important;}
+  .signal-v7-table col.c-status{width:72px !important;}
+  .signal-v7-table col.c-amount{width:90px !important;}
+  .signal-v7-table col.c-etf{width:82px !important;}
+  .signal-v7-table col.c-shares{width:96px !important;}
+  .signal-v7-table col.c-mag{width:86px !important;}
+
+  .signal-v7-table th:first-child,
+  .signal-v7-table td:first-child{
+    width:96px !important;
+    min-width:96px !important;
+    max-width:96px !important;
+  }
+
+  .signal-v7-table th,
+  .signal-v7-table td{
+    padding:9px 5px !important;
+    font-size:13px !important;
+    line-height:1.22 !important;
+  }
+
+  .signal-v7-table .stock-cell b{
+    font-size:15px !important;
+    max-width:82px !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+
+  .signal-v7-table .stock-cell .code{
+    font-size:12px !important;
+  }
+
+  .signal-v7-table .price-box{
+    font-size:15px !important;
+    padding:1px 4px !important;
+  }
+
+  .signal-v7-table .badge{
+    font-size:12px !important;
+    padding:4px 7px !important;
+  }
+
+  /* 資金持股：像 App 一樣股票欄窄、右側可滑 */
+  .holdings-v8-table{
+    width:650px !important;
+    min-width:650px !important;
+    max-width:650px !important;
+  }
+
+  .holdings-v8-table th:first-child,
+  .holdings-v8-table td:first-child{
+    width:118px !important;
+    min-width:118px !important;
+    max-width:118px !important;
+  }
+
+  .holdings-v8-table th:nth-child(2),
+  .holdings-v8-table td:nth-child(2){
+    width:105px !important;
+    min-width:105px !important;
+    max-width:105px !important;
+  }
+
+  .holdings-v8-table th:nth-child(3),
+  .holdings-v8-table td:nth-child(3){
+    width:165px !important;
+    min-width:165px !important;
+    max-width:165px !important;
+  }
+
+  .holdings-v8-table th:nth-child(4),
+  .holdings-v8-table td:nth-child(4){
+    width:145px !important;
+    min-width:145px !important;
+    max-width:145px !important;
+  }
+
+  .holdings-v8-table th,
+  .holdings-v8-table td{
+    padding:9px 6px !important;
+    font-size:13px !important;
+    line-height:1.22 !important;
+  }
+
+  .holdings-v8-table td:first-child b{
+    font-size:16px !important;
+    max-width:102px !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+
+  .holdings-v8-table .code{
+    font-size:12px !important;
+  }
+
+  .holdings-v8-table td b,
+  .holdings-price-box{
+    font-size:16px !important;
+  }
+
+  .holdings-price-box{
+    padding:1px 4px !important;
+  }
+
+  /* ETF列表：segment 與標題同列，不另起一列 */
+  .etf-v13-head-row{
+    align-items:center !important;
+    margin-bottom:8px !important;
+  }
+
+  .etf-v13-head-row h2{
+    font-size:28px !important;
+  }
+
+  .etf-v13-segment{
+    transform:none !important;
+    padding:3px !important;
+    gap:1px !important;
+  }
+
+  .etf-v13-segment button{
+    font-size:13px !important;
+    padding:6px 10px !important;
+  }
+
+  .etf-v13-count{
+    font-size:15px !important;
+    line-height:1.35 !important;
+    margin-bottom:12px !important;
+  }
+
+  /* ETF列表：固定寬度，第一欄窄化 */
+  .etf-v11-table{
+    width:660px !important;
+    min-width:660px !important;
+    max-width:660px !important;
+  }
+
+  .etf-v11-table col.etf-c-stock{width:128px !important;}
+  .etf-v11-table col.etf-c-price{width:82px !important;}
+  .etf-v11-table col.etf-c-change{width:98px !important;}
+  .etf-v11-table col.etf-c-volume{width:132px !important;}
+  .etf-v11-table col.etf-c-return1{width:108px !important;}
+  .etf-v11-table col.etf-c-return2{width:138px !important;}
+  .etf-v11-table col.etf-c-yield{width:100px !important;}
+  .etf-v11-table col.etf-c-aum{width:120px !important;}
+  .etf-v11-table col.etf-c-expense{width:105px !important;}
+  .etf-v11-table col.etf-c-region{width:105px !important;}
+
+  .etf-v11-table th:first-child,
+  .etf-v11-table td:first-child{
+    width:128px !important;
+    min-width:128px !important;
+    max-width:128px !important;
+  }
+
+  .etf-v11-table th,
+  .etf-v11-table td{
+    padding:9px 6px !important;
+    font-size:13px !important;
+    line-height:1.2 !important;
+  }
+
+  .etf-v11-name-cell a{
+    gap:7px !important;
+  }
+
+  .etf-v11-name-text b{
+    font-size:19px !important;
+    line-height:1.05 !important;
+  }
+
+  .etf-v11-name-text small{
+    font-size:12px !important;
+    line-height:1.2 !important;
+    max-width:88px !important;
+    overflow:hidden !important;
+    display:-webkit-box !important;
+    -webkit-line-clamp:2 !important;
+    -webkit-box-orient:vertical !important;
+  }
+
+  .etf-v11-candle{
+    width:8px !important;
+    height:43px !important;
+    flex:0 0 8px !important;
+  }
+
+  .etf-v11-candle i{
+    left:3px !important;
+    height:43px !important;
+    width:2px !important;
+  }
+
+  .etf-v11-candle b{
+    left:0 !important;
+    top:9px !important;
+    width:8px !important;
+    height:25px !important;
+  }
+
+  .etf-v11-price,
+  .etf-v11-volume-cell b,
+  .etf-v11-table td:nth-child(n+2) b{
+    font-size:17px !important;
+  }
+
+  .etf-v11-change-cell{
+    font-size:15px !important;
+  }
+
+  .etf-v11-volume-cell small,
+  .etf-v11-table td:nth-child(n+2) small{
+    font-size:11px !important;
+  }
+
+  .sort-arrows{
+    font-size:10px !important;
+  }
+}
+
+/* iPhone 窄版再收一點 */
+@media(max-width:430px){
+  .page{
+    padding-left:7px !important;
+    padding-right:7px !important;
+  }
+
+  .focus-grid{
+    gap:8px !important;
+  }
+
+  .focus-card{
+    padding:9px !important;
+  }
+
+  .focus-card-title{
+    font-size:16px !important;
+  }
+
+  .focus-metrics{
+    font-size:11px !important;
+  }
+
+  .holdings-v8-table{
+    width:620px !important;
+    min-width:620px !important;
+    max-width:620px !important;
+  }
+
+  .holdings-v8-table th:first-child,
+  .holdings-v8-table td:first-child{
+    width:108px !important;
+    min-width:108px !important;
+    max-width:108px !important;
+  }
+
+  .holdings-v8-table td:first-child b{
+    max-width:92px !important;
+    font-size:15px !important;
+  }
+
+  .etf-v11-table{
+    width:630px !important;
+    min-width:630px !important;
+    max-width:630px !important;
+  }
+
+  .etf-v11-table col.etf-c-stock{width:118px !important;}
+
+  .etf-v11-table th:first-child,
+  .etf-v11-table td:first-child{
+    width:118px !important;
+    min-width:118px !important;
+    max-width:118px !important;
+  }
+
+  .etf-v11-name-text b{
+    font-size:18px !important;
+  }
+
+  .etf-v11-name-text small{
+    max-width:80px !important;
+    font-size:11.5px !important;
+  }
+
+  .etf-v11-price,
+  .etf-v11-volume-cell b,
+  .etf-v11-table td:nth-child(n+2) b{
+    font-size:16px !important;
+  }
+
+  .etf-v11-change-cell{
+    font-size:14px !important;
+  }
+}

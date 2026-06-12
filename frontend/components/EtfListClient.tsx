@@ -177,21 +177,48 @@ export default function EtfListClient({ rows }: { rows: any[] }) {
   }
 
   return (
-    <main className="page etf-v11-page">
-      <h2>ETF 列表</h2>
+    <main className="page etf-v11-page etf-v13-page">
+      <div className="etf-v13-head-row">
+        <h2>ETF 列表</h2>
 
-      <div className="etf-v11-topbar">
-        <div className="etf-v11-count">共 {fmt0(sortedRows.length)} 檔，每檔 ETF 可點進詳情。</div>
-
-        <div className="etf-v11-segment">
+        <div className="etf-v11-segment etf-v13-segment">
           <button className={mode === 'quote' ? 'active' : ''} onClick={() => setModeAndDefaultSort('quote')}>即時</button>
           <button className={mode === 'return' ? 'active' : ''} onClick={() => setModeAndDefaultSort('return')}>報酬</button>
           <button className={mode === 'basic' ? 'active' : ''} onClick={() => setModeAndDefaultSort('basic')}>基本</button>
         </div>
       </div>
 
+      <div className="etf-v11-count etf-v13-count">共 {fmt0(sortedRows.length)} 檔，每檔 ETF 可點進詳情。</div>
+
       <div className="etf-v11-table-wrap">
         <table className={`table etf-v11-table mode-${mode}`}>
+          {mode === 'quote' && (
+            <colgroup>
+              <col className="etf-c-stock" />
+              <col className="etf-c-price" />
+              <col className="etf-c-change" />
+              <col className="etf-c-volume" />
+            </colgroup>
+          )}
+
+          {mode === 'return' && (
+            <colgroup>
+              <col className="etf-c-stock" />
+              <col className="etf-c-return1" />
+              <col className="etf-c-return2" />
+              <col className="etf-c-yield" />
+            </colgroup>
+          )}
+
+          {mode === 'basic' && (
+            <colgroup>
+              <col className="etf-c-stock" />
+              <col className="etf-c-aum" />
+              <col className="etf-c-expense" />
+              <col className="etf-c-region" />
+            </colgroup>
+          )}
+
           <thead>
             {mode === 'quote' && (
               <tr>
