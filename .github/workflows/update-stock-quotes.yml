@@ -2,37 +2,11 @@ name: Update Stock Quotes
 
 on:
   workflow_dispatch:
-  schedule:
-    # 台灣時間週一到週五 09:00-13:59，每 15 分鐘抓 Yahoo 盤中股價
-    - cron: "*/15 1-5 * * 1-5"
-    # 台灣時間 14:15 收盤後再補一次
-    - cron: "15 6 * * 1-5"
 
 jobs:
-  update-stock-quotes:
+  disabled:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
+      - name: Disabled
         run: |
-          cd backend
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Update Yahoo stock quotes
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          YAHOO_BATCH_SIZE: "15"
-          YAHOO_SLEEP_SEC: "3.0"
-          YAHOO_MAX_RETRIES: "2"
-          PYTHONUNBUFFERED: "1"
-        run: |
-          cd backend
-          python -m app.jobs.update_stock_quotes
+          echo "This workflow is disabled. Use 'Update Yahoo Priority Quotes' instead."

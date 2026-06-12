@@ -1,0 +1,50 @@
+name: Update Yahoo Priority Quotes
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_codes:
+        description: "最多更新幾檔股票。建議先 80，穩定後可試 120。"
+        required: false
+        default: "80"
+      extra_codes:
+        description: "強制優先補的股票代號，逗號分隔，例如 3090,3211,1560"
+        required: false
+        default: ""
+
+  schedule:
+    # 台灣時間週一到週五 09:05-13:50，每 15 分鐘抓今日訊號優先股價
+    - cron: "5,20,35,50 1-5 * * 1-5"
+    # 台灣時間 14:15 收盤後再補一次
+    - cron: "15 6 * * 1-5"
+
+jobs:
+  update-yahoo-priority-quotes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Update Yahoo priority stock quotes
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          YAHOO_PRIORITY_MAX_CODES: ${{ github.event.inputs.max_codes || '80' }}
+          EXTRA_CODES: ${{ github.event.inputs.extra_codes || '' }}
+          YAHOO_BATCH_SIZE: "6"
+          YAHOO_SLEEP_SEC: "8.0"
+          YAHOO_MAX_RETRIES: "1"
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python -m app.jobs.update_yahoo_priority_quotes
