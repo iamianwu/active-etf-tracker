@@ -211,7 +211,12 @@ export async function getEtfDetailData(code: string) {
     selectMaybe('etf_price_history', (q) => q.eq('etf_code', normalizedCode).order('trade_date', { ascending: true }).limit(520)),
     selectMaybe('etf_nav_history', (q) => q.eq('etf_code', normalizedCode).order('trade_date', { ascending: true }).limit(520)),
     selectMaybe('etf_basic_info', (q) => q.eq('etf_code', normalizedCode).limit(1)),
-    selectMaybe('holdings', (q) => q.eq('etf_code', normalizedCode)),
+    selectMaybe('holdings', (q) =>
+      q
+        .eq('etf_code', normalizedCode)
+        .order('data_date', { ascending: false })
+        .limit(1000)
+    ),
     selectMaybe('stock_quotes', (q) => q),
   ]);
 
