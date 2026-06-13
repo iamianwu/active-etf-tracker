@@ -422,10 +422,18 @@ export default function EtfDetailClient({ data }: { data: any }) {
           </div>
 
           <div className="etf-v11-op-filter-row">
-            <button className={`gold ${opFilter === '新增' ? 'active' : ''}`} onClick={() => setOpFilter(opFilter === '新增' ? null : '新增')}>新增 <b>{data.change_summary?.added || 0}</b> 檔</button>
-            <button className={`gray ${opFilter === '刪除' ? 'active' : ''}`} onClick={() => setOpFilter(opFilter === '刪除' ? null : '刪除')}>刪除 <b>{data.change_summary?.removed || 0}</b> 檔</button>
-            <button className={`red ${opFilter === '加碼' ? 'active' : ''}`} onClick={() => setOpFilter(opFilter === '加碼' ? null : '加碼')}>加碼 <b>{data.change_summary?.increased || 0}</b> 檔</button>
-            <button className={`green ${opFilter === '減碼' ? 'active' : ''}`} onClick={() => setOpFilter(opFilter === '減碼' ? null : '減碼')}>減碼 <b>{data.change_summary?.decreased || 0}</b> 檔</button>
+            <button className={`gold ${opFilter === '新增' ? 'active' : ''}`} onClick={() => setOpFilter(opFilter === '新增' ? null : '新增')}>
+              <span>新增</span><b>{data.change_summary?.added || 0}</b><em>檔</em>
+            </button>
+            <button className={`gray ${opFilter === '刪除' ? 'active' : ''}`} onClick={() => setOpFilter(opFilter === '刪除' ? null : '刪除')}>
+              <span>刪除</span><b>{data.change_summary?.removed || 0}</b><em>檔</em>
+            </button>
+            <button className={`red ${opFilter === '加碼' ? 'active' : ''}`} onClick={() => setOpFilter(opFilter === '加碼' ? null : '加碼')}>
+              <span>加碼</span><b>{data.change_summary?.increased || 0}</b><em>檔</em>
+            </button>
+            <button className={`green ${opFilter === '減碼' ? 'active' : ''}`} onClick={() => setOpFilter(opFilter === '減碼' ? null : '減碼')}>
+              <span>減碼</span><b>{data.change_summary?.decreased || 0}</b><em>檔</em>
+            </button>
           </div>
 
           <div className="etf-v11-op-subtitle">
@@ -453,7 +461,7 @@ export default function EtfDetailClient({ data }: { data: any }) {
                     <tr key={`${r.stock_code}-${r.status}`}>
                       <td><Link href={`/stock/${r.stock_code}`}><b>{r.stock_name}</b><small>{r.stock_code}</small></Link></td>
                       <td><span className={`badge ${statusClass(r.status)}`}>{r.status}</span></td>
-                      <td className={signedClass(r.delta_shares)}>{r.delta_shares > 0 ? '+' : ''}{fmt0((num(r.delta_shares) || 0) / 1000)} 張</td>
+                      <td className={signedClass(r.delta_shares)}>{r.delta_shares > 0 ? '+' : ''}{fmt0((num(r.delta_shares) || 0) / 1000)}<span className="etf-v33-unit"> 張</span></td>
                       <td>{mag == null ? '-' : Math.abs(mag) > 300 ? '>3倍' : `${fmt(mag, 1)}%`}</td>
                       <td><b>{fmt(r.weight, 2)}%</b><small className={signedClass(r.delta_weight)}>{signedPct(r.delta_weight, 2)}</small></td>
                     </tr>
@@ -644,6 +652,338 @@ export default function EtfDetailClient({ data }: { data: any }) {
             padding:14px 18px;
             font-size:22px;
             border-radius:14px;
+          }
+
+          /* V33 操作日報手機版：整體縮小，盡量一屏顯示 */
+          .etf-v11-page{
+            overflow-x:hidden !important;
+          }
+
+          .etf-v11-tab-content.operation{
+            padding:14px 16px 26px !important;
+            background:#f6f6f7 !important;
+            overflow-x:hidden !important;
+          }
+
+          .etf-v11-tab-content.operation h2{
+            font-size:20px !important;
+            line-height:1.2 !important;
+            margin:4px 0 12px !important;
+            color:#7f8895 !important;
+            font-weight:800 !important;
+          }
+
+          .etf-v11-op-card-grid{
+            display:grid !important;
+            grid-template-columns:1fr 1fr !important;
+            gap:8px !important;
+            margin:0 0 12px !important;
+          }
+
+          .etf-v11-op-top-card{
+            min-height:0 !important;
+            padding:14px 14px 16px !important;
+            border-radius:10px !important;
+            background:#fff !important;
+            box-shadow:none !important;
+          }
+
+          .etf-v11-op-top-card span{
+            display:block !important;
+            font-size:17px !important;
+            line-height:1.2 !important;
+            margin-bottom:8px !important;
+            color:#666f7a !important;
+            font-weight:800 !important;
+          }
+
+          .etf-v11-op-top-card b{
+            display:block !important;
+            font-size:30px !important;
+            line-height:1.05 !important;
+            letter-spacing:-0.5px !important;
+            white-space:nowrap !important;
+          }
+
+          .etf-v11-op-top-card small{
+            display:block !important;
+            font-size:15px !important;
+            line-height:1.2 !important;
+            margin-top:7px !important;
+            white-space:normal !important;
+          }
+
+          /* 新增 / 刪除 / 加碼 / 減碼：改成四格小卡片 */
+          .etf-v11-op-filter-row{
+            display:grid !important;
+            grid-template-columns:repeat(4, minmax(0, 1fr)) !important;
+            gap:8px !important;
+            margin:0 0 14px !important;
+            overflow:visible !important;
+          }
+
+          .etf-v11-op-filter-row button{
+            width:100% !important;
+            height:70px !important;
+            min-width:0 !important;
+            border-radius:10px !important;
+            padding:8px 8px !important;
+            display:grid !important;
+            grid-template-columns:auto 1fr auto !important;
+            grid-template-rows:auto 1fr !important;
+            align-items:center !important;
+            justify-items:start !important;
+            gap:0 3px !important;
+            box-shadow:none !important;
+            background:#fff !important;
+            font-size:18px !important;
+            line-height:1 !important;
+            font-weight:900 !important;
+          }
+
+          .etf-v11-op-filter-row button::after{
+            content:'✓';
+            grid-column:3;
+            grid-row:1;
+            width:18px;
+            height:18px;
+            border-radius:999px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color:#fff;
+            font-size:12px;
+            font-weight:900;
+          }
+
+          .etf-v11-op-filter-row button.gold::after{background:#a89200;}
+          .etf-v11-op-filter-row button.gray::after{background:#687079;}
+          .etf-v11-op-filter-row button.red::after{background:#df555b;}
+          .etf-v11-op-filter-row button.green::after{background:#3fb092;}
+
+          .etf-v11-op-filter-row button:not(.active){
+            opacity:.72 !important;
+            background:#fff !important;
+          }
+
+          .etf-v11-op-filter-row button:not(.active)::after{
+            opacity:.55;
+          }
+
+          .etf-v11-op-filter-row button span{
+            grid-column:1 / 3;
+            grid-row:1;
+            font-size:18px !important;
+            line-height:1.1 !important;
+          }
+
+          .etf-v11-op-filter-row button b{
+            grid-column:1 / 3;
+            grid-row:2;
+            font-size:28px !important;
+            line-height:1 !important;
+            margin-top:6px !important;
+          }
+
+          .etf-v11-op-filter-row button em{
+            grid-column:3;
+            grid-row:2;
+            font-style:normal !important;
+            font-size:15px !important;
+            align-self:end !important;
+            padding-bottom:2px !important;
+          }
+
+          .etf-v11-op-filter-row button.gold{
+            border:1.5px solid #b59b00 !important;
+            background:#fffbe8 !important;
+            color:#a89200 !important;
+          }
+
+          .etf-v11-op-filter-row button.gray{
+            border:1.5px solid #9da4ad !important;
+            background:#f6f7f8 !important;
+            color:#687079 !important;
+          }
+
+          .etf-v11-op-filter-row button.red{
+            border:1.5px solid #df555b !important;
+            background:#fff0f1 !important;
+            color:#df555b !important;
+          }
+
+          .etf-v11-op-filter-row button.green{
+            border:1.5px solid #41ad90 !important;
+            background:#eaf8f4 !important;
+            color:#28a985 !important;
+          }
+
+          .etf-v11-op-subtitle{
+            display:flex !important;
+            align-items:center !important;
+            justify-content:space-between !important;
+            margin:0 0 6px !important;
+            font-size:18px !important;
+            color:#7f8895 !important;
+          }
+
+          .etf-v11-op-subtitle span{
+            font-size:20px !important;
+            font-weight:800 !important;
+          }
+
+          .etf-v11-op-subtitle button{
+            font-size:18px !important;
+            font-weight:800 !important;
+            color:#8b94a1 !important;
+          }
+
+          /* 操作日報表格：取消橫向寬度，全部壓進手機畫面 */
+          .etf-v11-table-wrap{
+            width:100% !important;
+            max-width:100% !important;
+            overflow-x:visible !important;
+            border-radius:0 !important;
+            box-shadow:none !important;
+          }
+
+          .etf-v11-op-table{
+            width:100% !important;
+            min-width:0 !important;
+            table-layout:fixed !important;
+            border-collapse:collapse !important;
+          }
+
+          .etf-v11-op-table th,
+          .etf-v11-op-table td{
+            padding:9px 4px !important;
+            font-size:14px !important;
+            line-height:1.2 !important;
+            white-space:normal !important;
+            word-break:keep-all !important;
+            overflow:hidden !important;
+            text-overflow:clip !important;
+          }
+
+          .etf-v11-op-table thead th{
+            position:sticky !important;
+            top:0 !important;
+            z-index:3 !important;
+            background:#f0f1f3 !important;
+            color:#20252c !important;
+            font-size:14px !important;
+            font-weight:900 !important;
+            height:42px !important;
+          }
+
+          .etf-v11-op-table th:nth-child(1),
+          .etf-v11-op-table td:nth-child(1){
+            width:23% !important;
+            position:static !important;
+            left:auto !important;
+            box-shadow:none !important;
+          }
+
+          .etf-v11-op-table th:nth-child(2),
+          .etf-v11-op-table td:nth-child(2){
+            width:16% !important;
+            text-align:center !important;
+          }
+
+          .etf-v11-op-table th:nth-child(3),
+          .etf-v11-op-table td:nth-child(3){
+            width:21% !important;
+            text-align:right !important;
+          }
+
+          .etf-v11-op-table th:nth-child(4),
+          .etf-v11-op-table td:nth-child(4){
+            width:18% !important;
+            text-align:right !important;
+          }
+
+          .etf-v11-op-table th:nth-child(5),
+          .etf-v11-op-table td:nth-child(5){
+            width:22% !important;
+            text-align:right !important;
+          }
+
+          .etf-v11-op-table td:first-child a{
+            display:block !important;
+            min-width:0 !important;
+            color:inherit !important;
+          }
+
+          .etf-v11-op-table td:first-child b{
+            display:block !important;
+            font-size:18px !important;
+            line-height:1.15 !important;
+            font-weight:900 !important;
+            overflow:hidden !important;
+            text-overflow:ellipsis !important;
+            white-space:nowrap !important;
+          }
+
+          .etf-v11-op-table td:first-child small{
+            display:block !important;
+            font-size:14px !important;
+            line-height:1.1 !important;
+            margin-top:5px !important;
+            color:#7e8793 !important;
+            font-weight:800 !important;
+          }
+
+          .etf-v11-op-table .badge{
+            display:inline-flex !important;
+            min-width:0 !important;
+            padding:6px 7px !important;
+            border-radius:12px !important;
+            font-size:14px !important;
+            line-height:1 !important;
+            font-weight:900 !important;
+            white-space:nowrap !important;
+          }
+
+          .etf-v11-op-table td:nth-child(3){
+            font-size:17px !important;
+            font-weight:800 !important;
+          }
+
+          .etf-v11-op-table td:nth-child(4){
+            font-size:16px !important;
+            font-weight:700 !important;
+          }
+
+          .etf-v11-op-table td:nth-child(5) b{
+            display:block !important;
+            font-size:18px !important;
+            line-height:1.1 !important;
+          }
+
+          .etf-v11-op-table td:nth-child(5) small{
+            display:block !important;
+            font-size:14px !important;
+            line-height:1.1 !important;
+            margin-top:4px !important;
+          }
+
+          .etf-v11-d-sort{
+            display:inline-flex !important;
+            align-items:center !important;
+            justify-content:center !important;
+            gap:2px !important;
+            padding:0 !important;
+            font-size:14px !important;
+            line-height:1.05 !important;
+            white-space:normal !important;
+          }
+
+          .etf-v11-d-sort span{
+            white-space:normal !important;
+          }
+
+          .etf-v33-unit{
+            display:none !important;
           }
         }
       `}</style>
