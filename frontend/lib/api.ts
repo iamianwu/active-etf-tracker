@@ -165,6 +165,25 @@ function previousDateForEtf(holdings: any[], etfCode: string, date: string) {
   return dates.length ? dates[dates.length - 1] : null;
 }
 
+
+// v70: 回傳最新日往前第 N 個可用持股資料日。
+// range=1 等於今日訊號：最新日 vs 前一個持股日。
+// range=3/5/10/20 等於最新日 vs N 個持股資料日前，做區間淨變動。
+function signalWindowPreviousDate_v70(holdings: any[], etfCode: string, date: string, windowInput: any) {
+  const windowDays = Math.max(1, Math.min(20, Number(windowInput || 1) || 1));
+  const dates = Array.from(new Set(
+    holdings
+      .filter((h) => h.etf_code === etfCode)
+      .map((h) => String(h.data_date))
+      .filter((d) => d && d < String(date))
+  )).sort();
+
+  if (!dates.length) return null;
+
+  const idx = Math.max(0, dates.length - windowDays);
+  return dates[idx] || dates[0] || null;
+}
+
 function computeEtfChanges(holdings: any[], etfCode: string, date: string, prevDate: string | null) {
   if (!prevDate) return [];
 
@@ -410,7 +429,7 @@ async function getStockDetail(stockCode: string) {
   };
 }
 
-async function getSignals(signalType?: string | null) {
+async function getSignals(signalType?: string | null, windowInput?: string | number | null) {
   const { holdings, stockQuoteMap } = await loadBaseData();
   const latest = latestDateByEtf(holdings);
   const etfCodes = Object.keys(latest).sort();
@@ -431,7 +450,7 @@ async function getSignals(signalType?: string | null) {
 
   for (const etf of etfCodes) {
     const d = latest[etf];
-    const prev = previousDateForEtf(holdings, etf, d);
+    const prev = signalWindowPreviousDate_v70(holdings, etf, d, windowDays);
     if (d && prev) changes.push(...computeEtfChanges(holdings, etf, d, prev));
   }
 
@@ -567,6 +586,8 @@ async function getSignals(signalType?: string | null) {
   });
 
   return {
+    signal_window_days: windowDays,
+    signal_window_label: windowDays === 1 ? '今日' : `近${windowDays}日`,
     data_date: dataDate,
     data_date_mmdd: fmtDateMMDD(dataDate),
     fetched_etf_count: fetchedEtfCount,
@@ -594,7 +615,7 @@ export async function apiGet(path: string) {
   }
 
   if (u.pathname === "/signals") {
-    return getSignals(u.searchParams.get("type"));
+    return getSignals(u.searchParams.get("type"), u.searchParams.get("range") || u.searchParams.get("window") || u.searchParams.get("days"));
   }
 
   throw new Error(`Unknown API path: ${path}`);
