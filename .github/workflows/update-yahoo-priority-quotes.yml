@@ -9,4 +9,5 @@ jobs:
     steps:
       - name: Disabled
         run: |
-          echo "Disabled. Use 'Update TWSE MIS Quotes' instead."
+          echo "Disabled because cloud IPs were blocked or rate-limited."
+          echo "Use Update Official Close Quotes instead."
