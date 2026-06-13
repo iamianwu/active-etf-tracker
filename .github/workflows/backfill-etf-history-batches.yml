@@ -1,0 +1,87 @@
+name: Backfill ETF History Batches
+
+on:
+  workflow_dispatch:
+    inputs:
+      dt_range:
+        description: "Pocket DTRange. 9999=full available history; 120=safer recent backfill"
+        required: false
+        default: "9999"
+      batch_size:
+        description: "How many ETFs per job. Use 2 to avoid timeout. Use 1 if Pocket is slow."
+        required: false
+        default: "2"
+      sleep_sec:
+        description: "Sleep seconds between ETFs in the same job"
+        required: false
+        default: "0.8"
+      update_quotes:
+        description: "Run official close stock quotes after backfill: true/false"
+        required: false
+        default: "true"
+
+jobs:
+  backfill:
+    name: batch-${{ matrix.batch_index }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        # 20 batches x batch_size 2 = 40 ETF slots.
+        # Empty batches will finish immediately, so this also leaves room for future additions.
+        batch_index: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Backfill ETF holdings for this batch
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DT_RANGE: ${{ github.event.inputs.dt_range || '9999' }}
+          BATCH_INDEX: ${{ matrix.batch_index }}
+          BATCH_SIZE: ${{ github.event.inputs.batch_size || '2' }}
+          SLEEP_SEC: ${{ github.event.inputs.sleep_sec || '0.8' }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python -m app.jobs.backfill_selected_etfs
+
+  update-official-close-quotes:
+    name: update-official-close-quotes
+    needs: backfill
+    if: ${{ always() && github.event.inputs.update_quotes != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Update official close stock quotes
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python -m app.jobs.update_official_close_quotes
