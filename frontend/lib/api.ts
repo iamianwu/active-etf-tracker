@@ -305,6 +305,7 @@ async function getEtfDetail(etfCode: string) {
 
 async function getConstituentSummary() {
   const { holdings, stockQuoteMap } = await loadBaseData();
+  const signalWindowDays = Math.max(1, Math.min(20, Number(signalRange || 1) || 1));
   const rows = latestHoldings(holdings).filter((h) => isNormalStockCode(h.stock_code));
   const stockCodes = Array.from(new Set(rows.map((r) => r.stock_code)));
   const fallbackPriceMap = await loadLatestPriceHistoryMap(stockCodes);
@@ -410,7 +411,22 @@ async function getStockDetail(stockCode: string) {
   };
 }
 
-async function getSignals(signalType?: string | null) {
+
+function signalWindowPreviousDate_v71(holdings: any[], etfCode: string, date: string, windowInput: any) {
+  const windowDays = Math.max(1, Math.min(20, Number(windowInput || 1) || 1));
+  const dates = Array.from(new Set(
+    holdings
+      .filter((h) => h.etf_code === etfCode)
+      .map((h) => String(h.data_date))
+      .filter((d) => d && d < String(date))
+  )).sort();
+
+  if (!dates.length) return null;
+  const idx = Math.max(0, dates.length - windowDays);
+  return dates[idx] || dates[0] || null;
+}
+
+async function getSignals(signalType?: string | null, signalRange?: string | number | null) {
   const { holdings, stockQuoteMap } = await loadBaseData();
   const latest = latestDateByEtf(holdings);
   const etfCodes = Object.keys(latest).sort();
@@ -431,7 +447,7 @@ async function getSignals(signalType?: string | null) {
 
   for (const etf of etfCodes) {
     const d = latest[etf];
-    const prev = previousDateForEtf(holdings, etf, d);
+    const prev = signalWindowDays <= 1 ? previousDateForEtf(holdings, etf, d) : signalWindowPreviousDate_v71(holdings, etf, d, signalWindowDays);
     if (d && prev) changes.push(...computeEtfChanges(holdings, etf, d, prev));
   }
 
@@ -594,7 +610,7 @@ export async function apiGet(path: string) {
   }
 
   if (u.pathname === "/signals") {
-    return getSignals(u.searchParams.get("type"));
+    return getSignals(u.searchParams.get("type"), u.searchParams.get("range") || u.searchParams.get("window") || u.searchParams.get("days"));
   }
 
   throw new Error(`Unknown API path: ${path}`);
