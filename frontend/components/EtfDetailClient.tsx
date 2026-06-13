@@ -368,7 +368,7 @@ export default function EtfDetailClient({ data }: { data: any }) {
   }
 
   return (
-    <main className="etf-v11-detail">
+    <main className={showChangeInfo ? "etf-v11-detail modal-open" : "etf-v11-detail"}>
       <div className="etf-v36-sticky-detail-nav">
         <header className="etf-v11-detail-header">
           <button type="button" className="etf-v37-page-back" onClick={goBackToPreviousPage} aria-label="回上一頁">‹</button>
@@ -770,6 +770,66 @@ export default function EtfDetailClient({ data }: { data: any }) {
         .etf-v37-etf-prev:hover,
         .etf-v37-etf-next:hover{
           color:#4e8ff0;
+        }
+
+
+        /* V43：修正說明彈窗被 sticky 表頭蓋住 */
+        .etf-v11-modal-mask{
+          position:fixed !important;
+          inset:0 !important;
+          z-index:99990 !important;
+          display:flex !important;
+          align-items:center !important;
+          justify-content:center !important;
+          padding:22px !important;
+          background:rgba(15,23,42,.48) !important;
+        }
+
+        .etf-v11-modal{
+          position:relative !important;
+          z-index:99991 !important;
+          width:min(520px, calc(100vw - 44px)) !important;
+          max-height:calc(100vh - 120px) !important;
+          overflow:auto !important;
+          border-radius:18px !important;
+          background:#fff !important;
+          padding:28px 28px 24px !important;
+          box-shadow:0 22px 70px rgba(15,23,42,.28) !important;
+        }
+
+        .etf-v11-modal h2{
+          margin:0 0 18px !important;
+          text-align:center !important;
+          font-size:26px !important;
+          line-height:1.2 !important;
+          font-weight:900 !important;
+        }
+
+        .etf-v11-modal p{
+          margin:0 0 16px !important;
+          color:#20252c !important;
+          font-size:20px !important;
+          line-height:1.7 !important;
+          font-weight:800 !important;
+        }
+
+        .etf-v11-modal button{
+          width:100% !important;
+          margin-top:10px !important;
+          border:0 !important;
+          border-radius:12px !important;
+          background:#4e8ff0 !important;
+          color:#fff !important;
+          font-size:22px !important;
+          line-height:1 !important;
+          font-weight:900 !important;
+          padding:16px 18px !important;
+          font-family:inherit !important;
+        }
+
+        .etf-v11-detail.modal-open .etf-v41-op-head,
+        .etf-v11-detail.modal-open .etf-v42-holding-head{
+          z-index:1 !important;
         }
 
         .etf-v32-change-preview{
@@ -1986,6 +2046,45 @@ export default function EtfDetailClient({ data }: { data: any }) {
           .etf-v42-holding-weight,
           .etf-v42-holding-price{
             text-align:right !important;
+          }
+        }
+
+
+        /* V43：iPhone Safari 會讓 grid sticky header 漂到資料列中間。
+           手機版先改成正常表頭，避免錯位與遮住第一列。 */
+        @media(max-width:760px){
+          .etf-v11-detail .etf-v41-op-head,
+          .etf-v11-detail .etf-v42-holding-head{
+            position:static !important;
+            top:auto !important;
+            z-index:1 !important;
+            box-shadow:none !important;
+            transform:none !important;
+          }
+
+          .etf-v11-detail.modal-open .etf-v41-op-head,
+          .etf-v11-detail.modal-open .etf-v42-holding-head{
+            visibility:hidden !important;
+          }
+
+          .etf-v11-modal-mask{
+            padding:18px !important;
+          }
+
+          .etf-v11-modal{
+            width:calc(100vw - 36px) !important;
+            max-height:calc(100vh - 110px) !important;
+            padding:24px 24px 20px !important;
+            border-radius:16px !important;
+          }
+
+          .etf-v11-modal h2{
+            font-size:24px !important;
+          }
+
+          .etf-v11-modal p{
+            font-size:19px !important;
+            line-height:1.75 !important;
           }
         }
 
