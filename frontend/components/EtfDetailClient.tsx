@@ -710,6 +710,21 @@ export default function EtfDetailClient({ data }: { data: any }) {
       )}
 
       <style>{`
+
+        /* V40：ETF 詳情頁直接隱藏全站 Header，不再只依賴 AppShell path 判斷 */
+        header.top,
+        .top{
+          display:none !important;
+          height:0 !important;
+          min-height:0 !important;
+          overflow:hidden !important;
+        }
+
+        .detail-shell,
+        .shell.detail-shell{
+          padding-top:0 !important;
+        }
+
         .etf-v36-sticky-detail-nav{
           background:#fff;
           border-bottom:1px solid #e5e8ee;
@@ -1260,6 +1275,136 @@ export default function EtfDetailClient({ data }: { data: any }) {
           .etf-v11-op-table td:nth-child(5) b,
           .etf-v11-op-table td:nth-child(5) small{
             white-space:nowrap !important;
+          }
+
+
+          /* V40：iOS Safari table sticky 修正。不要讓每個 th 自己 sticky，改成整列 thead sticky */
+          .etf-v11-tab-content.operation .etf-v11-table-wrap{
+            overflow-x:hidden !important;
+            overflow-y:visible !important;
+            width:100% !important;
+            max-width:100% !important;
+          }
+
+          .etf-v11-op-table,
+          .etf-v11-op-table thead,
+          .etf-v11-op-table tbody{
+            display:block !important;
+            width:100% !important;
+            min-width:0 !important;
+            table-layout:auto !important;
+            border-collapse:separate !important;
+          }
+
+          .etf-v11-op-table thead{
+            position:sticky !important;
+            top:100px !important;
+            z-index:140 !important;
+            background:#f0f1f3 !important;
+            box-shadow:0 1px 0 #dfe3e8, 0 3px 10px rgba(15,23,42,.08) !important;
+          }
+
+          .etf-v11-op-table tr{
+            display:grid !important;
+            grid-template-columns:22% 16% 22% 18% 22% !important;
+            align-items:center !important;
+            width:100% !important;
+            min-width:0 !important;
+          }
+
+          .etf-v11-op-table thead tr{
+            min-height:44px !important;
+            background:#f0f1f3 !important;
+          }
+
+          .etf-v11-op-table tbody tr{
+            min-height:70px !important;
+            border-bottom:1px solid #e2e5ea !important;
+            background:#fff !important;
+          }
+
+          .etf-v11-op-table th,
+          .etf-v11-op-table td,
+          .etf-v11-op-table thead th,
+          .etf-v11-op-table thead th:first-child{
+            position:static !important;
+            top:auto !important;
+            left:auto !important;
+            right:auto !important;
+            z-index:auto !important;
+            display:block !important;
+            width:auto !important;
+            min-width:0 !important;
+            max-width:none !important;
+            height:auto !important;
+            box-shadow:none !important;
+            background:transparent !important;
+            overflow:hidden !important;
+          }
+
+          .etf-v11-op-table th{
+            padding:9px 4px !important;
+            font-size:13px !important;
+            line-height:1.05 !important;
+            color:#20252c !important;
+            font-weight:900 !important;
+            text-align:center !important;
+            white-space:normal !important;
+          }
+
+          .etf-v11-op-table th:first-child{
+            text-align:left !important;
+            padding-left:8px !important;
+          }
+
+          .etf-v11-op-table td{
+            padding:9px 4px !important;
+            font-size:15px !important;
+            line-height:1.15 !important;
+            text-align:center !important;
+            white-space:nowrap !important;
+          }
+
+          .etf-v11-op-table td:first-child{
+            text-align:left !important;
+            padding-left:8px !important;
+            background:#fff !important;
+          }
+
+          .etf-v11-op-table td:nth-child(3),
+          .etf-v11-op-table td:nth-child(4),
+          .etf-v11-op-table td:nth-child(5){
+            text-align:right !important;
+          }
+
+          .etf-v11-op-table td:first-child b{
+            font-size:17px !important;
+            max-width:100% !important;
+          }
+
+          .etf-v11-op-table td:first-child small{
+            font-size:13px !important;
+          }
+
+          .etf-v11-op-table td:nth-child(3){
+            font-size:16px !important;
+          }
+
+          .etf-v11-op-table td:nth-child(4){
+            font-size:15px !important;
+          }
+
+          .etf-v11-op-table td:nth-child(5) b{
+            font-size:17px !important;
+          }
+
+          .etf-v11-op-table td:nth-child(5) small{
+            font-size:13px !important;
+          }
+
+          .etf-v11-d-sort{
+            font-size:13px !important;
+            line-height:1.05 !important;
           }
         }
       `}</style>
