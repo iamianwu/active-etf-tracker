@@ -25,6 +25,14 @@ type SortDir = 'asc' | 'desc';
 
 const COLORS = ['#ffa83d', '#1aaed8', '#4f85d8', '#c878ed', '#cfcfcf'];
 
+const TAB_VALUES: Tab[] = ['overview', 'quote', 'operation', 'holdings', 'premium'];
+
+function initialTabFromUrl(): Tab {
+  if (typeof window === 'undefined') return 'overview';
+  const t = new URLSearchParams(window.location.search).get('tab');
+  return TAB_VALUES.includes(t as Tab) ? (t as Tab) : 'overview';
+}
+
 const ETF_NAV_CODES = [
   '00400A', '00401A', '00403A',
   '00980A', '00981A', '00982A', '00983A', '00984A', '00985A', '00986A',
@@ -188,7 +196,7 @@ function SortButton({ active, dir, onClick, children }: any) {
 }
 
 export default function EtfDetailClient({ data }: { data: any }) {
-  const [tab, setTab] = useState<Tab>('overview');
+  const [tab, setTab] = useState<Tab>(() => initialTabFromUrl());
   const [holdingSort, setHoldingSort] = useState<'weight' | 'value' | 'price' | 'stock'>('weight');
   const [holdingDir, setHoldingDir] = useState<SortDir>('desc');
   const [opFilter, setOpFilter] = useState<string | null>(null);
@@ -327,16 +335,30 @@ export default function EtfDetailClient({ data }: { data: any }) {
     }
   }
 
+  function goBackToPreviousPage() {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    if (typeof window !== 'undefined') window.location.href = '/etfs';
+  }
+
+  function etfDetailHref(code: any) {
+    return code ? `/etf/${code}?tab=${tab}` : '/etfs';
+  }
+
   return (
     <main className="etf-v11-detail">
       <div className="etf-v36-sticky-detail-nav">
         <header className="etf-v11-detail-header">
-          <Link href={prevCode ? `/etf/${prevCode}` : '/etfs'} className="etf-v11-back" aria-label="上一檔 ETF">‹</Link>
-          <div>
+          <button type="button" className="etf-v37-page-back" onClick={goBackToPreviousPage} aria-label="回上一頁">‹</button>
+          <Link href={etfDetailHref(prevCode)} className="etf-v37-etf-prev" aria-label="上一檔 ETF">◀</Link>
+          <div className="etf-v37-title">
             <h1>{data.code}</h1>
             <p>{data.name}</p>
           </div>
-          <Link href={nextCode ? `/etf/${nextCode}` : '/etfs'} className="etf-v11-next" aria-label="下一檔 ETF">›</Link>
+          <Link href={etfDetailHref(nextCode)} className="etf-v37-etf-next" aria-label="下一檔 ETF">▶</Link>
+          <span className="etf-v37-header-spacer" aria-hidden="true" />
         </header>
 
         <nav className="etf-v11-tabs">
@@ -674,14 +696,20 @@ export default function EtfDetailClient({ data }: { data: any }) {
           z-index:60;
         }
 
-        .etf-v11-back,
-        .etf-v11-next{
+        .etf-v37-page-back,
+        .etf-v37-etf-prev,
+        .etf-v37-etf-next{
+          border:0;
+          background:transparent;
           text-decoration:none;
           color:#18212d;
+          cursor:pointer;
+          font-family:inherit;
         }
 
-        .etf-v11-back:hover,
-        .etf-v11-next:hover{
+        .etf-v37-page-back:hover,
+        .etf-v37-etf-prev:hover,
+        .etf-v37-etf-next:hover{
           color:#4e8ff0;
         }
 
@@ -752,56 +780,82 @@ export default function EtfDetailClient({ data }: { data: any }) {
           }
 
           .etf-v11-detail-header{
-            height:64px !important;
-            min-height:64px !important;
-            padding:8px 22px 7px !important;
+            height:56px !important;
+            min-height:56px !important;
+            padding:5px 4px 5px !important;
             display:grid !important;
-            grid-template-columns:44px 1fr 44px !important;
+            grid-template-columns:42px 34px minmax(0, 1fr) 34px 42px !important;
             align-items:center !important;
             border-bottom:1px solid #edf0f4 !important;
             background:#fff !important;
           }
 
+          .etf-v37-title{
+            min-width:0 !important;
+            text-align:center !important;
+          }
+
           .etf-v11-detail-header h1{
-            font-size:27px !important;
+            font-size:23px !important;
             line-height:1 !important;
             margin:0 !important;
-            letter-spacing:.5px !important;
+            letter-spacing:.2px !important;
+            font-weight:900 !important;
           }
 
           .etf-v11-detail-header p{
-            font-size:17px !important;
+            font-size:15px !important;
             line-height:1.15 !important;
-            margin:4px 0 0 !important;
+            margin:3px 0 0 !important;
             color:#687180 !important;
             font-weight:800 !important;
+            white-space:nowrap !important;
+            overflow:hidden !important;
+            text-overflow:ellipsis !important;
           }
 
-          .etf-v11-back,
-          .etf-v11-next{
-            width:44px !important;
-            height:44px !important;
+          .etf-v37-page-back,
+          .etf-v37-etf-prev,
+          .etf-v37-etf-next{
+            width:100% !important;
+            height:46px !important;
             display:flex !important;
             align-items:center !important;
             justify-content:center !important;
-            font-size:42px !important;
-            line-height:1 !important;
-            font-weight:900 !important;
-            color:#111827 !important;
+            border:0 !important;
+            background:transparent !important;
             text-decoration:none !important;
             -webkit-tap-highlight-color:transparent !important;
           }
 
-          .etf-v11-next{
+          .etf-v37-page-back{
+            font-size:40px !important;
+            line-height:1 !important;
+            font-weight:900 !important;
+            color:#121924 !important;
+            padding:0 !important;
+          }
+
+          .etf-v37-etf-prev,
+          .etf-v37-etf-next{
+            font-size:20px !important;
+            line-height:1 !important;
+            font-weight:900 !important;
             color:#8a94a3 !important;
           }
 
+          .etf-v37-header-spacer{
+            display:block !important;
+            width:42px !important;
+            height:1px !important;
+          }
+
           .etf-v11-tabs{
-            height:52px !important;
+            height:48px !important;
             display:flex !important;
             align-items:flex-end !important;
             gap:0 !important;
-            padding:0 10px !important;
+            padding:0 0 !important;
             overflow-x:auto !important;
             overflow-y:hidden !important;
             white-space:nowrap !important;
@@ -816,13 +870,13 @@ export default function EtfDetailClient({ data }: { data: any }) {
 
           .etf-v11-tabs button{
             flex:0 0 auto !important;
-            min-width:74px !important;
-            height:52px !important;
-            padding:0 8px 8px !important;
+            min-width:66px !important;
+            height:48px !important;
+            padding:0 7px 7px !important;
             border:0 !important;
             background:transparent !important;
             color:#565f6b !important;
-            font-size:22px !important;
+            font-size:19px !important;
             line-height:1 !important;
             font-weight:900 !important;
             position:relative !important;
@@ -835,11 +889,11 @@ export default function EtfDetailClient({ data }: { data: any }) {
           .etf-v11-tabs button.active::after{
             content:'' !important;
             position:absolute !important;
-            left:10px !important;
-            right:10px !important;
+            left:8px !important;
+            right:8px !important;
             bottom:0 !important;
-            height:4px !important;
-            border-radius:4px 4px 0 0 !important;
+            height:3px !important;
+            border-radius:3px 3px 0 0 !important;
             background:#4e8ff0 !important;
           }
 
@@ -1056,7 +1110,7 @@ export default function EtfDetailClient({ data }: { data: any }) {
 
           .etf-v11-op-table thead th{
             position:sticky !important;
-            top:116px !important;
+            top:104px !important;
             z-index:3 !important;
             background:#f0f1f3 !important;
             color:#20252c !important;
