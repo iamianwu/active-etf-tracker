@@ -97,6 +97,13 @@ function statusClass(status: string) {
   return '';
 }
 
+const OP_STATUS_ORDER = ['新增', '刪除', '加碼', '減碼'];
+
+function statusRank(status: string) {
+  const idx = OP_STATUS_ORDER.indexOf(status);
+  return idx >= 0 ? idx : 99;
+}
+
 function changeSummaryTitle(data: any) {
   const d = mmdd(data.latest_date);
   return `${d} 持股異動：新增 ${data.change_summary?.added || 0} 檔｜刪除 ${data.change_summary?.removed || 0} 檔`;
@@ -232,6 +239,11 @@ export default function EtfDetailClient({ data }: { data: any }) {
     if (opFilter) rows = rows.filter((r) => r.status === opFilter);
 
     rows.sort((a, b) => {
+      if (!opFilter) {
+        const sr = statusRank(a.status) - statusRank(b.status);
+        if (sr !== 0) return sr;
+      }
+
       let av: any;
       let bv: any;
 
