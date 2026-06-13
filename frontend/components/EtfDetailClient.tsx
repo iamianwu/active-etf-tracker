@@ -73,6 +73,21 @@ function changeSummaryTitle(data: any) {
   return `${d} 持股異動：新增 ${data.change_summary?.added || 0} 檔｜刪除 ${data.change_summary?.removed || 0} 檔`;
 }
 
+function previewNames(rows: any[], limit = 3) {
+  const names = (rows || [])
+    .slice(0, limit)
+    .map((r) => String(r.stock_name || r.stock_code || '').trim())
+    .filter(Boolean);
+
+  if (!names.length) return '-';
+  if ((rows || []).length > limit) return `${names.join('、')} 等 ${(rows || []).length} 檔`;
+  return names.join('、');
+}
+
+function sortChangePreviewRows(rows: any[]) {
+  return [...(rows || [])].sort((a, b) => Math.abs(num(b.delta_shares) || 0) - Math.abs(num(a.delta_shares) || 0));
+}
+
 function computeReturn(rows: any[], days: number) {
   const arr = (rows || []).filter((x) => num(x.close ?? x.price) !== null);
   if (arr.length < 2) return null;
@@ -215,6 +230,21 @@ export default function EtfDetailClient({ data }: { data: any }) {
     return rows;
   }, [data.changes, opFilter, opSort, opDir]);
 
+  const addedPreviewRows = useMemo(
+    () => sortChangePreviewRows((data.changes || []).filter((r: any) => r.status === '新增')),
+    [data.changes]
+  );
+
+  const removedPreviewRows = useMemo(
+    () => sortChangePreviewRows((data.changes || []).filter((r: any) => r.status === '刪除')),
+    [data.changes]
+  );
+
+  function jumpToOperation(status: string) {
+    setTab('operation');
+    setOpFilter(status);
+  }
+
   function toggleHoldingSort(key: any) {
     if (holdingSort === key) setHoldingDir(holdingDir === 'asc' ? 'desc' : 'asc');
     else {
@@ -272,6 +302,32 @@ export default function EtfDetailClient({ data }: { data: any }) {
             <span>{changeSummaryTitle(data)}</span>
             <button type="button" onClick={() => setTab('operation')}>更多 ›</button>
           </div>
+
+          {(addedPreviewRows.length > 0 || removedPreviewRows.length > 0) && (
+            <div className="etf-v32-change-preview">
+              {addedPreviewRows.length > 0 && (
+                <button
+                  type="button"
+                  className="etf-v32-preview-card added"
+                  onClick={() => jumpToOperation('新增')}
+                >
+                  <span>新增標的：</span>
+                  <b>{previewNames(addedPreviewRows)}</b>
+                </button>
+              )}
+
+              {removedPreviewRows.length > 0 && (
+                <button
+                  type="button"
+                  className="etf-v32-preview-card removed"
+                  onClick={() => jumpToOperation('刪除')}
+                >
+                  <span>刪除標的：</span>
+                  <b>{previewNames(removedPreviewRows)}</b>
+                </button>
+              )}
+            </div>
+          )}
 
           <section className="etf-v11-card">
             <h3>股價走勢</h3>
@@ -531,6 +587,66 @@ export default function EtfDetailClient({ data }: { data: any }) {
           </div>
         </div>
       )}
+
+      <style>{`
+        .etf-v32-change-preview{
+          display:grid;
+          grid-template-columns:1fr 1fr;
+          gap:14px;
+          margin:-4px 0 18px;
+        }
+
+        .etf-v32-preview-card{
+          border:0;
+          border-radius:16px;
+          padding:16px 18px;
+          text-align:left;
+          font-size:18px;
+          font-weight:900;
+          cursor:pointer;
+          display:flex;
+          align-items:center;
+          gap:6px;
+          min-height:64px;
+        }
+
+        .etf-v32-preview-card.added{
+          background:#fff9df;
+          color:#a38a00;
+        }
+
+        .etf-v32-preview-card.removed{
+          background:#f4f5f6;
+          color:#5d6570;
+        }
+
+        .etf-v32-preview-card span{
+          flex:0 0 auto;
+        }
+
+        .etf-v32-preview-card b{
+          color:#5d6570;
+          font-weight:900;
+          overflow:hidden;
+          text-overflow:ellipsis;
+          white-space:nowrap;
+        }
+
+        @media(max-width:760px){
+          .etf-v32-change-preview{
+            grid-template-columns:1fr;
+            gap:10px;
+            margin:-2px 0 16px;
+          }
+
+          .etf-v32-preview-card{
+            min-height:64px;
+            padding:14px 18px;
+            font-size:22px;
+            border-radius:14px;
+          }
+        }
+      `}</style>
     </main>
   );
 }
