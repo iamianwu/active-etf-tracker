@@ -591,51 +591,71 @@ export default function EtfDetailClient({ data }: { data: any }) {
       )}
 
       {tab === 'holdings' && (
-        <section className="etf-v11-tab-content">
-          <div className="etf-v11-distribution-card">
-            <div className="etf-v11-pie">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={topHoldingRows} dataKey="value" nameKey="name" innerRadius={70} outerRadius={115} paddingAngle={0}>
-                    {topHoldingRows.map((entry, index) => <Cell key={entry.name} fill={entry.color} />)}
-                  </Pie>
-                  <Tooltip formatter={(v: any) => [`${fmt(v, 2)}%`, '權重']} />
-                </PieChart>
-              </ResponsiveContainer>
+        <section className="etf-v11-tab-content holdings compact-holdings">
+          <div className="etf-v42-distribution-card">
+            <div className="etf-v42-distribution-top">
+              <div className="etf-v42-seg-tabs" aria-label="成分股模式">
+                <button type="button" className="active">成分股</button>
+                <button type="button" disabled>產業分布</button>
+              </div>
+              <div className="etf-v42-update">更新時間<br />{String(data.latest_date || q.updated_at || '-').replaceAll('-', '/')}</div>
             </div>
-            <div className="etf-v11-legend">
-              <div className="etf-v11-update">更新時間<br />{data.latest_date || q.updated_at || '-'}</div>
-              {topHoldingRows.map((r, i) => (
-                <div key={r.name}>
-                  <span style={{ background: COLORS[i] }} />
-                  <b>{r.name}</b>
-                  <strong>{fmt(r.value, 2)}%</strong>
-                </div>
-              ))}
+
+            <div className="etf-v42-distribution-main">
+              <div className="etf-v42-pie">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={topHoldingRows} dataKey="value" nameKey="name" innerRadius="58%" outerRadius="86%" paddingAngle={0}>
+                      {topHoldingRows.map((entry, index) => <Cell key={entry.name} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip formatter={(v: any) => [`${fmt(v, 2)}%`, '權重']} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="etf-v42-legend">
+                {topHoldingRows.map((r, i) => (
+                  <div key={r.name}>
+                    <span style={{ background: COLORS[i] }} />
+                    <b>{r.name}</b>
+                    <strong>{fmt(r.value, 2)}%</strong>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="etf-v11-table-wrap">
-            <table className="etf-v11-holding-table">
-              <thead>
-                <tr>
-                  <th><SortButton active={holdingSort === 'stock'} dir={holdingDir} onClick={() => toggleHoldingSort('stock')}>標的</SortButton></th>
-                  <th><SortButton active={holdingSort === 'value'} dir={holdingDir} onClick={() => toggleHoldingSort('value')}>持股市值<br />持股張數</SortButton></th>
-                  <th><SortButton active={holdingSort === 'weight'} dir={holdingDir} onClick={() => toggleHoldingSort('weight')}>權重</SortButton></th>
-                  <th><SortButton active={holdingSort === 'price'} dir={holdingDir} onClick={() => toggleHoldingSort('price')}>股價<br />漲跌幅</SortButton></th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedHoldings.map((r: any) => (
-                  <tr key={r.stock_code}>
-                    <td><Link href={`/stock/${r.stock_code}`}><b>{r.stock_name}</b><small>{r.stock_code}</small></Link></td>
-                    <td><b>{r.market_value_billion == null ? '-' : `${fmt(r.market_value_billion, 0)} 億`}</b><small>{fmt0(lots(r.shares))} 張</small></td>
-                    <td><b>{weightPctMin(r.weight, 2)}</b></td>
-                    <td><b>{r.price == null ? '-' : fmt(r.price, r.price >= 1000 ? 0 : 1)}</b><small className={signedClass(r.change_pct)}>{signedPct(r.change_pct)}</small></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="etf-v42-holding-grid" role="table" aria-label="ETF 成分股明細">
+            <div className="etf-v42-holding-head" role="row">
+              <div role="columnheader"><SortButton active={holdingSort === 'stock'} dir={holdingDir} onClick={() => toggleHoldingSort('stock')}>標的</SortButton></div>
+              <div role="columnheader"><SortButton active={holdingSort === 'value'} dir={holdingDir} onClick={() => toggleHoldingSort('value')}>持股市值<br />持股張數</SortButton></div>
+              <div role="columnheader"><SortButton active={holdingSort === 'weight'} dir={holdingDir} onClick={() => toggleHoldingSort('weight')}>權重</SortButton></div>
+              <div role="columnheader"><SortButton active={holdingSort === 'price'} dir={holdingDir} onClick={() => toggleHoldingSort('price')}>股價<br />漲跌幅</SortButton></div>
+            </div>
+
+            <div className="etf-v42-holding-body" role="rowgroup">
+              {sortedHoldings.map((r: any) => (
+                <div className="etf-v42-holding-row" role="row" key={r.stock_code}>
+                  <div className="etf-v42-holding-target" role="cell">
+                    <Link href={`/stock/${r.stock_code}`}>
+                      <b>{r.stock_name}</b>
+                      <small>{r.stock_code}</small>
+                    </Link>
+                  </div>
+                  <div className="etf-v42-holding-value" role="cell">
+                    <b>{r.market_value_billion == null ? '-' : `${fmt(r.market_value_billion, 0)} 億`}</b>
+                    <small>{fmt0(lots(r.shares))} 張</small>
+                  </div>
+                  <div className="etf-v42-holding-weight" role="cell">
+                    <b>{weightPctMin(r.weight, 2)}</b>
+                  </div>
+                  <div className="etf-v42-holding-price" role="cell">
+                    <b>{r.price == null ? '-' : fmt(r.price, r.price >= 1000 ? 0 : 1)}</b>
+                    <small className={signedClass(r.change_pct)}>{signedPct(r.change_pct)}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}
@@ -1576,6 +1596,399 @@ export default function EtfDetailClient({ data }: { data: any }) {
             justify-content:flex-start !important;
           }
         }
+
+        /* V42：成分股頁手機壓縮版。圖表與表格都改成一屏可讀，不再靠橫向寬表格。 */
+        .etf-v11-tab-content.holdings.compact-holdings{
+          padding:18px 18px 32px;
+          overflow-x:hidden;
+        }
+
+        .etf-v42-distribution-card{
+          border:1px solid #e2e6eb;
+          border-radius:18px;
+          background:#fff;
+          padding:16px 18px;
+          margin:0 0 18px;
+          box-shadow:0 1px 3px rgba(15,23,42,.03);
+        }
+
+        .etf-v42-distribution-top{
+          display:grid;
+          grid-template-columns:1fr auto;
+          align-items:center;
+          gap:12px;
+          margin-bottom:8px;
+        }
+
+        .etf-v42-seg-tabs{
+          display:inline-flex;
+          align-items:center;
+          width:max-content;
+          background:#e9edf2;
+          border-radius:999px;
+          padding:3px;
+          gap:2px;
+        }
+
+        .etf-v42-seg-tabs button{
+          border:0;
+          border-radius:999px;
+          background:transparent;
+          color:#fff;
+          font-weight:900;
+          font-size:16px;
+          line-height:1;
+          padding:9px 16px;
+          font-family:inherit;
+        }
+
+        .etf-v42-seg-tabs button.active{
+          background:#fff;
+          color:#20252c;
+          box-shadow:0 1px 5px rgba(15,23,42,.16);
+        }
+
+        .etf-v42-seg-tabs button:disabled{
+          opacity:1;
+        }
+
+        .etf-v42-update{
+          color:#7f8895;
+          font-size:15px;
+          line-height:1.15;
+          font-weight:800;
+          text-align:right;
+          white-space:nowrap;
+        }
+
+        .etf-v42-distribution-main{
+          display:grid;
+          grid-template-columns:minmax(170px, 38%) 1fr;
+          align-items:center;
+          gap:18px;
+        }
+
+        .etf-v42-pie{
+          width:220px;
+          max-width:100%;
+          height:220px;
+          justify-self:center;
+        }
+
+        .etf-v42-legend{
+          min-width:0;
+        }
+
+        .etf-v42-legend > div{
+          display:grid;
+          grid-template-columns:14px minmax(0, 1fr) 76px;
+          align-items:center;
+          gap:12px;
+          min-height:38px;
+          border-bottom:1px solid #e7eaee;
+        }
+
+        .etf-v42-legend span{
+          display:block;
+          width:12px;
+          height:12px;
+        }
+
+        .etf-v42-legend b{
+          min-width:0;
+          overflow:hidden;
+          white-space:nowrap;
+          text-overflow:ellipsis;
+          color:#20252c;
+          font-weight:900;
+          font-size:18px;
+        }
+
+        .etf-v42-legend strong{
+          color:#20252c;
+          font-weight:900;
+          font-size:18px;
+          text-align:right;
+          white-space:nowrap;
+        }
+
+        .etf-v42-holding-grid{
+          width:100%;
+          max-width:100%;
+          overflow:hidden;
+          background:#fff;
+          border-top:1px solid #e5e8ee;
+          border-bottom:1px solid #e5e8ee;
+        }
+
+        .etf-v42-holding-head,
+        .etf-v42-holding-row{
+          display:grid;
+          grid-template-columns:24% 30% 18% 28%;
+          align-items:center;
+          width:100%;
+          max-width:100%;
+          min-width:0;
+        }
+
+        .etf-v42-holding-head{
+          min-height:54px;
+          background:#f0f1f3;
+          border-bottom:1px solid #dfe3e8;
+        }
+
+        .etf-v42-holding-head > div{
+          min-width:0;
+          padding:10px 8px;
+          color:#20252c;
+          font-size:15px;
+          line-height:1.1;
+          font-weight:900;
+          text-align:center;
+          overflow:hidden;
+        }
+
+        .etf-v42-holding-head > div:first-child{
+          text-align:left;
+          padding-left:14px;
+        }
+
+        .etf-v42-holding-row{
+          min-height:72px;
+          border-bottom:1px solid #e5e8ee;
+        }
+
+        .etf-v42-holding-row > div{
+          min-width:0;
+          padding:10px 8px;
+          overflow:hidden;
+        }
+
+        .etf-v42-holding-target{
+          padding-left:14px !important;
+        }
+
+        .etf-v42-holding-target a{
+          display:block;
+          color:inherit;
+          text-decoration:none;
+          min-width:0;
+        }
+
+        .etf-v42-holding-target b{
+          display:block;
+          color:#20252c;
+          font-size:19px;
+          line-height:1.12;
+          font-weight:900;
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        }
+
+        .etf-v42-holding-target small,
+        .etf-v42-holding-value small,
+        .etf-v42-holding-price small{
+          display:block;
+          color:#7f8895;
+          font-size:15px;
+          line-height:1.08;
+          font-weight:800;
+          margin-top:6px;
+        }
+
+        .etf-v42-holding-value,
+        .etf-v42-holding-weight,
+        .etf-v42-holding-price{
+          text-align:right;
+          white-space:nowrap;
+        }
+
+        .etf-v42-holding-value b,
+        .etf-v42-holding-weight b,
+        .etf-v42-holding-price b{
+          color:#20252c;
+          font-size:19px;
+          line-height:1.08;
+          font-weight:900;
+          white-space:nowrap;
+        }
+
+        .etf-v42-holding-price small.red,
+        .etf-v42-holding-price small.pos{
+          color:#df555b;
+        }
+
+        .etf-v42-holding-price small.green,
+        .etf-v42-holding-price small.neg{
+          color:#2fa982;
+        }
+
+        .etf-v42-holding-head .etf-v11-d-sort{
+          width:100%;
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          gap:3px;
+          padding:0;
+          border:0;
+          background:transparent;
+          color:inherit;
+          font-size:15px;
+          line-height:1.08;
+          font-weight:900;
+          white-space:normal;
+        }
+
+        .etf-v42-holding-head > div:first-child .etf-v11-d-sort{
+          justify-content:flex-start;
+        }
+
+        @media(max-width:760px){
+          .etf-v11-tab-content.holdings.compact-holdings{
+            padding:8px 0 24px !important;
+            background:#fff !important;
+            overflow-x:hidden !important;
+          }
+
+          .etf-v42-distribution-card{
+            margin:0 8px 10px !important;
+            padding:10px 10px 12px !important;
+            border-radius:14px !important;
+            box-shadow:none !important;
+          }
+
+          .etf-v42-distribution-top{
+            grid-template-columns:1fr auto !important;
+            gap:8px !important;
+            margin-bottom:8px !important;
+          }
+
+          .etf-v42-seg-tabs{
+            padding:2px !important;
+          }
+
+          .etf-v42-seg-tabs button{
+            padding:7px 13px !important;
+            font-size:16px !important;
+          }
+
+          .etf-v42-update{
+            font-size:14px !important;
+            line-height:1.12 !important;
+          }
+
+          .etf-v42-distribution-main{
+            grid-template-columns:42% 58% !important;
+            gap:4px !important;
+          }
+
+          .etf-v42-pie{
+            width:148px !important;
+            height:148px !important;
+            justify-self:center !important;
+          }
+
+          .etf-v42-legend > div{
+            grid-template-columns:10px minmax(0, 1fr) 56px !important;
+            gap:7px !important;
+            min-height:30px !important;
+          }
+
+          .etf-v42-legend span{
+            width:9px !important;
+            height:9px !important;
+          }
+
+          .etf-v42-legend b{
+            font-size:16px !important;
+            line-height:1.05 !important;
+          }
+
+          .etf-v42-legend strong{
+            font-size:16px !important;
+            line-height:1.05 !important;
+          }
+
+          .etf-v42-holding-grid{
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            overflow:hidden !important;
+            border-radius:0 !important;
+          }
+
+          .etf-v42-holding-head,
+          .etf-v42-holding-row{
+            grid-template-columns:24% 29% 18% 29% !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+          }
+
+          .etf-v42-holding-head{
+            position:sticky !important;
+            top:104px !important;
+            z-index:135 !important;
+            min-height:42px !important;
+            box-shadow:0 2px 8px rgba(15,23,42,.08) !important;
+          }
+
+          .etf-v42-holding-head > div{
+            padding:7px 3px !important;
+            font-size:13px !important;
+            line-height:1.03 !important;
+          }
+
+          .etf-v42-holding-head > div:first-child{
+            padding-left:8px !important;
+          }
+
+          .etf-v42-holding-row{
+            min-height:58px !important;
+          }
+
+          .etf-v42-holding-row > div{
+            padding:7px 3px !important;
+          }
+
+          .etf-v42-holding-target{
+            padding-left:8px !important;
+          }
+
+          .etf-v42-holding-target b{
+            font-size:17px !important;
+            line-height:1.08 !important;
+          }
+
+          .etf-v42-holding-target small,
+          .etf-v42-holding-value small,
+          .etf-v42-holding-price small{
+            font-size:13px !important;
+            line-height:1 !important;
+            margin-top:4px !important;
+          }
+
+          .etf-v42-holding-value b,
+          .etf-v42-holding-weight b,
+          .etf-v42-holding-price b{
+            font-size:17px !important;
+            line-height:1.05 !important;
+          }
+
+          .etf-v42-holding-head .etf-v11-d-sort{
+            font-size:13px !important;
+            line-height:1.03 !important;
+            gap:1px !important;
+          }
+
+          .etf-v42-holding-value,
+          .etf-v42-holding-weight,
+          .etf-v42-holding-price{
+            text-align:right !important;
+          }
+        }
+
       `}</style>
     </main>
   );
