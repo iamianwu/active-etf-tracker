@@ -551,37 +551,41 @@ export default function EtfDetailClient({ data }: { data: any }) {
             <button onClick={() => setShowChangeInfo(true)}>變動說明 ⓘ</button>
           </div>
 
-          <div className="etf-v11-table-wrap">
-            <table className="etf-v11-op-table">
-              <thead>
-                <tr>
-                  <th><SortButton active={opSort === 'stock'} dir={opDir} onClick={() => toggleOpSort('stock')}>標的</SortButton></th>
-                  <th>狀態</th>
-                  <th><SortButton active={opSort === 'delta_shares'} dir={opDir} onClick={() => toggleOpSort('delta_shares')}>持股變動</SortButton></th>
-                  <th><SortButton active={opSort === 'delta_weight'} dir={opDir} onClick={() => toggleOpSort('delta_weight')}>變動幅度</SortButton></th>
-                  <th><SortButton active={opSort === 'weight'} dir={opDir} onClick={() => toggleOpSort('weight')}>目前權重</SortButton></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredChanges.map((r: any) => {
-                  const prevShares = (num(r.shares) || 0) - (num(r.delta_shares) || 0);
-                  const mag = prevShares ? ((num(r.delta_shares) || 0) / prevShares) * 100 : null;
+          <div className="etf-v41-op-grid" role="table" aria-label="操作日報異動明細">
+            <div className="etf-v41-op-head" role="row">
+              <div role="columnheader"><SortButton active={opSort === 'stock'} dir={opDir} onClick={() => toggleOpSort('stock')}>標的</SortButton></div>
+              <div role="columnheader">狀態</div>
+              <div role="columnheader"><SortButton active={opSort === 'delta_shares'} dir={opDir} onClick={() => toggleOpSort('delta_shares')}>持股變動</SortButton></div>
+              <div role="columnheader"><SortButton active={opSort === 'delta_weight'} dir={opDir} onClick={() => toggleOpSort('delta_weight')}>變動幅度</SortButton></div>
+              <div role="columnheader"><SortButton active={opSort === 'weight'} dir={opDir} onClick={() => toggleOpSort('weight')}>目前權重</SortButton></div>
+            </div>
 
-                  return (
-                    <tr key={`${r.stock_code}-${r.status}`}>
-                      <td><Link href={`/stock/${r.stock_code}`}><b>{r.stock_name}</b><small>{r.stock_code}</small></Link></td>
-                      <td><span className={`badge ${statusClass(r.status)}`}>{r.status}</span></td>
-                      <td className={signedClass(r.delta_shares)}>{r.delta_shares > 0 ? '+' : ''}{fmt0((num(r.delta_shares) || 0) / 1000)}<span className="etf-v33-unit"> 張</span></td>
-                      <td>{changeMagnitudeText(r, mag)}</td>
-                      <td>
-                        <b>{currentWeightMain(r)}</b>
-                        <small className={signedClass(r.delta_weight)}>{signedPctMin(r.delta_weight, 2)}</small>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="etf-v41-op-body" role="rowgroup">
+              {filteredChanges.map((r: any) => {
+                const prevShares = (num(r.shares) || 0) - (num(r.delta_shares) || 0);
+                const mag = prevShares ? ((num(r.delta_shares) || 0) / prevShares) * 100 : null;
+
+                return (
+                  <div className="etf-v41-op-row" role="row" key={`${r.stock_code}-${r.status}`}>
+                    <div className="etf-v41-op-target" role="cell">
+                      <Link href={`/stock/${r.stock_code}`}>
+                        <b>{r.stock_name}</b>
+                        <small>{r.stock_code}</small>
+                      </Link>
+                    </div>
+                    <div className="etf-v41-op-status" role="cell"><span className={`badge ${statusClass(r.status)}`}>{r.status}</span></div>
+                    <div className={`etf-v41-op-shares ${signedClass(r.delta_shares)}`} role="cell">
+                      {r.delta_shares > 0 ? '+' : ''}{fmt0((num(r.delta_shares) || 0) / 1000)}
+                    </div>
+                    <div className="etf-v41-op-mag" role="cell">{changeMagnitudeText(r, mag)}</div>
+                    <div className="etf-v41-op-weight" role="cell">
+                      <b>{currentWeightMain(r)}</b>
+                      <small className={signedClass(r.delta_weight)}>{signedPctMin(r.delta_weight, 2)}</small>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
       )}
@@ -1405,6 +1409,171 @@ export default function EtfDetailClient({ data }: { data: any }) {
           .etf-v11-d-sort{
             font-size:13px !important;
             line-height:1.05 !important;
+          }
+
+          /* V41：操作日報改成 div grid，不再用 table sticky，避免 iPhone Safari 表頭浮在列中間 */
+          .etf-v41-op-grid{
+            width:100% !important;
+            max-width:100% !important;
+            overflow:visible !important;
+            background:#fff !important;
+            border-top:1px solid #e4e7eb !important;
+            border-bottom:1px solid #e4e7eb !important;
+          }
+
+          .etf-v41-op-head,
+          .etf-v41-op-row{
+            display:grid !important;
+            grid-template-columns:22% 16% 22% 18% 22% !important;
+            align-items:center !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+          }
+
+          .etf-v41-op-head{
+            position:sticky !important;
+            top:104px !important;
+            z-index:140 !important;
+            min-height:42px !important;
+            background:#f0f1f3 !important;
+            border-bottom:1px solid #dfe3e8 !important;
+            box-shadow:0 2px 8px rgba(15,23,42,.08) !important;
+          }
+
+          .etf-v41-op-head > div{
+            min-width:0 !important;
+            padding:8px 3px !important;
+            color:#20252c !important;
+            font-size:13px !important;
+            line-height:1.1 !important;
+            font-weight:900 !important;
+            text-align:center !important;
+            overflow:hidden !important;
+            white-space:normal !important;
+          }
+
+          .etf-v41-op-head > div:first-child{
+            text-align:left !important;
+            padding-left:8px !important;
+          }
+
+          .etf-v41-op-body{
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+          }
+
+          .etf-v41-op-row{
+            min-height:64px !important;
+            background:#fff !important;
+            border-bottom:1px solid #e6e8ec !important;
+          }
+
+          .etf-v41-op-row > div{
+            min-width:0 !important;
+            padding:8px 3px !important;
+            overflow:hidden !important;
+          }
+
+          .etf-v41-op-target{
+            padding-left:8px !important;
+          }
+
+          .etf-v41-op-target a{
+            display:block !important;
+            color:inherit !important;
+            text-decoration:none !important;
+            min-width:0 !important;
+          }
+
+          .etf-v41-op-target b{
+            display:block !important;
+            font-size:17px !important;
+            line-height:1.08 !important;
+            font-weight:900 !important;
+            white-space:nowrap !important;
+            overflow:hidden !important;
+            text-overflow:ellipsis !important;
+          }
+
+          .etf-v41-op-target small{
+            display:block !important;
+            margin-top:5px !important;
+            color:#7e8793 !important;
+            font-size:13px !important;
+            line-height:1 !important;
+            font-weight:800 !important;
+          }
+
+          .etf-v41-op-status{
+            text-align:center !important;
+          }
+
+          .etf-v41-op-status .badge{
+            display:inline-flex !important;
+            align-items:center !important;
+            justify-content:center !important;
+            min-width:0 !important;
+            padding:6px 7px !important;
+            border-radius:12px !important;
+            font-size:13px !important;
+            line-height:1 !important;
+            font-weight:900 !important;
+            white-space:nowrap !important;
+          }
+
+          .etf-v41-op-shares,
+          .etf-v41-op-mag,
+          .etf-v41-op-weight{
+            text-align:right !important;
+            white-space:nowrap !important;
+          }
+
+          .etf-v41-op-shares{
+            font-size:16px !important;
+            font-weight:900 !important;
+          }
+
+          .etf-v41-op-mag{
+            font-size:15px !important;
+            font-weight:800 !important;
+            color:#20252c !important;
+          }
+
+          .etf-v41-op-weight b{
+            display:block !important;
+            font-size:17px !important;
+            line-height:1.08 !important;
+            font-weight:900 !important;
+            color:#20252c !important;
+          }
+
+          .etf-v41-op-weight small{
+            display:block !important;
+            margin-top:5px !important;
+            font-size:13px !important;
+            line-height:1 !important;
+            font-weight:800 !important;
+          }
+
+          .etf-v41-op-head .etf-v11-d-sort{
+            width:100% !important;
+            display:inline-flex !important;
+            justify-content:center !important;
+            align-items:center !important;
+            gap:2px !important;
+            padding:0 !important;
+            font-size:13px !important;
+            line-height:1.05 !important;
+            background:transparent !important;
+            border:0 !important;
+            color:inherit !important;
+            font-weight:900 !important;
+          }
+
+          .etf-v41-op-head > div:first-child .etf-v11-d-sort{
+            justify-content:flex-start !important;
           }
         }
       `}</style>
