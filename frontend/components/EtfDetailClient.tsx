@@ -3501,6 +3501,116 @@ export default function EtfDetailClient({ data }: { data: any }) {
           }
         }
 
+
+        /* =========================================================
+           V49: 表頭文字改成與資料值同方向對齊。
+           v48 已經讓表頭/資料吃同一個 grid，但數字欄位是右靠，表頭仍置中，
+           手機上看起來會像「沒有對齊」。這版讓數值欄表頭也右靠。
+        ========================================================= */
+        @media (max-width: 768px){
+          /* 成分股表：標的左靠、持股市值右靠、權重置中、股價右靠 */
+          .etf-v42-holding-head > div:nth-child(1){
+            justify-content:flex-start !important;
+            text-align:left !important;
+            padding-left:6px !important;
+          }
+
+          .etf-v42-holding-head > div:nth-child(2),
+          .etf-v42-holding-head > div:nth-child(4){
+            justify-content:flex-end !important;
+            text-align:right !important;
+            padding-left:0 !important;
+            padding-right:6px !important;
+          }
+
+          .etf-v42-holding-head > div:nth-child(3){
+            justify-content:center !important;
+            text-align:center !important;
+            padding-left:0 !important;
+            padding-right:0 !important;
+          }
+
+          .etf-v42-holding-head > div:nth-child(1) .etf-v11-d-sort{
+            justify-content:flex-start !important;
+            text-align:left !important;
+          }
+
+          .etf-v42-holding-head > div:nth-child(2) .etf-v11-d-sort,
+          .etf-v42-holding-head > div:nth-child(4) .etf-v11-d-sort{
+            justify-content:flex-end !important;
+            text-align:right !important;
+          }
+
+          .etf-v42-holding-head > div:nth-child(3) .etf-v11-d-sort{
+            justify-content:center !important;
+            text-align:center !important;
+          }
+
+          .etf-v42-holding-head > div:nth-child(2) .etf-v11-d-sort span,
+          .etf-v42-holding-head > div:nth-child(4) .etf-v11-d-sort span{
+            text-align:right !important;
+          }
+
+          .etf-v42-holding-value,
+          .etf-v42-holding-price{
+            align-items:flex-end !important;
+            text-align:right !important;
+            padding-right:6px !important;
+          }
+
+          .etf-v42-holding-weight{
+            align-items:center !important;
+            text-align:center !important;
+          }
+
+          /* 操作日報：標的左靠、狀態置中、後三個數字欄右靠 */
+          .etf-v41-op-head > div:nth-child(1){
+            justify-content:flex-start !important;
+            text-align:left !important;
+            padding-left:6px !important;
+          }
+
+          .etf-v41-op-head > div:nth-child(2){
+            justify-content:center !important;
+            text-align:center !important;
+          }
+
+          .etf-v41-op-head > div:nth-child(3),
+          .etf-v41-op-head > div:nth-child(4),
+          .etf-v41-op-head > div:nth-child(5){
+            justify-content:flex-end !important;
+            text-align:right !important;
+            padding-left:0 !important;
+            padding-right:5px !important;
+          }
+
+          .etf-v41-op-head > div:nth-child(1) .etf-v11-d-sort{
+            justify-content:flex-start !important;
+            text-align:left !important;
+          }
+
+          .etf-v41-op-head > div:nth-child(3) .etf-v11-d-sort,
+          .etf-v41-op-head > div:nth-child(4) .etf-v11-d-sort,
+          .etf-v41-op-head > div:nth-child(5) .etf-v11-d-sort{
+            justify-content:flex-end !important;
+            text-align:right !important;
+          }
+
+          .etf-v41-op-head > div:nth-child(3) .etf-v11-d-sort span,
+          .etf-v41-op-head > div:nth-child(4) .etf-v11-d-sort span,
+          .etf-v41-op-head > div:nth-child(5) .etf-v11-d-sort span{
+            text-align:right !important;
+          }
+
+          .etf-v41-op-shares,
+          .etf-v41-op-mag,
+          .etf-v41-op-weight{
+            align-items:flex-end !important;
+            text-align:right !important;
+            padding-right:5px !important;
+          }
+        }
+
       `}</style>
     </main>
   );
