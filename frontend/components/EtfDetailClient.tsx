@@ -2195,6 +2195,351 @@ export default function EtfDetailClient({ data }: { data: any }) {
           }
         }
 
+
+        /* V45：最後覆蓋手機版表格。修正 iPhone Safari 中 sticky header 與資料列欄位不同步、第一欄偏移、欄距過寬問題。 */
+        @media(max-width:760px){
+          .etf-v11-detail{
+            --etf-v45-nav-top:104px;
+            width:100% !important;
+            max-width:100vw !important;
+            overflow-x:hidden !important;
+          }
+
+          .etf-v11-tab-content.operation,
+          .etf-v11-tab-content.holdings.compact-holdings{
+            width:100% !important;
+            max-width:100vw !important;
+            overflow-x:hidden !important;
+          }
+
+          /* 取消任何舊版 left sticky / 寬表格殘留 */
+          .etf-v41-op-grid,
+          .etf-v42-holding-grid,
+          .etf-v41-op-head,
+          .etf-v42-holding-head,
+          .etf-v41-op-body,
+          .etf-v42-holding-body,
+          .etf-v41-op-row,
+          .etf-v42-holding-row,
+          .etf-v41-op-grid > *,
+          .etf-v42-holding-grid > *,
+          .etf-v41-op-row > *,
+          .etf-v42-holding-row > *,
+          .etf-v41-op-head > *,
+          .etf-v42-holding-head > *{
+            box-sizing:border-box !important;
+            min-width:0 !important;
+            max-width:100% !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+          }
+
+          .etf-v41-op-grid,
+          .etf-v42-holding-grid{
+            display:block !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            overflow:visible !important;
+            background:#fff !important;
+            border-radius:0 !important;
+            border-top:1px solid #e2e5ea !important;
+            border-bottom:1px solid #e2e5ea !important;
+          }
+
+          .etf-v41-op-body,
+          .etf-v42-holding-body{
+            display:block !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            overflow:visible !important;
+          }
+
+          /* 操作日報：全部 5 欄固定塞進單一手機頁寬 */
+          .etf-v41-op-head,
+          .etf-v41-op-row{
+            display:grid !important;
+            grid-template-columns:22% 17% 21% 18% 22% !important;
+            column-gap:0 !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            margin:0 !important;
+          }
+
+          /* 成分股：全部 4 欄固定塞進單一手機頁寬 */
+          .etf-v42-holding-head,
+          .etf-v42-holding-row{
+            display:grid !important;
+            grid-template-columns:24% 28% 18% 30% !important;
+            column-gap:0 !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            margin:0 !important;
+          }
+
+          .etf-v41-op-head,
+          .etf-v42-holding-head{
+            position:sticky !important;
+            top:var(--etf-v45-nav-top) !important;
+            z-index:300 !important;
+            min-height:42px !important;
+            background:#f0f1f3 !important;
+            border-top:1px solid #e2e5ea !important;
+            border-bottom:1px solid #d7dce3 !important;
+            box-shadow:0 2px 7px rgba(15,23,42,.08) !important;
+            overflow:hidden !important;
+          }
+
+          .etf-v41-op-row,
+          .etf-v42-holding-row{
+            position:relative !important;
+            z-index:1 !important;
+            min-height:60px !important;
+            background:#fff !important;
+            border-bottom:1px solid #e6e8ec !important;
+            align-items:center !important;
+            overflow:hidden !important;
+          }
+
+          .etf-v41-op-head > div,
+          .etf-v42-holding-head > div{
+            display:flex !important;
+            align-items:center !important;
+            justify-content:center !important;
+            width:100% !important;
+            min-width:0 !important;
+            padding:7px 2px !important;
+            overflow:hidden !important;
+            text-align:center !important;
+            color:#20252c !important;
+            font-size:13px !important;
+            line-height:1.04 !important;
+            font-weight:900 !important;
+            white-space:normal !important;
+          }
+
+          .etf-v41-op-head > div:first-child,
+          .etf-v42-holding-head > div:first-child{
+            justify-content:flex-start !important;
+            text-align:left !important;
+            padding-left:8px !important;
+            padding-right:2px !important;
+          }
+
+          .etf-v41-op-head .etf-v11-d-sort,
+          .etf-v42-holding-head .etf-v11-d-sort{
+            width:100% !important;
+            max-width:100% !important;
+            display:flex !important;
+            align-items:center !important;
+            justify-content:center !important;
+            gap:1px !important;
+            padding:0 !important;
+            margin:0 !important;
+            border:0 !important;
+            background:transparent !important;
+            color:inherit !important;
+            font-size:13px !important;
+            line-height:1.04 !important;
+            font-weight:900 !important;
+            white-space:normal !important;
+            overflow:hidden !important;
+            text-align:center !important;
+          }
+
+          .etf-v41-op-head > div:first-child .etf-v11-d-sort,
+          .etf-v42-holding-head > div:first-child .etf-v11-d-sort{
+            justify-content:flex-start !important;
+            text-align:left !important;
+          }
+
+          .etf-v11-d-sort .sort-arrows,
+          .sort-arrows{
+            flex:0 0 auto !important;
+            display:inline-flex !important;
+            flex-direction:column !important;
+            gap:0 !important;
+            margin-left:1px !important;
+            font-size:9px !important;
+            line-height:.72 !important;
+          }
+
+          .etf-v41-op-row > div,
+          .etf-v42-holding-row > div{
+            width:100% !important;
+            min-width:0 !important;
+            max-width:100% !important;
+            padding:7px 3px !important;
+            overflow:hidden !important;
+          }
+
+          .etf-v41-op-target,
+          .etf-v42-holding-target{
+            padding-left:8px !important;
+            padding-right:2px !important;
+            text-align:left !important;
+          }
+
+          .etf-v41-op-target a,
+          .etf-v42-holding-target a{
+            display:block !important;
+            width:100% !important;
+            min-width:0 !important;
+            overflow:hidden !important;
+            color:inherit !important;
+            text-decoration:none !important;
+          }
+
+          .etf-v41-op-target b,
+          .etf-v42-holding-target b{
+            display:block !important;
+            width:100% !important;
+            max-width:100% !important;
+            overflow:hidden !important;
+            text-overflow:ellipsis !important;
+            white-space:nowrap !important;
+            color:#20252c !important;
+            font-size:17px !important;
+            line-height:1.08 !important;
+            font-weight:900 !important;
+          }
+
+          .etf-v41-op-target small,
+          .etf-v42-holding-target small,
+          .etf-v42-holding-value small,
+          .etf-v42-holding-price small{
+            display:block !important;
+            margin-top:4px !important;
+            color:#7f8895 !important;
+            font-size:13px !important;
+            line-height:1 !important;
+            font-weight:800 !important;
+          }
+
+          .etf-v41-op-status,
+          .etf-v41-op-shares,
+          .etf-v41-op-mag,
+          .etf-v41-op-weight,
+          .etf-v42-holding-value,
+          .etf-v42-holding-weight,
+          .etf-v42-holding-price{
+            text-align:right !important;
+            white-space:nowrap !important;
+          }
+
+          .etf-v41-op-status{
+            text-align:center !important;
+          }
+
+          .etf-v41-op-status .badge{
+            display:inline-flex !important;
+            align-items:center !important;
+            justify-content:center !important;
+            padding:6px 7px !important;
+            border-radius:999px !important;
+            font-size:13px !important;
+            line-height:1 !important;
+            font-weight:900 !important;
+            white-space:nowrap !important;
+          }
+
+          .etf-v41-op-shares,
+          .etf-v42-holding-value b,
+          .etf-v42-holding-weight b,
+          .etf-v42-holding-price b{
+            font-size:17px !important;
+            line-height:1.05 !important;
+            font-weight:900 !important;
+          }
+
+          .etf-v41-op-mag{
+            font-size:15px !important;
+            line-height:1.05 !important;
+            font-weight:800 !important;
+            color:#20252c !important;
+          }
+
+          .etf-v41-op-weight b{
+            display:block !important;
+            font-size:17px !important;
+            line-height:1.05 !important;
+            font-weight:900 !important;
+            color:#20252c !important;
+          }
+
+          .etf-v41-op-weight small{
+            display:block !important;
+            margin-top:4px !important;
+            font-size:13px !important;
+            line-height:1 !important;
+            font-weight:800 !important;
+          }
+
+          .etf-v42-holding-value,
+          .etf-v42-holding-weight,
+          .etf-v42-holding-price{
+            padding-left:2px !important;
+            padding-right:8px !important;
+          }
+
+          .etf-v42-holding-value{
+            padding-right:4px !important;
+          }
+
+          .etf-v42-holding-weight{
+            text-align:center !important;
+            padding-right:2px !important;
+          }
+
+          .etf-v42-holding-head > div:nth-child(2),
+          .etf-v42-holding-head > div:nth-child(4){
+            justify-content:flex-end !important;
+            text-align:right !important;
+            padding-right:8px !important;
+          }
+
+          .etf-v42-holding-head > div:nth-child(3){
+            justify-content:center !important;
+            text-align:center !important;
+          }
+
+          .etf-v41-op-head > div:nth-child(3),
+          .etf-v41-op-head > div:nth-child(4),
+          .etf-v41-op-head > div:nth-child(5){
+            justify-content:flex-end !important;
+            text-align:right !important;
+            padding-right:6px !important;
+          }
+
+          .etf-v11-detail.modal-open .etf-v41-op-head,
+          .etf-v11-detail.modal-open .etf-v42-holding-head{
+            visibility:hidden !important;
+            pointer-events:none !important;
+          }
+
+          /* 更窄螢幕再微調字級，避免最後一欄被 Safari 工具列壓住 */
+          @media(max-width:390px){
+            .etf-v41-op-head,
+            .etf-v41-op-row{ grid-template-columns:22% 17% 21% 18% 22% !important; }
+            .etf-v42-holding-head,
+            .etf-v42-holding-row{ grid-template-columns:24% 28% 18% 30% !important; }
+            .etf-v41-op-target b,
+            .etf-v42-holding-target b,
+            .etf-v41-op-shares,
+            .etf-v42-holding-value b,
+            .etf-v42-holding-weight b,
+            .etf-v42-holding-price b,
+            .etf-v41-op-weight b{ font-size:16px !important; }
+            .etf-v41-op-head .etf-v11-d-sort,
+            .etf-v42-holding-head .etf-v11-d-sort,
+            .etf-v41-op-head > div,
+            .etf-v42-holding-head > div{ font-size:12px !important; }
+          }
+        }
+
       `}</style>
     </main>
   );
