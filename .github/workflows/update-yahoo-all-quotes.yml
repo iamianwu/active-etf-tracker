@@ -2,89 +2,11 @@ name: Update Yahoo All Quotes
 
 on:
   workflow_dispatch:
-    inputs:
-      batch_codes:
-        description: "每批幾檔股票。建議 120。"
-        required: false
-        default: "120"
 
 jobs:
-  batch-1:
+  disabled:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install dependencies
+      - name: Disabled
         run: |
-          cd backend
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-      - name: Update Yahoo quotes batch 1
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          YAHOO_PRIORITY_MAX_CODES: ${{ github.event.inputs.batch_codes || '120' }}
-          YAHOO_PRIORITY_OFFSET: "0"
-          YAHOO_BATCH_SIZE: "6"
-          YAHOO_SLEEP_SEC: "8.0"
-          YAHOO_MAX_RETRIES: "1"
-          PYTHONUNBUFFERED: "1"
-        run: |
-          cd backend
-          python -m app.jobs.update_yahoo_priority_quotes
-
-  batch-2:
-    needs: batch-1
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install dependencies
-        run: |
-          cd backend
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-      - name: Update Yahoo quotes batch 2
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          YAHOO_PRIORITY_MAX_CODES: ${{ github.event.inputs.batch_codes || '120' }}
-          YAHOO_PRIORITY_OFFSET: "120"
-          YAHOO_BATCH_SIZE: "6"
-          YAHOO_SLEEP_SEC: "8.0"
-          YAHOO_MAX_RETRIES: "1"
-          PYTHONUNBUFFERED: "1"
-        run: |
-          cd backend
-          python -m app.jobs.update_yahoo_priority_quotes
-
-  batch-3:
-    needs: batch-2
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install dependencies
-        run: |
-          cd backend
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-      - name: Update Yahoo quotes batch 3
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          YAHOO_PRIORITY_MAX_CODES: ${{ github.event.inputs.batch_codes || '120' }}
-          YAHOO_PRIORITY_OFFSET: "240"
-          YAHOO_BATCH_SIZE: "6"
-          YAHOO_SLEEP_SEC: "8.0"
-          YAHOO_MAX_RETRIES: "1"
-          PYTHONUNBUFFERED: "1"
-        run: |
-          cd backend
-          python -m app.jobs.update_yahoo_priority_quotes
+          echo "Disabled. Use 'Update TWSE MIS Quotes' instead."

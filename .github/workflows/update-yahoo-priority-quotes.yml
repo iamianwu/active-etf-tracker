@@ -2,49 +2,11 @@ name: Update Yahoo Priority Quotes
 
 on:
   workflow_dispatch:
-    inputs:
-      max_codes:
-        description: "最多更新幾檔股票。日常建議 120。"
-        required: false
-        default: "120"
-      offset:
-        description: "從排序清單第幾檔開始。日常用 0。"
-        required: false
-        default: "0"
-
-  schedule:
-    # 台灣時間週一到週五 09:05-13:50，每 15 分鐘抓前 120 檔重點股價
-    - cron: "5,20,35,50 1-5 * * 1-5"
-    # 台灣時間 14:15 收盤後再補一次前 120 檔
-    - cron: "15 6 * * 1-5"
 
 jobs:
-  update-yahoo-priority-quotes:
+  disabled:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
+      - name: Disabled
         run: |
-          cd backend
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Update Yahoo priority stock quotes
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          YAHOO_PRIORITY_MAX_CODES: ${{ github.event.inputs.max_codes || '120' }}
-          YAHOO_PRIORITY_OFFSET: ${{ github.event.inputs.offset || '0' }}
-          YAHOO_BATCH_SIZE: "6"
-          YAHOO_SLEEP_SEC: "8.0"
-          YAHOO_MAX_RETRIES: "1"
-          PYTHONUNBUFFERED: "1"
-        run: |
-          cd backend
-          python -m app.jobs.update_yahoo_priority_quotes
+          echo "Disabled. Use 'Update TWSE MIS Quotes' instead."

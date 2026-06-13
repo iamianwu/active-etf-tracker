@@ -1,0 +1,37 @@
+name: Update TWSE MIS Quotes
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 台灣時間週一到週五 09:03-13:48，每 15 分鐘抓一次 MIS 即時行情
+    - cron: "3,18,33,48 1-5 * * 1-5"
+    # 台灣時間 14:10 收盤後補一次
+    - cron: "10 6 * * 1-5"
+
+jobs:
+  update-twse-mis-quotes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Update TWSE MIS stock quotes
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TWSE_MIS_BATCH_CODES: "40"
+          TWSE_MIS_SLEEP_SEC: "1.0"
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python -m app.jobs.update_twse_mis_quotes
