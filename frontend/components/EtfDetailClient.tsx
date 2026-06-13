@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -37,12 +37,77 @@ function initialTabFromUrl(): Tab {
   return readTabFromUrl() || 'overview';
 }
 
+
+const ETF_DETAIL_RETURN_KEY = 'active_etf_detail_return_url_v1';
+
+function safeInternalPath(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    const decoded = decodeURIComponent(value);
+    if (!decoded.startsWith('/') || decoded.startsWith('//')) return null;
+    if (decoded.startsWith('/etf/')) return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+function returnUrlFromFromParam(value: string | null) {
+  if (!value) return null;
+  const v = value.trim().toLowerCase();
+  if (v === 'signals' || v === 'today' || v === 'home') return '/';
+  if (v === 'holdings' || v === 'capital') return '/holdings';
+  if (v === 'etfs' || v === 'list') return '/etfs';
+  if (v === 'search') return '/search';
+  return null;
+}
+
+function getExplicitReturnUrl() {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  return safeInternalPath(params.get('returnTo')) || returnUrlFromFromParam(params.get('from'));
+}
+
+function inferReturnUrlFromReferrer() {
+  if (typeof window === 'undefined') return null;
+  const ref = document.referrer;
+  if (!ref) return null;
+
+  try {
+    const u = new URL(ref);
+    if (u.origin !== window.location.origin) return null;
+    if (u.pathname.startsWith('/etf/')) return null;
+    if (u.pathname.startsWith('/stock/')) return null;
+    return `${u.pathname}${u.search || ''}${u.hash || ''}` || '/';
+  } catch {
+    return null;
+  }
+}
+
+function getStoredReturnUrl() {
+  if (typeof window === 'undefined') return null;
+  return safeInternalPath(window.sessionStorage.getItem(ETF_DETAIL_RETURN_KEY));
+}
+
+function rememberReturnUrl() {
+  if (typeof window === 'undefined') return null;
+  const explicit = getExplicitReturnUrl();
+  const inferred = inferReturnUrlFromReferrer();
+  const existing = getStoredReturnUrl();
+  const next = explicit || inferred || existing || '/etfs';
+  window.sessionStorage.setItem(ETF_DETAIL_RETURN_KEY, next);
+  return next;
+}
+
+function currentReturnUrlForLink() {
+  return getExplicitReturnUrl() || getStoredReturnUrl() || inferReturnUrlFromReferrer() || '/etfs';
+}
+
 const ETF_NAV_CODES = [
-  '00400A', '00401A', '00402A', '00403A', '00404A', '00405A', '00406A',
+  '00400A', '00401A', '00403A',
   '00980A', '00981A', '00982A', '00983A', '00984A', '00985A', '00986A',
   '00987A', '00988A', '00989A', '00990A', '00991A', '00992A', '00993A',
-  '00994A', '00995A', '00996A', '00997A', '00998A', '00999A', '00980D',
-  '00981D', '00982D', '00983D', '00984D', '00985D', '00986D',
+  '00994A', '00995A', '00996A', '00997A', '00998A', '00999A',
 ];
 
 function getEtfNavCodes(data: any) {
@@ -209,6 +274,10 @@ export default function EtfDetailClient({ data }: { data: any }) {
   const [opDir, setOpDir] = useState<SortDir>('desc');
   const [showChangeInfo, setShowChangeInfo] = useState(false);
 
+  useEffect(() => {
+    rememberReturnUrl();
+  }, []);
+
   const q = data.quote || {};
   const { prevCode, nextCode } = getPrevNextEtf(data.code, data);
   const priceHistory = data.price_history || [];
@@ -334,14 +403,19 @@ export default function EtfDetailClient({ data }: { data: any }) {
   }
 
   function goToEtf(code: any) {
+    if (typeof window === 'undefined') return;
+
+    const returnTo = currentReturnUrlForLink();
     if (!code) {
-      if (typeof window !== 'undefined') window.location.href = '/etfs';
+      window.location.href = returnTo || '/etfs';
       return;
     }
+
     const currentTab = readTabFromUrl() || tab;
-    if (typeof window !== 'undefined') {
-      window.location.href = `/etf/${code}?tab=${currentTab}`;
-    }
+    const qs = new URLSearchParams();
+    qs.set('tab', currentTab);
+    if (returnTo) qs.set('returnTo', returnTo);
+    window.location.href = `/etf/${code}?${qs.toString()}`;
   }
 
   function toggleHoldingSort(key: any) {
@@ -361,11 +435,9 @@ export default function EtfDetailClient({ data }: { data: any }) {
   }
 
   function goBackToPreviousPage() {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-    if (typeof window !== 'undefined') window.location.href = '/etfs';
+    if (typeof window === 'undefined') return;
+    const target = getExplicitReturnUrl() || getStoredReturnUrl() || inferReturnUrlFromReferrer() || '/etfs';
+    window.location.href = target;
   }
 
   return (
@@ -569,7 +641,7 @@ export default function EtfDetailClient({ data }: { data: any }) {
                 return (
                   <div className="etf-v41-op-row" role="row" key={`${r.stock_code}-${r.status}`}>
                     <div className="etf-v41-op-target" role="cell">
-                      <Link href={`/stock/${r.stock_code}`}>
+                      <Link href={`/stock/${r.stock_code}?returnTo=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname + window.location.search : `/etf/${data.code}`)}`}>
                         <b>{r.stock_name}</b>
                         <small>{r.stock_code}</small>
                       </Link>
@@ -638,7 +710,7 @@ export default function EtfDetailClient({ data }: { data: any }) {
               {sortedHoldings.map((r: any) => (
                 <div className="etf-v42-holding-row" role="row" key={r.stock_code}>
                   <div className="etf-v42-holding-target" role="cell">
-                    <Link href={`/stock/${r.stock_code}`}>
+                    <Link href={`/stock/${r.stock_code}?returnTo=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname + window.location.search : `/etf/${data.code}`)}`}>
                       <b>{r.stock_name}</b>
                       <small>{r.stock_code}</small>
                     </Link>
