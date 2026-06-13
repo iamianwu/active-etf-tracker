@@ -1,0 +1,47 @@
+name: Backfill Official Price History
+
+on:
+  workflow_dispatch:
+    inputs:
+      months:
+        description: "How many months to backfill. 4 is enough for 3-month chart."
+        required: false
+        default: "4"
+  schedule:
+    # 台灣時間週一到週五 18:45，收盤價更新後補歷史表
+    - cron: "45 10 * * 1-5"
+
+jobs:
+  backfill-history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        batch_index: [0, 1, 2, 3]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Backfill official price history
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          HISTORY_MONTHS: ${{ github.event.inputs.months || '4' }}
+          BATCH_TOTAL: "4"
+          BATCH_INDEX: ${{ matrix.batch_index }}
+          HISTORY_SLEEP_SEC: "0.15"
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python -m app.jobs.backfill_official_price_history
