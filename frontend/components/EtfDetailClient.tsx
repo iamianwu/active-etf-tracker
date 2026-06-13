@@ -4611,6 +4611,801 @@ export default function EtfDetailClient({ data }: { data: any }) {
           }
         }
 
+
+        /* =========================================================
+           V53: reference-app exact mobile density rewrite
+           目標：成分股與操作日報表格改成參考 App 的實際視覺：
+           - 不再像網頁平均分欄
+           - 第一欄保留 app 式左內距
+           - 數字欄靠各自欄位右側，欄距看起來自然貼近
+           - 字體改 medium/regular，不再全粗黑
+           - header 與 body 用完全同一組欄寬，避免 sticky header 錯位
+        ========================================================= */
+        @media (max-width: 768px){
+          .etf-v11-detail{
+            --v53-side: 17px;
+            --v53-hold-c1: 25.5%;
+            --v53-hold-c2: 25.5%;
+            --v53-hold-c3: 18.5%;
+            --v53-hold-c4: 30.5%;
+            --v53-op-c1: 21.5%;
+            --v53-op-c2: 16%;
+            --v53-op-c3: 22%;
+            --v53-op-c4: 18%;
+            --v53-op-c5: 22.5%;
+            -webkit-text-size-adjust:100% !important;
+            text-size-adjust:100% !important;
+            overflow-x:hidden !important;
+          }
+
+          /* 全頁不要有被前幾版殘留的橫向寬度 */
+          .etf-v11-tab-content,
+          .etf-v11-tab-content.holdings.compact-holdings,
+          .etf-v42-holding-grid,
+          .etf-v42-holding-body,
+          .etf-v41-op-grid,
+          .etf-v41-op-body{
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            overflow-x:hidden !important;
+          }
+
+          /* ===== 成分股上方分布區：改成參考 app 的扁平非卡片布局 ===== */
+          .etf-v11-tab-content.holdings.compact-holdings{
+            padding:0 0 22px !important;
+            margin:0 !important;
+            background:#fff !important;
+          }
+
+          .etf-v42-distribution-card{
+            margin:0 !important;
+            padding:10px var(--v53-side) 12px !important;
+            border:0 !important;
+            border-radius:0 !important;
+            box-shadow:none !important;
+            border-top:1px solid #eef0f3 !important;
+            border-bottom:8px solid #f5f6f8 !important;
+            background:#fff !important;
+            overflow:hidden !important;
+          }
+
+          .etf-v42-distribution-top{
+            display:grid !important;
+            grid-template-columns:1fr auto !important;
+            align-items:start !important;
+            gap:8px !important;
+            margin:0 0 2px !important;
+          }
+
+          .etf-v42-seg-tabs{
+            justify-self:center !important;
+            transform:none !important;
+            background:#e9edf2 !important;
+            padding:2px !important;
+            border-radius:999px !important;
+            box-shadow:none !important;
+          }
+
+          .etf-v42-seg-tabs button{
+            font-size:14px !important;
+            line-height:1 !important;
+            font-weight:500 !important;
+            padding:6px 14px !important;
+            letter-spacing:-.1px !important;
+            border-radius:999px !important;
+          }
+
+          .etf-v42-seg-tabs button.active{
+            color:#20242b !important;
+            background:#fff !important;
+            box-shadow:0 1px 4px rgba(15,23,42,.16) !important;
+          }
+
+          .etf-v42-update{
+            font-size:13px !important;
+            line-height:1.12 !important;
+            font-weight:400 !important;
+            letter-spacing:0 !important;
+            color:#7b8490 !important;
+            text-align:right !important;
+            white-space:nowrap !important;
+          }
+
+          .etf-v42-distribution-main{
+            display:grid !important;
+            grid-template-columns:40.5% 59.5% !important;
+            align-items:center !important;
+            gap:0 !important;
+            margin-top:2px !important;
+          }
+
+          .etf-v42-pie{
+            width:134px !important;
+            height:134px !important;
+            max-width:100% !important;
+            justify-self:start !important;
+            margin-left:2px !important;
+          }
+
+          .etf-v42-legend{
+            width:100% !important;
+            min-width:0 !important;
+            padding-left:0 !important;
+          }
+
+          .etf-v42-legend > div{
+            display:grid !important;
+            grid-template-columns:9px minmax(0,1fr) 58px !important;
+            gap:7px !important;
+            align-items:center !important;
+            min-height:26px !important;
+            border-bottom:1px solid #e7eaee !important;
+            padding:0 !important;
+          }
+
+          .etf-v42-legend span{
+            width:9px !important;
+            height:9px !important;
+          }
+
+          .etf-v42-legend b,
+          .etf-v42-legend strong{
+            font-size:14px !important;
+            line-height:1.05 !important;
+            font-weight:400 !important;
+            color:#22262d !important;
+            letter-spacing:-.1px !important;
+          }
+
+          .etf-v42-legend b{
+            white-space:nowrap !important;
+            overflow:hidden !important;
+            text-overflow:ellipsis !important;
+          }
+
+          .etf-v42-legend strong{
+            text-align:right !important;
+            white-space:nowrap !important;
+          }
+
+          /* ===== 成分股表格：重做成 app 式 fixed grid ===== */
+          .etf-v42-holding-grid{
+            --v53-hold-cols: var(--v53-hold-c1) var(--v53-hold-c2) var(--v53-hold-c3) var(--v53-hold-c4);
+            display:block !important;
+            margin:0 !important;
+            padding:0 !important;
+            border:0 !important;
+            border-radius:0 !important;
+            background:#fff !important;
+            box-shadow:none !important;
+          }
+
+          .etf-v42-holding-head,
+          .etf-v42-holding-row{
+            display:grid !important;
+            grid-template-columns:var(--v53-hold-cols) !important;
+            column-gap:0 !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            margin:0 !important;
+            padding:0 var(--v53-side) !important;
+            box-sizing:border-box !important;
+            align-items:center !important;
+            overflow:hidden !important;
+          }
+
+          .etf-v42-holding-head{
+            position:sticky !important;
+            top:104px !important;
+            z-index:700 !important;
+            height:44px !important;
+            min-height:44px !important;
+            background:#f3f4f6 !important;
+            border-top:1px solid #e7eaee !important;
+            border-bottom:1px solid #dfe4ea !important;
+            box-shadow:none !important;
+          }
+
+          .etf-v42-holding-row{
+            height:58px !important;
+            min-height:58px !important;
+            background:#fff !important;
+            border-bottom:1px solid #e8ebef !important;
+          }
+
+          .etf-v42-holding-head > div,
+          .etf-v42-holding-row > div{
+            width:100% !important;
+            min-width:0 !important;
+            max-width:100% !important;
+            height:100% !important;
+            overflow:hidden !important;
+            border:0 !important;
+            box-shadow:none !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            background:transparent !important;
+          }
+
+          .etf-v42-holding-head > div{
+            display:flex !important;
+            align-items:center !important;
+            padding:0 !important;
+            font-size:14px !important;
+            line-height:1.08 !important;
+            font-weight:400 !important;
+            color:#20242b !important;
+            letter-spacing:-.2px !important;
+            white-space:normal !important;
+          }
+
+          .etf-v42-holding-head > div:first-child{ justify-content:flex-start !important; text-align:left !important; }
+          .etf-v42-holding-head > div:nth-child(2){ justify-content:center !important; text-align:center !important; }
+          .etf-v42-holding-head > div:nth-child(3){ justify-content:center !important; text-align:center !important; }
+          .etf-v42-holding-head > div:nth-child(4){ justify-content:flex-end !important; text-align:right !important; }
+
+          .etf-v42-holding-head .etf-v11-d-sort{
+            display:inline-flex !important;
+            align-items:center !important;
+            justify-content:inherit !important;
+            width:auto !important;
+            min-width:0 !important;
+            max-width:100% !important;
+            padding:0 !important;
+            margin:0 !important;
+            border:0 !important;
+            background:transparent !important;
+            color:inherit !important;
+            font-size:14px !important;
+            line-height:1.08 !important;
+            font-weight:400 !important;
+            letter-spacing:-.2px !important;
+            white-space:normal !important;
+            text-align:inherit !important;
+            overflow:visible !important;
+          }
+
+          .etf-v42-holding-row > div{
+            display:flex !important;
+            flex-direction:column !important;
+            justify-content:center !important;
+            padding:0 !important;
+          }
+
+          .etf-v42-holding-target{
+            align-items:flex-start !important;
+            text-align:left !important;
+          }
+
+          .etf-v42-holding-target a{
+            display:block !important;
+            width:100% !important;
+            min-width:0 !important;
+            color:inherit !important;
+            text-decoration:none !important;
+            overflow:hidden !important;
+          }
+
+          .etf-v42-holding-value{
+            align-items:center !important;
+            text-align:center !important;
+          }
+
+          .etf-v42-holding-weight{
+            align-items:center !important;
+            text-align:center !important;
+          }
+
+          .etf-v42-holding-price{
+            align-items:flex-end !important;
+            text-align:right !important;
+          }
+
+          .etf-v42-holding-target b,
+          .etf-v42-holding-value b,
+          .etf-v42-holding-weight b,
+          .etf-v42-holding-price b{
+            display:block !important;
+            font-size:16px !important;
+            line-height:1.08 !important;
+            font-weight:400 !important;
+            letter-spacing:-.2px !important;
+            color:#20242b !important;
+            white-space:nowrap !important;
+          }
+
+          .etf-v42-holding-target b{
+            width:100% !important;
+            overflow:hidden !important;
+            text-overflow:ellipsis !important;
+          }
+
+          .etf-v42-holding-target small,
+          .etf-v42-holding-value small,
+          .etf-v42-holding-price small{
+            display:block !important;
+            margin-top:4px !important;
+            font-size:13px !important;
+            line-height:1 !important;
+            font-weight:400 !important;
+            letter-spacing:-.1px !important;
+            color:#7c8490 !important;
+            white-space:nowrap !important;
+          }
+
+          .etf-v42-holding-price small.red,
+          .etf-v42-holding-price small.pos{ color:#df575c !important; }
+          .etf-v42-holding-price small.green,
+          .etf-v42-holding-price small.neg{ color:#2fa681 !important; }
+
+          /* ===== 操作日報表格也改成同邏輯，避免之後又錯位 ===== */
+          .etf-v41-op-grid{
+            --v53-op-cols: var(--v53-op-c1) var(--v53-op-c2) var(--v53-op-c3) var(--v53-op-c4) var(--v53-op-c5);
+            display:block !important;
+            margin:0 !important;
+            padding:0 !important;
+            border:0 !important;
+            background:#fff !important;
+            overflow:hidden !important;
+          }
+
+          .etf-v41-op-head,
+          .etf-v41-op-row{
+            display:grid !important;
+            grid-template-columns:var(--v53-op-cols) !important;
+            column-gap:0 !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            padding:0 var(--v53-side) !important;
+            margin:0 !important;
+            box-sizing:border-box !important;
+            align-items:center !important;
+            overflow:hidden !important;
+          }
+
+          .etf-v41-op-head{
+            position:sticky !important;
+            top:104px !important;
+            z-index:700 !important;
+            height:44px !important;
+            min-height:44px !important;
+            background:#f3f4f6 !important;
+            border-top:1px solid #e7eaee !important;
+            border-bottom:1px solid #dfe4ea !important;
+            box-shadow:none !important;
+          }
+
+          .etf-v41-op-row{
+            height:58px !important;
+            min-height:58px !important;
+            background:#fff !important;
+            border-bottom:1px solid #e8ebef !important;
+          }
+
+          .etf-v41-op-head > div,
+          .etf-v41-op-row > div{
+            width:100% !important;
+            min-width:0 !important;
+            max-width:100% !important;
+            height:100% !important;
+            overflow:hidden !important;
+            border:0 !important;
+            box-shadow:none !important;
+            background:transparent !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+          }
+
+          .etf-v41-op-head > div{
+            display:flex !important;
+            align-items:center !important;
+            justify-content:center !important;
+            padding:0 !important;
+            font-size:14px !important;
+            line-height:1.08 !important;
+            font-weight:400 !important;
+            color:#20242b !important;
+            letter-spacing:-.2px !important;
+            text-align:center !important;
+            white-space:normal !important;
+          }
+
+          .etf-v41-op-head > div:first-child{ justify-content:flex-start !important; text-align:left !important; }
+          .etf-v41-op-head > div:nth-child(5){ justify-content:flex-end !important; text-align:right !important; }
+
+          .etf-v41-op-head .etf-v11-d-sort{
+            display:inline-flex !important;
+            align-items:center !important;
+            justify-content:inherit !important;
+            width:auto !important;
+            padding:0 !important;
+            margin:0 !important;
+            border:0 !important;
+            background:transparent !important;
+            color:inherit !important;
+            font-size:14px !important;
+            line-height:1.08 !important;
+            font-weight:400 !important;
+            letter-spacing:-.2px !important;
+            white-space:normal !important;
+          }
+
+          .etf-v41-op-row > div{
+            display:flex !important;
+            flex-direction:column !important;
+            justify-content:center !important;
+            padding:0 !important;
+          }
+
+          .etf-v41-op-target{ align-items:flex-start !important; text-align:left !important; }
+          .etf-v41-op-status{ align-items:center !important; text-align:center !important; }
+          .etf-v41-op-shares{ align-items:center !important; text-align:center !important; }
+          .etf-v41-op-mag{ align-items:center !important; text-align:center !important; }
+          .etf-v41-op-weight{ align-items:flex-end !important; text-align:right !important; }
+
+          .etf-v41-op-target b,
+          .etf-v41-op-shares,
+          .etf-v41-op-mag,
+          .etf-v41-op-weight b{
+            font-size:16px !important;
+            line-height:1.08 !important;
+            font-weight:400 !important;
+            letter-spacing:-.2px !important;
+            color:#20242b !important;
+            white-space:nowrap !important;
+          }
+
+          .etf-v41-op-target small,
+          .etf-v41-op-weight small{
+            margin-top:4px !important;
+            font-size:13px !important;
+            line-height:1 !important;
+            font-weight:400 !important;
+            color:#7c8490 !important;
+            white-space:nowrap !important;
+          }
+
+          .etf-v41-op-status .badge{
+            font-size:13px !important;
+            line-height:1 !important;
+            font-weight:400 !important;
+            padding:5px 9px !important;
+            border-radius:999px !important;
+          }
+
+          .sort-arrows,
+          .etf-v11-d-sort .sort-arrows{
+            display:inline-flex !important;
+            flex-direction:column !important;
+            justify-content:center !important;
+            gap:0 !important;
+            margin-left:3px !important;
+            font-size:8px !important;
+            line-height:.62 !important;
+            color:#9aa3ae !important;
+            flex:0 0 auto !important;
+          }
+        }
+
+        @media (max-width:390px){
+          .etf-v11-detail{
+            --v53-side:16px;
+            --v53-hold-c1:25.5%;
+            --v53-hold-c2:25.5%;
+            --v53-hold-c3:18.5%;
+            --v53-hold-c4:30.5%;
+          }
+
+          .etf-v42-holding-target b,
+          .etf-v42-holding-value b,
+          .etf-v42-holding-weight b,
+          .etf-v42-holding-price b,
+          .etf-v41-op-target b,
+          .etf-v41-op-shares,
+          .etf-v41-op-mag,
+          .etf-v41-op-weight b{
+            font-size:15px !important;
+          }
+
+          .etf-v42-holding-target small,
+          .etf-v42-holding-value small,
+          .etf-v42-holding-price small,
+          .etf-v41-op-target small,
+          .etf-v41-op-weight small{
+            font-size:12px !important;
+          }
+
+          .etf-v42-holding-head > div,
+          .etf-v42-holding-head .etf-v11-d-sort,
+          .etf-v41-op-head > div,
+          .etf-v41-op-head .etf-v11-d-sort{
+            font-size:13px !important;
+          }
+        }
+
+
+        /* ===== v54: 真正接近 App 的密集欄距與字級 =====
+           目標：不要平均網頁表格感；讓四欄像參考圖那樣貼近、字大、列高緊湊。 */
+        @media (max-width: 720px){
+          .etf-v11-detail{
+            --v54-side: 0px;
+            --v54-hold-c1: 27.5%;
+            --v54-hold-c2: 26.5%;
+            --v54-hold-c3: 17.0%;
+            --v54-hold-c4: 29.0%;
+            --v54-op-c1: 24.0%;
+            --v54-op-c2: 16.0%;
+            --v54-op-c3: 22.0%;
+            --v54-op-c4: 16.0%;
+            --v54-op-c5: 22.0%;
+          }
+
+          /* 成分股：覆蓋掉前面所有 v42/v53 的平均欄位設定 */
+          .etf-v42-holding-grid{
+            width:100% !important;
+            overflow:hidden !important;
+            border-radius:0 !important;
+            box-shadow:none !important;
+            background:#fff !important;
+          }
+
+          .etf-v42-holding-head,
+          .etf-v42-holding-row{
+            display:grid !important;
+            grid-template-columns: var(--v54-hold-c1) var(--v54-hold-c2) var(--v54-hold-c3) var(--v54-hold-c4) !important;
+            column-gap:0 !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            box-sizing:border-box !important;
+            padding-left:var(--v54-side) !important;
+            padding-right:var(--v54-side) !important;
+            transform:none !important;
+          }
+
+          .etf-v42-holding-head{
+            height:40px !important;
+            min-height:40px !important;
+            top:102px !important;
+            background:#f2f3f5 !important;
+            border-top:1px solid #e6e9ee !important;
+            border-bottom:1px solid #dfe3e8 !important;
+          }
+
+          .etf-v42-holding-row{
+            height:54px !important;
+            min-height:54px !important;
+            border-bottom:1px solid #e8ebef !important;
+          }
+
+          .etf-v42-holding-head > div,
+          .etf-v42-holding-row > div{
+            min-width:0 !important;
+            width:100% !important;
+            max-width:100% !important;
+            padding:0 !important;
+            margin:0 !important;
+            overflow:hidden !important;
+            box-shadow:none !important;
+            border:0 !important;
+            background:transparent !important;
+          }
+
+          .etf-v42-holding-head > div{
+            display:flex !important;
+            align-items:center !important;
+            color:#20242b !important;
+            font-size:14.5px !important;
+            line-height:1.05 !important;
+            font-weight:500 !important;
+            letter-spacing:-0.35px !important;
+          }
+
+          .etf-v42-holding-head > div:nth-child(1){ justify-content:flex-start !important; text-align:left !important; padding-left:3px !important; }
+          .etf-v42-holding-head > div:nth-child(2){ justify-content:center !important; text-align:center !important; }
+          .etf-v42-holding-head > div:nth-child(3){ justify-content:center !important; text-align:center !important; }
+          .etf-v42-holding-head > div:nth-child(4){ justify-content:flex-end !important; text-align:right !important; padding-right:3px !important; }
+
+          .etf-v42-holding-head .etf-v11-d-sort{
+            width:auto !important;
+            min-width:0 !important;
+            max-width:100% !important;
+            display:inline-flex !important;
+            align-items:center !important;
+            justify-content:inherit !important;
+            padding:0 !important;
+            margin:0 !important;
+            font-size:14.5px !important;
+            line-height:1.05 !important;
+            font-weight:500 !important;
+            letter-spacing:-0.35px !important;
+            white-space:normal !important;
+            text-align:inherit !important;
+          }
+
+          .etf-v42-holding-row > div{
+            display:flex !important;
+            flex-direction:column !important;
+            justify-content:center !important;
+          }
+
+          .etf-v42-holding-target{ align-items:flex-start !important; text-align:left !important; padding-left:3px !important; }
+          .etf-v42-holding-value{ align-items:center !important; text-align:center !important; }
+          .etf-v42-holding-weight{ align-items:center !important; text-align:center !important; }
+          .etf-v42-holding-price{ align-items:flex-end !important; text-align:right !important; padding-right:3px !important; }
+
+          .etf-v42-holding-target a{
+            display:block !important;
+            width:100% !important;
+            max-width:100% !important;
+            overflow:hidden !important;
+            text-decoration:none !important;
+            color:inherit !important;
+          }
+
+          .etf-v42-holding-target b,
+          .etf-v42-holding-value b,
+          .etf-v42-holding-weight b,
+          .etf-v42-holding-price b{
+            display:block !important;
+            font-size:18px !important;
+            line-height:1.04 !important;
+            font-weight:500 !important;
+            letter-spacing:-0.45px !important;
+            color:#20242b !important;
+            white-space:nowrap !important;
+          }
+
+          .etf-v42-holding-target b{
+            max-width:100% !important;
+            overflow:hidden !important;
+            text-overflow:ellipsis !important;
+          }
+
+          .etf-v42-holding-target small,
+          .etf-v42-holding-value small,
+          .etf-v42-holding-price small{
+            display:block !important;
+            margin-top:2px !important;
+            font-size:14.5px !important;
+            line-height:1.02 !important;
+            font-weight:400 !important;
+            letter-spacing:-0.35px !important;
+            color:#828a96 !important;
+            white-space:nowrap !important;
+          }
+
+          .etf-v42-holding-price small.red,
+          .etf-v42-holding-price small.pos{ color:#df575c !important; }
+          .etf-v42-holding-price small.green,
+          .etf-v42-holding-price small.neg{ color:#2fa681 !important; }
+
+          /* 操作日報同樣壓成 App 式：避免平均欄寬造成空白過大 */
+          .etf-v41-op-head,
+          .etf-v41-op-row{
+            display:grid !important;
+            grid-template-columns: var(--v54-op-c1) var(--v54-op-c2) var(--v54-op-c3) var(--v54-op-c4) var(--v54-op-c5) !important;
+            column-gap:0 !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            box-sizing:border-box !important;
+            padding-left:0 !important;
+            padding-right:0 !important;
+            transform:none !important;
+            overflow:hidden !important;
+          }
+
+          .etf-v41-op-head{
+            height:40px !important;
+            min-height:40px !important;
+            top:102px !important;
+            background:#f2f3f5 !important;
+            border-top:1px solid #e6e9ee !important;
+            border-bottom:1px solid #dfe3e8 !important;
+          }
+
+          .etf-v41-op-row{
+            height:54px !important;
+            min-height:54px !important;
+          }
+
+          .etf-v41-op-head > div,
+          .etf-v41-op-row > div{
+            min-width:0 !important;
+            width:100% !important;
+            max-width:100% !important;
+            padding:0 !important;
+            margin:0 !important;
+            overflow:hidden !important;
+          }
+
+          .etf-v41-op-head > div{
+            display:flex !important;
+            align-items:center !important;
+            font-size:14.5px !important;
+            line-height:1.05 !important;
+            font-weight:500 !important;
+            letter-spacing:-0.35px !important;
+            color:#20242b !important;
+          }
+
+          .etf-v41-op-head > div:nth-child(1){ justify-content:flex-start !important; text-align:left !important; padding-left:3px !important; }
+          .etf-v41-op-head > div:nth-child(2){ justify-content:center !important; text-align:center !important; }
+          .etf-v41-op-head > div:nth-child(3){ justify-content:center !important; text-align:center !important; }
+          .etf-v41-op-head > div:nth-child(4){ justify-content:center !important; text-align:center !important; }
+          .etf-v41-op-head > div:nth-child(5){ justify-content:flex-end !important; text-align:right !important; padding-right:3px !important; }
+
+          .etf-v41-op-head .etf-v11-d-sort{
+            font-size:14.5px !important;
+            line-height:1.05 !important;
+            font-weight:500 !important;
+            letter-spacing:-0.35px !important;
+          }
+
+          .etf-v41-op-row > div{
+            display:flex !important;
+            flex-direction:column !important;
+            justify-content:center !important;
+          }
+
+          .etf-v41-op-target{ align-items:flex-start !important; text-align:left !important; padding-left:3px !important; }
+          .etf-v41-op-status{ align-items:center !important; text-align:center !important; }
+          .etf-v41-op-shares{ align-items:center !important; text-align:center !important; }
+          .etf-v41-op-mag{ align-items:center !important; text-align:center !important; }
+          .etf-v41-op-weight{ align-items:flex-end !important; text-align:right !important; padding-right:3px !important; }
+
+          .etf-v41-op-target b,
+          .etf-v41-op-shares,
+          .etf-v41-op-mag,
+          .etf-v41-op-weight b{
+            font-size:17px !important;
+            line-height:1.05 !important;
+            font-weight:500 !important;
+            letter-spacing:-0.45px !important;
+          }
+
+          .etf-v41-op-target small,
+          .etf-v41-op-weight small{
+            margin-top:2px !important;
+            font-size:14px !important;
+            line-height:1.02 !important;
+            font-weight:400 !important;
+            letter-spacing:-0.35px !important;
+          }
+
+          .etf-v41-op-status .badge{
+            font-size:14px !important;
+            font-weight:500 !important;
+            padding:4px 8px !important;
+          }
+
+          .sort-arrows,
+          .etf-v11-d-sort .sort-arrows{
+            margin-left:2px !important;
+            font-size:7.5px !important;
+            line-height:.62 !important;
+            opacity:.9 !important;
+          }
+        }
+
+        @media (max-width:390px){
+          .etf-v42-holding-target b,
+          .etf-v42-holding-value b,
+          .etf-v42-holding-weight b,
+          .etf-v42-holding-price b{ font-size:17.5px !important; }
+          .etf-v42-holding-target small,
+          .etf-v42-holding-value small,
+          .etf-v42-holding-price small{ font-size:14px !important; }
+          .etf-v41-op-target b,
+          .etf-v41-op-shares,
+          .etf-v41-op-mag,
+          .etf-v41-op-weight b{ font-size:16.5px !important; }
+        }
+
       `}</style>
     </main>
   );
