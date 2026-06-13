@@ -37,6 +37,35 @@ function signedPct(v: any, digits = 2) {
   return `${x > 0 ? '+' : ''}${fmt(x, digits)}%`;
 }
 
+function signedPctMin(v: any, digits = 2) {
+  const x = num(v);
+  if (x === null) return '-';
+  if (x === 0) return `0.${'0'.repeat(digits)}%`;
+  if (Math.abs(x) < 0.01) return `${x > 0 ? '+' : '-'}<0.01%`;
+  return `${x > 0 ? '+' : ''}${fmt(x, digits)}%`;
+}
+
+function weightPctMin(v: any, digits = 2) {
+  const x = num(v);
+  if (x === null || x <= 0) return '-';
+  if (x < 0.01) return '<0.01%';
+  return `${fmt(x, digits)}%`;
+}
+
+function currentWeightMain(r: any) {
+  if (r?.status === '刪除') return '-';
+  return weightPctMin(r?.weight, 2);
+}
+
+function changeMagnitudeText(r: any, mag: number | null) {
+  if (r?.status === '新增') return '100%';
+  if (mag === null) return '-';
+  if (mag === 0) return '0.0%';
+  if (Math.abs(mag) < 0.01) return `${mag > 0 ? '+' : '-'}<0.01%`;
+  if (Math.abs(mag) > 300) return mag > 0 ? '>3倍' : '<-3倍';
+  return `${fmt(mag, 1)}%`;
+}
+
 function signedNum(v: any, digits = 2) {
   const x = num(v);
   if (x === null) return '-';
@@ -462,8 +491,11 @@ export default function EtfDetailClient({ data }: { data: any }) {
                       <td><Link href={`/stock/${r.stock_code}`}><b>{r.stock_name}</b><small>{r.stock_code}</small></Link></td>
                       <td><span className={`badge ${statusClass(r.status)}`}>{r.status}</span></td>
                       <td className={signedClass(r.delta_shares)}>{r.delta_shares > 0 ? '+' : ''}{fmt0((num(r.delta_shares) || 0) / 1000)}<span className="etf-v33-unit"> 張</span></td>
-                      <td>{mag == null ? '-' : Math.abs(mag) > 300 ? '>3倍' : `${fmt(mag, 1)}%`}</td>
-                      <td><b>{fmt(r.weight, 2)}%</b><small className={signedClass(r.delta_weight)}>{signedPct(r.delta_weight, 2)}</small></td>
+                      <td>{changeMagnitudeText(r, mag)}</td>
+                      <td>
+                        <b>{currentWeightMain(r)}</b>
+                        <small className={signedClass(r.delta_weight)}>{signedPctMin(r.delta_weight, 2)}</small>
+                      </td>
                     </tr>
                   );
                 })}
@@ -513,7 +545,7 @@ export default function EtfDetailClient({ data }: { data: any }) {
                   <tr key={r.stock_code}>
                     <td><Link href={`/stock/${r.stock_code}`}><b>{r.stock_name}</b><small>{r.stock_code}</small></Link></td>
                     <td><b>{r.market_value_billion == null ? '-' : `${fmt(r.market_value_billion, 0)} 億`}</b><small>{fmt0(lots(r.shares))} 張</small></td>
-                    <td><b>{fmt(r.weight, 2)}%</b></td>
+                    <td><b>{weightPctMin(r.weight, 2)}</b></td>
                     <td><b>{r.price == null ? '-' : fmt(r.price, r.price >= 1000 ? 0 : 1)}</b><small className={signedClass(r.change_pct)}>{signedPct(r.change_pct)}</small></td>
                   </tr>
                 ))}
@@ -984,6 +1016,12 @@ export default function EtfDetailClient({ data }: { data: any }) {
 
           .etf-v33-unit{
             display:none !important;
+          }
+
+          .etf-v11-op-table td:nth-child(4),
+          .etf-v11-op-table td:nth-child(5) b,
+          .etf-v11-op-table td:nth-child(5) small{
+            white-space:nowrap !important;
           }
         }
       `}</style>
