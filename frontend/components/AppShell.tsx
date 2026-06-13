@@ -13,9 +13,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <header className="top">
           <div className="brand">
             <Link href="/signals" className="logo" style={{ textDecoration: 'none' }}>🎯 主動式 ETF</Link>
-            <div className="top-icons">
-              <span>👤</span>
-              <Link href="/search" aria-label="搜尋" style={{ textDecoration: 'none' }}>🔍</Link>
+            <div className="top-icons header-icons-v67">
+              <span className="header-icon-v67 header-icon-bell-v67" aria-label="通知" title="通知" />
+              <Link href="/search" aria-label="搜尋" style={{ textDecoration: 'none' }}><span className="header-icon-v67 header-icon-search-v67" /></Link>
             </div>
           </div>
           <nav className="nav">

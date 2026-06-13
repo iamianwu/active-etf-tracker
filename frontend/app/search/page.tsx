@@ -85,7 +85,7 @@ export default function SearchPage() {
       </div>
 
       <div className="search-box">
-        <span className="search-mark">🔍</span>
+        <span className="search-mark"><a href="/search" className="header-icon-link-v67" aria-label="搜尋" title="搜尋"><span className="header-icon-v67 header-icon-search-v67" /></a></span>
         <input
           autoFocus
           value={q}
