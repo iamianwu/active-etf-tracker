@@ -25,6 +25,30 @@ type SortDir = 'asc' | 'desc';
 
 const COLORS = ['#ffa83d', '#1aaed8', '#4f85d8', '#c878ed', '#cfcfcf'];
 
+const ETF_NAV_CODES = [
+  '00400A', '00401A', '00403A',
+  '00980A', '00981A', '00982A', '00983A', '00984A', '00985A', '00986A',
+  '00987A', '00988A', '00989A', '00990A', '00991A', '00992A', '00993A',
+  '00994A', '00995A', '00996A', '00997A', '00998A', '00999A',
+];
+
+function getEtfNavCodes(data: any) {
+  const fromData = data?.nav_codes || data?.etf_codes || data?.all_codes;
+  const arr = Array.isArray(fromData) ? fromData : ETF_NAV_CODES;
+  return arr.map((x: any) => String(x || '').trim()).filter(Boolean);
+}
+
+function getPrevNextEtf(code: any, data: any) {
+  const codes = getEtfNavCodes(data);
+  const c = String(code || '').trim();
+  const idx = codes.indexOf(c);
+  if (idx < 0 || codes.length <= 1) return { prevCode: null, nextCode: null };
+  return {
+    prevCode: codes[(idx - 1 + codes.length) % codes.length],
+    nextCode: codes[(idx + 1) % codes.length],
+  };
+}
+
 function mmdd(date: any) {
   const s = String(date || '');
   if (!s) return '';
@@ -173,6 +197,7 @@ export default function EtfDetailClient({ data }: { data: any }) {
   const [showChangeInfo, setShowChangeInfo] = useState(false);
 
   const q = data.quote || {};
+  const { prevCode, nextCode } = getPrevNextEtf(data.code, data);
   const priceHistory = data.price_history || [];
   const navHistory = data.nav_history || [];
   const latestNavRow = latestNav(navHistory);
@@ -304,22 +329,24 @@ export default function EtfDetailClient({ data }: { data: any }) {
 
   return (
     <main className="etf-v11-detail">
-      <header className="etf-v11-detail-header">
-        <Link href="/etfs" className="etf-v11-back">‹</Link>
-        <div>
-          <h1>{data.code}</h1>
-          <p>{data.name}</p>
-        </div>
-        <Link href="/etfs" className="etf-v11-next">›</Link>
-      </header>
+      <div className="etf-v36-sticky-detail-nav">
+        <header className="etf-v11-detail-header">
+          <Link href={prevCode ? `/etf/${prevCode}` : '/etfs'} className="etf-v11-back" aria-label="上一檔 ETF">‹</Link>
+          <div>
+            <h1>{data.code}</h1>
+            <p>{data.name}</p>
+          </div>
+          <Link href={nextCode ? `/etf/${nextCode}` : '/etfs'} className="etf-v11-next" aria-label="下一檔 ETF">›</Link>
+        </header>
 
-      <nav className="etf-v11-tabs">
-        <button className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}>總覽</button>
-        <button className={tab === 'quote' ? 'active' : ''} onClick={() => setTab('quote')}>即時</button>
-        <button className={tab === 'operation' ? 'active' : ''} onClick={() => setTab('operation')}>操作日報</button>
-        <button className={tab === 'holdings' ? 'active' : ''} onClick={() => setTab('holdings')}>成分股</button>
-        <button className={tab === 'premium' ? 'active' : ''} onClick={() => setTab('premium')}>折溢價</button>
-      </nav>
+        <nav className="etf-v11-tabs">
+          <button className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}>總覽</button>
+          <button className={tab === 'quote' ? 'active' : ''} onClick={() => setTab('quote')}>即時</button>
+          <button className={tab === 'operation' ? 'active' : ''} onClick={() => setTab('operation')}>操作日報</button>
+          <button className={tab === 'holdings' ? 'active' : ''} onClick={() => setTab('holdings')}>成分股</button>
+          <button className={tab === 'premium' ? 'active' : ''} onClick={() => setTab('premium')}>折溢價</button>
+        </nav>
+      </div>
 
       {tab === 'overview' && (
         <section className="etf-v11-tab-content">
@@ -641,6 +668,23 @@ export default function EtfDetailClient({ data }: { data: any }) {
       )}
 
       <style>{`
+        .etf-v36-sticky-detail-nav{
+          background:#fff;
+          border-bottom:1px solid #e5e8ee;
+          z-index:60;
+        }
+
+        .etf-v11-back,
+        .etf-v11-next{
+          text-decoration:none;
+          color:#18212d;
+        }
+
+        .etf-v11-back:hover,
+        .etf-v11-next:hover{
+          color:#4e8ff0;
+        }
+
         .etf-v32-change-preview{
           display:grid;
           grid-template-columns:1fr 1fr;
@@ -696,6 +740,107 @@ export default function EtfDetailClient({ data }: { data: any }) {
             padding:14px 18px;
             font-size:22px;
             border-radius:14px;
+          }
+
+          /* V36：手機往下滑時，ETF 代碼區 + 分頁列固定在上方 */
+          .etf-v36-sticky-detail-nav{
+            position:sticky !important;
+            top:0 !important;
+            z-index:80 !important;
+            background:#fff !important;
+            box-shadow:0 2px 10px rgba(15,23,42,.08) !important;
+          }
+
+          .etf-v11-detail-header{
+            height:64px !important;
+            min-height:64px !important;
+            padding:8px 22px 7px !important;
+            display:grid !important;
+            grid-template-columns:44px 1fr 44px !important;
+            align-items:center !important;
+            border-bottom:1px solid #edf0f4 !important;
+            background:#fff !important;
+          }
+
+          .etf-v11-detail-header h1{
+            font-size:27px !important;
+            line-height:1 !important;
+            margin:0 !important;
+            letter-spacing:.5px !important;
+          }
+
+          .etf-v11-detail-header p{
+            font-size:17px !important;
+            line-height:1.15 !important;
+            margin:4px 0 0 !important;
+            color:#687180 !important;
+            font-weight:800 !important;
+          }
+
+          .etf-v11-back,
+          .etf-v11-next{
+            width:44px !important;
+            height:44px !important;
+            display:flex !important;
+            align-items:center !important;
+            justify-content:center !important;
+            font-size:42px !important;
+            line-height:1 !important;
+            font-weight:900 !important;
+            color:#111827 !important;
+            text-decoration:none !important;
+            -webkit-tap-highlight-color:transparent !important;
+          }
+
+          .etf-v11-next{
+            color:#8a94a3 !important;
+          }
+
+          .etf-v11-tabs{
+            height:52px !important;
+            display:flex !important;
+            align-items:flex-end !important;
+            gap:0 !important;
+            padding:0 10px !important;
+            overflow-x:auto !important;
+            overflow-y:hidden !important;
+            white-space:nowrap !important;
+            background:#fff !important;
+            border-bottom:0 !important;
+            scrollbar-width:none !important;
+          }
+
+          .etf-v11-tabs::-webkit-scrollbar{
+            display:none !important;
+          }
+
+          .etf-v11-tabs button{
+            flex:0 0 auto !important;
+            min-width:74px !important;
+            height:52px !important;
+            padding:0 8px 8px !important;
+            border:0 !important;
+            background:transparent !important;
+            color:#565f6b !important;
+            font-size:22px !important;
+            line-height:1 !important;
+            font-weight:900 !important;
+            position:relative !important;
+          }
+
+          .etf-v11-tabs button.active{
+            color:#4e8ff0 !important;
+          }
+
+          .etf-v11-tabs button.active::after{
+            content:'' !important;
+            position:absolute !important;
+            left:10px !important;
+            right:10px !important;
+            bottom:0 !important;
+            height:4px !important;
+            border-radius:4px 4px 0 0 !important;
+            background:#4e8ff0 !important;
           }
 
           /* V33 操作日報手機版：整體縮小，盡量一屏顯示 */
@@ -911,7 +1056,7 @@ export default function EtfDetailClient({ data }: { data: any }) {
 
           .etf-v11-op-table thead th{
             position:sticky !important;
-            top:0 !important;
+            top:116px !important;
             z-index:3 !important;
             background:#f0f1f3 !important;
             color:#20252c !important;
