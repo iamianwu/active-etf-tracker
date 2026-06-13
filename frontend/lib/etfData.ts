@@ -151,6 +151,40 @@ async function selectMaybe(table: string, queryFn: (q: any) => any) {
   return data || [];
 }
 
+
+function holdingDateStats(rows: any[]) {
+  const map: Record<string, { date: string; row_count: number; stock_count: number; stock_weight: number }> = {};
+
+  for (const r of rows || []) {
+    const d = String(r.data_date || '');
+    if (!d) continue;
+    if (!map[d]) map[d] = { date: d, row_count: 0, stock_count: 0, stock_weight: 0 };
+    map[d].row_count += 1;
+
+    if (isNormalStockCode(String(r.stock_code))) {
+      map[d].stock_count += 1;
+      map[d].stock_weight += num(r.weight) || 0;
+    }
+  }
+
+  return Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function pickLatestValidHoldingDate(rows: any[], minStockCount = 20, minStockWeight = 30) {
+  const stats = holdingDateStats(rows);
+  const valid = stats.filter((x) => x.stock_count >= minStockCount && x.stock_weight >= minStockWeight);
+  const pool = valid.length ? valid : stats;
+  return pool.length ? pool[pool.length - 1].date : null;
+}
+
+function pickPrevValidHoldingDate(rows: any[], latestDate: string | null, minStockCount = 20, minStockWeight = 30) {
+  if (!latestDate) return null;
+  const stats = holdingDateStats(rows).filter((x) => x.date < latestDate);
+  const valid = stats.filter((x) => x.stock_count >= minStockCount && x.stock_weight >= minStockWeight);
+  const pool = valid.length ? valid : stats;
+  return pool.length ? pool[pool.length - 1].date : null;
+}
+
 export async function getEtfListRows() {
   const quotes = await selectMaybe('etf_quotes', (q) => q);
   const map: Record<string, any> = {};
@@ -188,17 +222,9 @@ export async function getEtfDetailData(code: string) {
     ...basic,
   };
 
-  const latestDate = holdingsRows.length
-    ? holdingsRows.map((r: any) => String(r.data_date)).sort().slice(-1)[0]
-    : null;
-
-  const prevDate = latestDate
-    ? Array.from(new Set(
-        holdingsRows
-          .map((r: any) => String(r.data_date))
-          .filter((d: string) => d < latestDate)
-      )).sort().slice(-1)[0] || null
-    : null;
+  const latestDate = pickLatestValidHoldingDate(holdingsRows);
+  const prevDate = pickPrevValidHoldingDate(holdingsRows, latestDate);
+  const dateStats = holdingDateStats(holdingsRows);
 
   const sq: Record<string, any> = {};
   for (const s of stockQuotes || []) sq[String(s.stock_code)] = s;
@@ -310,6 +336,7 @@ export async function getEtfDetailData(code: string) {
     holdings: currentRows,
     latest_date: latestDate,
     previous_date: prevDate,
+    date_stats: dateStats,
     changes,
     change_summary: changeSummary,
     summary: {
