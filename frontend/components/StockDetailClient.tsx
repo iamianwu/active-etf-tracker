@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import {
   Area,
@@ -167,6 +168,62 @@ function sumInstitutionalByDate(rows: any[] = []) {
 }
 
 export default function StockDetailClient({ data }: { data: any }) {
+  const searchParams = useSearchParams();
+
+  function resolveStockBackHref() {
+    const returnToParam = searchParams.get('returnTo') || '';
+    const fromParam = searchParams.get('from') || '';
+
+    if (returnToParam) return returnToParam;
+    if (fromParam === 'holdings') return '/holdings';
+    if (fromParam === 'signals') return '/signals';
+    if (fromParam === 'etfs') return '/etfs';
+    if (fromParam === 'search') return '/search';
+
+    if (typeof window !== 'undefined') {
+      const storedReturnTo =
+        window.sessionStorage.getItem('stockReturnTo') ||
+        window.sessionStorage.getItem('activeEtfReturnTo') ||
+        window.sessionStorage.getItem('activeEtfOriginReturnTo') ||
+        '';
+      const storedFrom =
+        window.sessionStorage.getItem('stockFrom') ||
+        window.sessionStorage.getItem('activeEtfFrom') ||
+        '';
+
+      if (storedReturnTo) return storedReturnTo;
+      if (storedFrom === 'holdings') return '/holdings';
+      if (storedFrom === 'signals') return '/signals';
+      if (storedFrom === 'etfs') return '/etfs';
+      if (storedFrom === 'search') return '/search';
+    }
+
+    // 個股頁最常見入口是資金持股；不要再 fallback 到搜尋頁。
+    return '/holdings';
+  }
+
+  const stockBackHref = resolveStockBackHref();
+
+
+  function buildEtfHrefFromStock(etfCode: string) {
+    const returnTo = stockBackHref || '/holdings';
+    const from = returnTo.startsWith('/holdings') ? 'holdings'
+      : returnTo.startsWith('/signals') ? 'signals'
+      : returnTo.startsWith('/etfs') ? 'etfs'
+      : returnTo.startsWith('/search') ? 'search'
+      : 'holdings';
+
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem('activeEtfReturnTo', returnTo);
+      window.sessionStorage.setItem('activeEtfOriginReturnTo', returnTo);
+      window.sessionStorage.setItem('activeEtfFrom', from);
+    }
+
+    const params = new URLSearchParams();
+    params.set('from', from);
+    params.set('returnTo', returnTo);
+    return `/etf/${etfCode}?${params.toString()}`;
+  }
   const [showInfo, setShowInfo] = useState(false);
   const [chartMode, setChartMode] = useState<'price' | 'holding'>('price');
   const [etfSortKey, setEtfSortKey] = useState<EtfSortKey>('value');
@@ -252,7 +309,7 @@ export default function StockDetailClient({ data }: { data: any }) {
   return (
     <main className="stock-v6-page">
       <header className="stock-v6-header">
-        <Link className="stock-v6-back" href="/search">‹</Link>
+        <Link className="stock-v6-back" href={stockBackHref}>‹</Link>
         <div className="stock-v6-title">
           <div className="stock-v6-code">{data.stock_code}</div>
           <div className="stock-v6-name">{data.stock_name}</div>
@@ -407,7 +464,7 @@ export default function StockDetailClient({ data }: { data: any }) {
 
         <div className="stock-v6-etf-list">
           {etfs.map((r: any) => (
-            <Link key={r.etf_code} href={`/etf/${r.etf_code}`} className="stock-v6-etf-row">
+            <Link key={r.etf_code} href={buildEtfHrefFromStock(r.etf_code)} className="stock-v6-etf-row">
               <div>
                 <b>{r.etf_code}</b>
                 <span>{r.etf_name}</span>
