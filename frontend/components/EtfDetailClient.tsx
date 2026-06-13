@@ -2088,6 +2088,113 @@ export default function EtfDetailClient({ data }: { data: any }) {
           }
         }
 
+
+        /* V44：手機版下方表格重新啟用 sticky header，並用同一組 grid 欄寬讓表頭與資料列完全對齊。
+           重點：不要讓 table 或 grid 產生自己的橫向捲動；表頭只在整頁往下滑時固定。 */
+        @media(max-width:760px){
+          .etf-v11-detail{
+            --etf-detail-sticky-top:104px;
+            overflow-x:hidden !important;
+          }
+
+          .etf-v41-op-grid,
+          .etf-v42-holding-grid{
+            position:relative !important;
+            display:block !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            overflow:visible !important;
+            background:#fff !important;
+            isolation:isolate !important;
+            transform:none !important;
+          }
+
+          .etf-v41-op-grid{
+            --op-grid-cols:22% 16% 22% 18% 22%;
+          }
+
+          .etf-v42-holding-grid{
+            --holding-grid-cols:24% 29% 18% 29%;
+          }
+
+          .etf-v41-op-head,
+          .etf-v41-op-row{
+            display:grid !important;
+            grid-template-columns:var(--op-grid-cols) !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            box-sizing:border-box !important;
+          }
+
+          .etf-v42-holding-head,
+          .etf-v42-holding-row{
+            display:grid !important;
+            grid-template-columns:var(--holding-grid-cols) !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            box-sizing:border-box !important;
+          }
+
+          .etf-v41-op-head,
+          .etf-v42-holding-head{
+            position:sticky !important;
+            top:var(--etf-detail-sticky-top) !important;
+            z-index:260 !important;
+            transform:translateZ(0) !important;
+            -webkit-transform:translateZ(0) !important;
+            background:#f0f1f3 !important;
+            border-top:1px solid #e2e5ea !important;
+            border-bottom:1px solid #dfe3e8 !important;
+            box-shadow:0 2px 8px rgba(15,23,42,.08) !important;
+            overflow:hidden !important;
+          }
+
+          .etf-v41-op-head > div,
+          .etf-v42-holding-head > div,
+          .etf-v41-op-row > div,
+          .etf-v42-holding-row > div{
+            box-sizing:border-box !important;
+            min-width:0 !important;
+            max-width:100% !important;
+            overflow:hidden !important;
+          }
+
+          .etf-v41-op-row,
+          .etf-v42-holding-row{
+            position:relative !important;
+            z-index:1 !important;
+            background:#fff !important;
+          }
+
+          .etf-v41-op-body,
+          .etf-v42-holding-body{
+            position:relative !important;
+            z-index:1 !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            overflow:visible !important;
+          }
+
+          .etf-v41-op-head .etf-v11-d-sort,
+          .etf-v42-holding-head .etf-v11-d-sort{
+            display:inline-flex !important;
+            max-width:100% !important;
+            white-space:normal !important;
+            overflow:hidden !important;
+            text-overflow:clip !important;
+          }
+
+          .etf-v11-detail.modal-open .etf-v41-op-head,
+          .etf-v11-detail.modal-open .etf-v42-holding-head{
+            visibility:hidden !important;
+            z-index:1 !important;
+          }
+        }
+
       `}</style>
     </main>
   );
