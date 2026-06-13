@@ -1114,13 +1114,14 @@ export default function EtfDetailClient({ data }: { data: any }) {
             width:100% !important;
             min-width:0 !important;
             table-layout:fixed !important;
-            border-collapse:collapse !important;
+            border-collapse:separate !important;
+            border-spacing:0 !important;
           }
 
           .etf-v11-op-table th,
           .etf-v11-op-table td{
-            padding:9px 4px !important;
-            font-size:14px !important;
+            padding:8px 4px !important;
+            font-size:13px !important;
             line-height:1.2 !important;
             white-space:normal !important;
             word-break:keep-all !important;
@@ -1131,12 +1132,18 @@ export default function EtfDetailClient({ data }: { data: any }) {
           .etf-v11-op-table thead th{
             position:sticky !important;
             top:104px !important;
-            z-index:3 !important;
+            z-index:70 !important;
             background:#f0f1f3 !important;
             color:#20252c !important;
-            font-size:14px !important;
+            font-size:13px !important;
             font-weight:900 !important;
-            height:42px !important;
+            height:40px !important;
+            border-bottom:1px solid #dfe3e8 !important;
+            box-shadow:0 2px 0 rgba(15,23,42,.04) !important;
+          }
+
+          .etf-v11-op-table thead th:first-child{
+            z-index:72 !important;
           }
 
           .etf-v11-op-table th:nth-child(1),
