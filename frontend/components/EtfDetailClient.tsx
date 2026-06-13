@@ -27,10 +27,14 @@ const COLORS = ['#ffa83d', '#1aaed8', '#4f85d8', '#c878ed', '#cfcfcf'];
 
 const TAB_VALUES: Tab[] = ['overview', 'quote', 'operation', 'holdings', 'premium'];
 
-function initialTabFromUrl(): Tab {
-  if (typeof window === 'undefined') return 'overview';
+function readTabFromUrl(): Tab | null {
+  if (typeof window === 'undefined') return null;
   const t = new URLSearchParams(window.location.search).get('tab');
-  return TAB_VALUES.includes(t as Tab) ? (t as Tab) : 'overview';
+  return TAB_VALUES.includes(t as Tab) ? (t as Tab) : null;
+}
+
+function initialTabFromUrl(): Tab {
+  return readTabFromUrl() || 'overview';
 }
 
 const ETF_NAV_CODES = [
@@ -314,9 +318,29 @@ export default function EtfDetailClient({ data }: { data: any }) {
     [data.changes]
   );
 
+  function selectTab(nextTab: Tab) {
+    setTab(nextTab);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', nextTab);
+      window.history.replaceState(null, '', url.toString());
+    }
+  }
+
   function jumpToOperation(status: string) {
-    setTab('operation');
+    selectTab('operation');
     setOpFilter(status);
+  }
+
+  function goToEtf(code: any) {
+    if (!code) {
+      if (typeof window !== 'undefined') window.location.href = '/etfs';
+      return;
+    }
+    const currentTab = readTabFromUrl() || tab;
+    if (typeof window !== 'undefined') {
+      window.location.href = `/etf/${code}?tab=${currentTab}`;
+    }
   }
 
   function toggleHoldingSort(key: any) {
@@ -343,30 +367,26 @@ export default function EtfDetailClient({ data }: { data: any }) {
     if (typeof window !== 'undefined') window.location.href = '/etfs';
   }
 
-  function etfDetailHref(code: any) {
-    return code ? `/etf/${code}?tab=${tab}` : '/etfs';
-  }
-
   return (
     <main className="etf-v11-detail">
       <div className="etf-v36-sticky-detail-nav">
         <header className="etf-v11-detail-header">
           <button type="button" className="etf-v37-page-back" onClick={goBackToPreviousPage} aria-label="回上一頁">‹</button>
-          <Link href={etfDetailHref(prevCode)} className="etf-v37-etf-prev" aria-label="上一檔 ETF">◀</Link>
+          <button type="button" className="etf-v37-etf-prev" onClick={() => goToEtf(prevCode)} aria-label="上一檔 ETF">◀</button>
           <div className="etf-v37-title">
             <h1>{data.code}</h1>
             <p>{data.name}</p>
           </div>
-          <Link href={etfDetailHref(nextCode)} className="etf-v37-etf-next" aria-label="下一檔 ETF">▶</Link>
+          <button type="button" className="etf-v37-etf-next" onClick={() => goToEtf(nextCode)} aria-label="下一檔 ETF">▶</button>
           <span className="etf-v37-header-spacer" aria-hidden="true" />
         </header>
 
         <nav className="etf-v11-tabs">
-          <button className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}>總覽</button>
-          <button className={tab === 'quote' ? 'active' : ''} onClick={() => setTab('quote')}>即時</button>
-          <button className={tab === 'operation' ? 'active' : ''} onClick={() => setTab('operation')}>操作日報</button>
-          <button className={tab === 'holdings' ? 'active' : ''} onClick={() => setTab('holdings')}>成分股</button>
-          <button className={tab === 'premium' ? 'active' : ''} onClick={() => setTab('premium')}>折溢價</button>
+          <button className={tab === 'overview' ? 'active' : ''} onClick={() => selectTab('overview')}>總覽</button>
+          <button className={tab === 'quote' ? 'active' : ''} onClick={() => selectTab('quote')}>即時</button>
+          <button className={tab === 'operation' ? 'active' : ''} onClick={() => selectTab('operation')}>操作日報</button>
+          <button className={tab === 'holdings' ? 'active' : ''} onClick={() => selectTab('holdings')}>成分股</button>
+          <button className={tab === 'premium' ? 'active' : ''} onClick={() => selectTab('premium')}>折溢價</button>
         </nav>
       </div>
 
@@ -390,7 +410,7 @@ export default function EtfDetailClient({ data }: { data: any }) {
 
           <div className="etf-v11-change-strip">
             <span>{changeSummaryTitle(data)}</span>
-            <button type="button" onClick={() => setTab('operation')}>更多 ›</button>
+            <button type="button" onClick={() => selectTab('operation')}>更多 ›</button>
           </div>
 
           {(addedPreviewRows.length > 0 || removedPreviewRows.length > 0) && (
