@@ -432,7 +432,7 @@ export default function SignalsClient({ data, initialFilter = null }: { data: an
         <h2>{mmdd ? `${mmdd} 今日訊號` : '今日訊號'}</h2>
         <div className={`signals-data-status ${completeV80 ? 'ok' : 'warn'}`}>
           已抓取 {fetchedEtfCountV80} / {totalEtfCountV80} 檔 ETF
-          {dataDateV80 ? `，資料日期 ${dataDateV80}` : ''}` : ''}
+          {dataDateV80 ? `，資料日期 ${dataDateV80}` : ''}
         </div>
       </div>
 
