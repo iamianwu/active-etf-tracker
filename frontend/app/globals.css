@@ -5196,3 +5196,80 @@ a:focus-visible{
     mask-size: 28px 28px !important;
   }
 }
+
+
+/* ===== v75 visible signal range tabs ===== */
+.signal-range-wrap-v75 {
+  width: min(100%, 1180px);
+  margin: 22px auto 0;
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+
+.signal-range-title-v75 {
+  margin: 0 0 10px;
+  color: #7b8492;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.signal-range-tabs-v75 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px;
+  border-radius: 999px;
+  background: #eef2f7;
+  border: 1px solid #e3e8ef;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+}
+
+.signal-range-tab-v75 {
+  min-width: 86px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  text-align: center;
+  color: #64748b;
+  font-size: 20px;
+  font-weight: 900;
+  text-decoration: none;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.signal-range-tab-v75.active {
+  color: #2f6fcf;
+  background: #ffffff;
+  box-shadow: 0 3px 10px rgba(42, 96, 180, 0.16);
+}
+
+.signal-range-tab-v75:active {
+  transform: scale(0.98);
+}
+
+@media (max-width: 620px) {
+  .signal-range-wrap-v75 {
+    margin: 14px auto 0;
+    padding: 0 16px;
+  }
+
+  .signal-range-title-v75 {
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+
+  .signal-range-tabs-v75 {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .signal-range-tab-v75 {
+    min-width: 0;
+    padding: 11px 0;
+    font-size: 17px;
+  }
+}
