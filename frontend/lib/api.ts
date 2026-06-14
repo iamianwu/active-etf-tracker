@@ -410,59 +410,118 @@ async function getStockDetail(stockCode: string) {
   };
 }
 
-async function getSignals(signalType?: string | null) {
-  const { holdings, stockQuoteMap } = await loadBaseData();
-  const latest = latestDateByEtf(holdings);
-  const etfCodes = Object.keys(latest).sort();
 
-  const dataDate = etfCodes.length
-    ? etfCodes.map((c) => latest[c]).sort().slice(-1)[0]
-    : null;
+const VALID_SIGNAL_RANGE_DAYS = [1, 5, 10, 20];
 
-  const fetchedEtfCount = dataDate
-    ? etfCodes.filter((code) => latest[code] === dataDate).length
-    : 0;
+function normalizeSignalRangeDays(raw: any) {
+  const n = Number(raw || 1);
+  return VALID_SIGNAL_RANGE_DAYS.includes(n) ? n : 1;
+}
 
-  const staleEtfs = dataDate
-    ? etfCodes.filter((code) => latest[code] !== dataDate).map((code) => ({ etf_code: code, data_date: latest[code] }))
-    : [];
+async function selectPaged(table: string, selectExpr: string, build?: (q: any) => any) {
+  const out: any[] = [];
+  const pageSize = 1000;
+
+  for (let from = 0; ; from += pageSize) {
+    const to = from + pageSize - 1;
+    let q: any = supabase.from(table).select(selectExpr).range(from, to);
+    if (build) q = build(q);
+
+    const { data, error } = await q;
+    if (error) throw new Error(`${table}: ${error.message}`);
+
+    const rows = data || [];
+    out.push(...rows);
+    if (rows.length < pageSize) break;
+  }
+
+  return out;
+}
+
+async function loadSignalRowsByRange(signalRangeDays: number) {
+  const dateOnlyRows = await selectPaged(
+    "holdings",
+    "etf_code,data_date",
+    (q) => q.order("data_date", { ascending: false })
+  );
+
+  const datesByEtf: Record<string, Set<string>> = {};
+
+  for (const r of dateOnlyRows) {
+    const etf = String(r.etf_code || "");
+    const d = String(r.data_date || "");
+    if (!etf || !d) continue;
+    if (!datesByEtf[etf]) datesByEtf[etf] = new Set();
+    datesByEtf[etf].add(d);
+  }
+
+  const pairByEtf: Record<string, { current: string; previous: string | null }> = {};
+  const neededEtfs = new Set<string>();
+  const neededDates = new Set<string>();
+
+  for (const etf of Object.keys(datesByEtf)) {
+    const dates = Array.from(datesByEtf[etf]).sort();
+    if (!dates.length) continue;
+
+    const current = dates[dates.length - 1];
+    const previousIndex = Math.max(0, dates.length - 1 - signalRangeDays);
+    const previous = dates.length > 1 ? dates[previousIndex] : null;
+
+    pairByEtf[etf] = { current, previous };
+    neededEtfs.add(etf);
+    neededDates.add(current);
+    if (previous) neededDates.add(previous);
+  }
+
+  const etfList = Array.from(neededEtfs);
+  const dateList = Array.from(neededDates);
+
+  if (!etfList.length || !dateList.length) {
+    return { holdings: [], pairByEtf };
+  }
+
+  const holdings = await selectPaged(
+    "holdings",
+    "*",
+    (q) => q.in("etf_code", etfList).in("data_date", dateList)
+  );
+
+  return { holdings, pairByEtf };
+}
+
+
+
+async function getSignals(signalType?: string | null, signalRangeDaysInput: any = 1) {
+  const signalRangeDays = normalizeSignalRangeDays(signalRangeDaysInput);
+
+  const [{ holdings, pairByEtf }, stockQuotes] = await Promise.all([
+    loadSignalRowsByRange(signalRangeDays),
+    selectAll("stock_quotes"),
+  ]);
+
+  const stockQuoteMap: Record<string, any> = {};
+  for (const q of stockQuotes || []) stockQuoteMap[q.stock_code] = q;
 
   let changes: any[] = [];
+  let includedEtfCount = 0;
+  let latestDataDate = "";
 
-  for (const etf of etfCodes) {
-    const d = latest[etf];
-    const prev = previousDateForEtf(holdings, etf, d);
-    if (d && prev) changes.push(...computeEtfChanges(holdings, etf, d, prev));
+  for (const etf of Object.keys(pairByEtf)) {
+    const pair = pairByEtf[etf];
+    if (!pair?.current || !pair?.previous || pair.current === pair.previous) continue;
+
+    const etfChanges = computeEtfChanges(holdings, etf, pair.current, pair.previous);
+    if (etfChanges.length || pair.current) includedEtfCount += 1;
+    if (pair.current > latestDataDate) latestDataDate = pair.current;
+
+    changes.push(...etfChanges.map((x) => ({
+      ...x,
+      compare_date: pair.previous,
+      signal_range_days: signalRangeDays,
+    })));
   }
 
   changes = changes.filter((c: any) => ["新增", "刪除", "加碼", "減碼"].includes(c.status));
-
-  const signalStockCodes = Array.from(new Set(changes.map((c: any) => c.stock_code).filter(Boolean)));
-  const historyPriceMap = await loadLatestPriceHistoryMap(signalStockCodes);
-
-  const quoteFor = (stockCode: string) => {
-    const q = stockQuoteMap?.[stockCode] || {};
-    const fallback = historyPriceMap?.[stockCode] || {};
-
-    return {
-      price: q.price ?? fallback.price ?? null,
-      change_pct: q.change_pct ?? fallback.change_pct ?? null,
-      volume: q.volume ?? fallback.volume ?? null,
-    };
-  };
-
-  changes = changes.map((c: any) => {
-    const q = quoteFor(c.stock_code);
-    const price = Number(q.price || 0);
-    const deltaShares = Number(c.delta_shares || 0);
-    return {
-      ...c,
-      price: q.price,
-      change_pct: q.change_pct,
-      volume: q.volume,
-      delta_value_billion: price ? deltaShares * price / 100000000 : null,
-    };
-  });
 
   const typeMap: Record<string, string> = {
     added: "新增",
@@ -479,30 +538,23 @@ async function getSignals(signalType?: string | null) {
 
   for (const c of changes) {
     const stockCode = c.stock_code;
-    const price = Number(c.price || 0);
+    const q = stockQuoteMap?.[stockCode] || {};
+    const price = Number(q.price || 0);
     const deltaShares = Number(c.delta_shares || 0);
+    const deltaWeight = Number(c.delta_weight || 0);
     const deltaValue = price ? deltaShares * price / 100000000 : null;
-    const currentShares = Number(c.shares || 0);
-    const previousShares = currentShares - deltaShares;
 
     if (!byStock[stockCode]) {
       byStock[stockCode] = {
         stock_code: stockCode,
         stock_name: c.stock_name,
-        price: c.price ?? null,
-        change_pct: c.change_pct ?? null,
-        volume: c.volume ?? null,
-        current_shares: 0,
-        previous_shares: 0,
+        price: price || null,
+        change_pct: q.change_pct ?? null,
         delta_shares: 0,
         delta_weight: 0,
         delta_value_billion: 0,
         has_price: false,
         count: 0,
-        etf_count: 0,
-        etf_codes: [],
-        buy_etf_count: 0,
-        sell_etf_count: 0,
         increase_etf_count: 0,
         decrease_etf_count: 0,
         add_etf_count: 0,
@@ -513,12 +565,9 @@ async function getSignals(signalType?: string | null) {
 
     const b = byStock[stockCode];
 
-    b.current_shares += currentShares;
-    b.previous_shares += previousShares;
     b.delta_shares += deltaShares;
-    b.delta_weight += Number(c.delta_weight || 0);
+    b.delta_weight += deltaWeight;
     b.count += 1;
-    b.etf_codes.push(c.etf_code);
     b.statuses.push(`${c.etf_code} ${c.status}`);
 
     if (deltaValue !== null) {
@@ -526,57 +575,34 @@ async function getSignals(signalType?: string | null) {
       b.has_price = true;
     }
 
-    if (c.status === "加碼") {
-      b.increase_etf_count += 1;
-      b.buy_etf_count += 1;
-    }
-    if (c.status === "新增") {
-      b.add_etf_count += 1;
-      b.buy_etf_count += 1;
-    }
-    if (c.status === "減碼") {
-      b.decrease_etf_count += 1;
-      b.sell_etf_count += 1;
-    }
-    if (c.status === "刪除") {
-      b.remove_etf_count += 1;
-      b.sell_etf_count += 1;
-    }
+    if (c.status === "加碼") b.increase_etf_count += 1;
+    if (c.status === "減碼") b.decrease_etf_count += 1;
+    if (c.status === "新增") b.add_etf_count += 1;
+    if (c.status === "刪除") b.remove_etf_count += 1;
   }
 
-  const aggregate = Object.values(byStock).map((x: any) => {
-    const uniqueEtfs = Array.from(new Set(x.etf_codes || []));
-    let status = "混合";
-    if (x.delta_shares > 0) status = x.add_etf_count > 0 && x.increase_etf_count === 0 ? "新增" : "加碼";
-    else if (x.delta_shares < 0) status = x.remove_etf_count > 0 && x.decrease_etf_count === 0 ? "刪除" : "減碼";
-
-    const magnitude_pct = x.previous_shares ? (x.delta_shares / x.previous_shares) * 100 : null;
-
-    return {
-      ...x,
-      status,
-      etf_count: uniqueEtfs.length,
-      etf_codes: uniqueEtfs,
-      delta_value_billion: x.has_price ? x.delta_value_billion : null,
-      magnitude_pct,
-    };
-  }).sort((a: any, b: any) => {
+  const aggregate = Object.values(byStock).map((x: any) => ({
+    ...x,
+    delta_value_billion: x.has_price ? x.delta_value_billion : null,
+  })).sort((a: any, b: any) => {
     const av = a.delta_value_billion !== null ? Math.abs(Number(a.delta_value_billion || 0)) : Math.abs(Number(a.delta_shares || 0));
     const bv = b.delta_value_billion !== null ? Math.abs(Number(b.delta_value_billion || 0)) : Math.abs(Number(b.delta_shares || 0));
     return bv - av;
   });
 
   return {
-    data_date: dataDate,
-    data_date_mmdd: fmtDateMMDD(dataDate),
-    fetched_etf_count: fetchedEtfCount,
-    total_etf_count: etfCodes.length,
-    stale_etfs: staleEtfs,
     summary: summarizeChanges(changes),
     changes,
     aggregate,
+    rangeDays: signalRangeDays,
+    signalRangeDays,
+    rangeLabel: signalRangeDays === 1 ? "今日" : `${signalRangeDays}日`,
+    latestDataDate,
+    includedEtfCount,
+    comparisonMode: signalRangeDays === 1 ? "前一交易日" : `${signalRangeDays}個交易日前`,
   };
 }
+
 
 export async function apiGet(path: string) {
   const u = new URL(path, "https://local");
@@ -594,7 +620,13 @@ export async function apiGet(path: string) {
   }
 
   if (u.pathname === "/signals") {
-    return getSignals(u.searchParams.get("type"));
+    const days = normalizeSignalRangeDays(
+      u.searchParams.get("days") ||
+      u.searchParams.get("rangeDays") ||
+      u.searchParams.get("signalRangeDays") ||
+      "1"
+    );
+    return getSignals(u.searchParams.get("type"), days);
   }
 
   throw new Error(`Unknown API path: ${path}`);
