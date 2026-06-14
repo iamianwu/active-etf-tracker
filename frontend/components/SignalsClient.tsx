@@ -5,42 +5,6 @@ import { useMemo, useState } from 'react';
 import { fmt, fmt0, signedClass } from '@/lib/api';
 
 const STATUS_LIST = ['新增', '刪除', '加碼', '減碼'] as const;
-const SIGNAL_RANGE_OPTIONS_V73 = [
-  { value: '1', label: '即時' },
-  { value: '3', label: '3日' },
-  { value: '5', label: '5日' },
-  { value: '10', label: '10日' },
-  { value: '20', label: '20日' },
-] as const;
-
-function signalRangeHrefV73(range: string) {
-  return range === '1' ? '/signals' : `/signals?range=${range}`;
-}
-
-function signalTypeHrefV73(type: string, range: string) {
-  return range === '1' ? `/signals/${type}` : `/signals/${type}?range=${range}`;
-}
-
-function signalRangeTitleV73(range: string) {
-  return range === '1' ? '今日訊號' : `近${range}日訊號`;
-}
-
-function SignalRangeTabsV73({ activeRange }: { activeRange: string }) {
-  return (
-    <div className="signals-window-tabs-v73" aria-label="訊號區間">
-      {SIGNAL_RANGE_OPTIONS_V73.map((item) => (
-        <Link
-          key={item.value}
-          href={signalRangeHrefV73(item.value)}
-          className={activeRange === item.value ? 'active' : ''}
-        >
-          {item.label}
-        </Link>
-      ))}
-    </div>
-  );
-}
-
 type FilterStatus = typeof STATUS_LIST[number];
 type SortKey = 'stock' | 'price' | 'change_pct' | 'status' | 'amount' | 'etf_count' | 'delta_shares' | 'magnitude';
 type SortDir = 'asc' | 'desc';
@@ -259,19 +223,17 @@ function FocusCard({
   title,
   item,
   tone,
-  href,
 }: {
   title: string;
   item: any;
   tone: 'red' | 'green';
-  href: string;
 }) {
   const buyCount = countFromStatuses(item || {}, '買');
   const sellCount = countFromStatuses(item || {}, '賣');
   const cardTone = tone === 'red' ? 'in red' : 'out green';
 
   return (
-    <Link className={`focus-card ${cardTone}`} href={href}>
+    <Link className={`focus-card ${cardTone}`} href={tone === 'red' ? '/signals/increased' : '/signals/decreased'}>
       <div className="focus-card-title">{title}</div>
 
       {item ? (
@@ -302,10 +264,8 @@ function FocusCard({
   );
 }
 
-export default function SignalsClient({ data, initialFilter = null, signalRange = '1' }: { data: any; initialFilter?: FilterStatus | null; signalRange?: string }) {
+export default function SignalsClient({ data, initialFilter = null }: { data: any; initialFilter?: FilterStatus | null }) {
   const defaultStatuses: FilterStatus[] = initialFilter ? [initialFilter] : ['新增', '刪除', '加碼', '減碼'];
-  const activeSignalRangeV73 = String(data?.signal_range_days || signalRange || '1');
-  const signalTitleV73 = signalRangeTitleV73(activeSignalRangeV73);
   const [selectedStatuses, setSelectedStatuses] = useState<FilterStatus[]>(defaultStatuses);
   const [sortKey, setSortKey] = useState<SortKey>('amount');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -383,9 +343,8 @@ export default function SignalsClient({ data, initialFilter = null, signalRange 
 
   return (
     <main className="page signals-v7-page">
-      <SignalRangeTabsV73 activeRange={activeSignalRangeV73} />
       <div className="signals-title-block">
-        <h2>{mmdd ? `${mmdd} ${signalTitleV73}` : signalTitleV73}</h2>
+        <h2>{mmdd ? `${mmdd} 今日訊號` : '今日訊號'}</h2>
         <div className={`signals-data-status ${complete ? 'ok' : 'warn'}`}>
           已抓取 {data.fetched_etf_count || 0} / {data.total_etf_count || 0} 檔 ETF
           {data.data_date ? `，資料日期 ${data.data_date}` : ''}
@@ -393,10 +352,10 @@ export default function SignalsClient({ data, initialFilter = null, signalRange 
       </div>
 
       <div className="focus-grid">
-        <FocusCard title="資金流入最多" item={inflow} tone="red" href={signalTypeHrefV73('increased', activeSignalRangeV73)} />
-        <FocusCard title="資金流出最多" item={outflow} tone="green" href={signalTypeHrefV73('decreased', activeSignalRangeV73)} />
-        <FocusCard title="最多 ETF 加碼" item={mostEtfAdd} tone="red" href={signalTypeHrefV73('increased', activeSignalRangeV73)} />
-        <FocusCard title="最多 ETF 減碼" item={mostEtfReduce} tone="green" href={signalTypeHrefV73('decreased', activeSignalRangeV73)} />
+        <FocusCard title="資金流入最多" item={inflow} tone="red" />
+        <FocusCard title="資金流出最多" item={outflow} tone="green" />
+        <FocusCard title="最多 ETF 加碼" item={mostEtfAdd} tone="red" />
+        <FocusCard title="最多 ETF 減碼" item={mostEtfReduce} tone="green" />
       </div>
 
       <h3>資金交易明細：共 {rows.length} 檔</h3>
