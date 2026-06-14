@@ -491,6 +491,7 @@ async function loadSignalRowsByRange(signalRangeDays: number) {
 
 
 
+
 async function getSignals(signalType?: string | null, signalRangeDaysInput: any = 1) {
   const signalRangeDays = normalizeSignalRangeDays(signalRangeDaysInput);
 
@@ -500,24 +501,34 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
   ]);
 
   const stockQuoteMap: Record<string, any> = {};
-  for (const q of stockQuotes || []) stockQuoteMap[q.stock_code] = q;
+  for (const q of stockQuotes || []) {
+    stockQuoteMap[String(q.stock_code || "")] = q;
+  }
+
+  const pairEtfs = Object.keys(pairByEtf || {});
+  const totalEtfCount = pairEtfs.length;
 
   let changes: any[] = [];
   let includedEtfCount = 0;
   let latestDataDate = "";
 
-  for (const etf of Object.keys(pairByEtf)) {
+  for (const etf of pairEtfs) {
     const pair = pairByEtf[etf];
     if (!pair?.current || !pair?.previous || pair.current === pair.previous) continue;
 
-    const etfChanges = computeEtfChanges(holdings, etf, pair.current, pair.previous);
-    if (etfChanges.length || pair.current) includedEtfCount += 1;
+    includedEtfCount += 1;
     if (pair.current > latestDataDate) latestDataDate = pair.current;
 
-    changes.push(...etfChanges.map((x) => ({
+    const etfChanges = computeEtfChanges(holdings, etf, pair.current, pair.previous);
+
+    changes.push(...etfChanges.map((x: any) => ({
       ...x,
+      data_date: pair.current,
+      current_date: pair.current,
       compare_date: pair.previous,
+      previous_date: pair.previous,
       signal_range_days: signalRangeDays,
+      signalRangeDays,
     })));
   }
 
@@ -531,34 +542,80 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
   };
 
   if (signalType && typeMap[signalType]) {
-    changes = changes.filter((c) => c.status === typeMap[signalType]);
+    changes = changes.filter((c: any) => c.status === typeMap[signalType]);
   }
+
+  changes = changes.map((c: any) => {
+    const q = stockQuoteMap[String(c.stock_code || "")] || {};
+    const price = Number(q.price || 0);
+    const changePct = q.change_pct ?? q.changePct ?? null;
+    const deltaShares = Number(c.delta_shares ?? c.deltaShares ?? 0);
+    const deltaWeight = Number(c.delta_weight ?? c.deltaWeight ?? 0);
+    const deltaValueBillion = price ? deltaShares * price / 100000000 : null;
+
+    return {
+      ...c,
+      stock_name: c.stock_name || q.stock_name || q.name || "",
+      price: price || null,
+      stock_price: price || null,
+      close_price: price || null,
+      change_pct: changePct,
+      changePct,
+      delta_shares: deltaShares,
+      deltaShares,
+      delta_weight: deltaWeight,
+      deltaWeight,
+      delta_value_billion: deltaValueBillion,
+      deltaValueBillion,
+      amount_billion: deltaValueBillion,
+      amount: deltaValueBillion,
+      has_price: !!price,
+      hasPrice: !!price,
+    };
+  });
 
   const byStock: Record<string, any> = {};
 
   for (const c of changes) {
-    const stockCode = c.stock_code;
-    const q = stockQuoteMap?.[stockCode] || {};
-    const price = Number(q.price || 0);
+    const stockCode = String(c.stock_code || "");
     const deltaShares = Number(c.delta_shares || 0);
     const deltaWeight = Number(c.delta_weight || 0);
-    const deltaValue = price ? deltaShares * price / 100000000 : null;
+    const deltaValue = c.delta_value_billion === null || c.delta_value_billion === undefined
+      ? null
+      : Number(c.delta_value_billion);
 
     if (!byStock[stockCode]) {
       byStock[stockCode] = {
         stock_code: stockCode,
         stock_name: c.stock_name,
-        price: price || null,
-        change_pct: q.change_pct ?? null,
+        price: c.price ?? null,
+        stock_price: c.price ?? null,
+        change_pct: c.change_pct ?? null,
+        changePct: c.change_pct ?? null,
         delta_shares: 0,
+        deltaShares: 0,
         delta_weight: 0,
+        deltaWeight: 0,
         delta_value_billion: 0,
+        deltaValueBillion: 0,
+        amount_billion: 0,
         has_price: false,
+        hasPrice: false,
         count: 0,
+        etf_count: 0,
+        etfCount: 0,
         increase_etf_count: 0,
         decrease_etf_count: 0,
         add_etf_count: 0,
         remove_etf_count: 0,
+        increaseEtfCount: 0,
+        decreaseEtfCount: 0,
+        addEtfCount: 0,
+        removeEtfCount: 0,
+        buy_etf_count: 0,
+        sell_etf_count: 0,
+        buyEtfCount: 0,
+        sellEtfCount: 0,
         statuses: [],
       };
     }
@@ -566,42 +623,99 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
     const b = byStock[stockCode];
 
     b.delta_shares += deltaShares;
+    b.deltaShares = b.delta_shares;
     b.delta_weight += deltaWeight;
+    b.deltaWeight = b.delta_weight;
     b.count += 1;
+    b.etf_count = b.count;
+    b.etfCount = b.count;
     b.statuses.push(`${c.etf_code} ${c.status}`);
 
-    if (deltaValue !== null) {
+    if (deltaValue !== null && Number.isFinite(deltaValue)) {
       b.delta_value_billion += deltaValue;
+      b.deltaValueBillion = b.delta_value_billion;
+      b.amount_billion = b.delta_value_billion;
       b.has_price = true;
+      b.hasPrice = true;
     }
 
-    if (c.status === "加碼") b.increase_etf_count += 1;
-    if (c.status === "減碼") b.decrease_etf_count += 1;
-    if (c.status === "新增") b.add_etf_count += 1;
-    if (c.status === "刪除") b.remove_etf_count += 1;
+    if (c.status === "加碼") {
+      b.increase_etf_count += 1;
+      b.increaseEtfCount = b.increase_etf_count;
+    }
+    if (c.status === "減碼") {
+      b.decrease_etf_count += 1;
+      b.decreaseEtfCount = b.decrease_etf_count;
+    }
+    if (c.status === "新增") {
+      b.add_etf_count += 1;
+      b.addEtfCount = b.add_etf_count;
+    }
+    if (c.status === "刪除") {
+      b.remove_etf_count += 1;
+      b.removeEtfCount = b.remove_etf_count;
+    }
+
+    b.buy_etf_count = b.increase_etf_count + b.add_etf_count;
+    b.sell_etf_count = b.decrease_etf_count + b.remove_etf_count;
+    b.buyEtfCount = b.buy_etf_count;
+    b.sellEtfCount = b.sell_etf_count;
   }
 
   const aggregate = Object.values(byStock).map((x: any) => ({
     ...x,
     delta_value_billion: x.has_price ? x.delta_value_billion : null,
+    deltaValueBillion: x.has_price ? x.delta_value_billion : null,
+    amount_billion: x.has_price ? x.delta_value_billion : null,
   })).sort((a: any, b: any) => {
     const av = a.delta_value_billion !== null ? Math.abs(Number(a.delta_value_billion || 0)) : Math.abs(Number(a.delta_shares || 0));
     const bv = b.delta_value_billion !== null ? Math.abs(Number(b.delta_value_billion || 0)) : Math.abs(Number(b.delta_shares || 0));
     return bv - av;
   });
 
+  const summary = summarizeChanges(changes);
+  const rangeLabel = signalRangeDays === 1 ? "今日" : `${signalRangeDays}日`;
+  const comparisonMode = signalRangeDays === 1 ? "前一交易日" : `${signalRangeDays}個交易日前`;
+
   return {
-    summary: summarizeChanges(changes),
+    summary,
+    stats: summary,
     changes,
+    rows: changes,
+    detail: changes,
     aggregate,
+    aggregated: aggregate,
     rangeDays: signalRangeDays,
     signalRangeDays,
-    rangeLabel: signalRangeDays === 1 ? "今日" : `${signalRangeDays}日`,
+    rangeLabel,
     latestDataDate,
+    latest_data_date: latestDataDate,
+    dataDate: latestDataDate,
+    data_date: latestDataDate,
     includedEtfCount,
-    comparisonMode: signalRangeDays === 1 ? "前一交易日" : `${signalRangeDays}個交易日前`,
+    included_etf_count: includedEtfCount,
+    totalEtfCount,
+    total_etf_count: totalEtfCount,
+    comparisonMode,
+    comparison_mode: comparisonMode,
+    meta: {
+      rangeDays: signalRangeDays,
+      signalRangeDays,
+      rangeLabel,
+      latestDataDate,
+      latest_data_date: latestDataDate,
+      dataDate: latestDataDate,
+      data_date: latestDataDate,
+      includedEtfCount,
+      included_etf_count: includedEtfCount,
+      totalEtfCount,
+      total_etf_count: totalEtfCount,
+      comparisonMode,
+      comparison_mode: comparisonMode,
+    },
   };
 }
+
 
 
 export async function apiGet(path: string) {
