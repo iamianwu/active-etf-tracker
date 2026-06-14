@@ -185,15 +185,125 @@ function pickPrevValidHoldingDate(rows: any[], latestDate: string | null, minSto
   return pool.length ? pool[pool.length - 1].date : null;
 }
 
-export async function getEtfListRows() {
-  const quotes = await selectMaybe('etf_quotes', (q) => q);
-  const map: Record<string, any> = {};
 
-  for (const q of quotes) {
-    map[String(q.etf_code)] = q;
+const ETF_NAME_FALLBACK_V80: Record<string, string> = {
+  "00400A": "主動國泰動能高息",
+  "00401A": "主動摩根台灣鑫收",
+  "00402A": "主動安聯美國科技",
+  "00403A": "主動統一升級50",
+  "00404A": "主動聯博動能50",
+  "00405A": "主動富邦台灣龍耀",
+  "00406A": "主動中信台灣收益",
+  "00980A": "主動野村臺灣優選",
+  "00981A": "主動統一台股增長",
+  "00982A": "主動群益台灣強棒",
+  "00983A": "主動中信成長高股息",
+  "00984A": "主動安聯台灣高息成長",
+  "00985A": "主動野村台灣高息動能",
+  "00986A": "主動凱基台灣AI50",
+  "00988A": "主動統一全球創新",
+  "00989A": "主動野村台灣50",
+  "00990A": "主動元大AI新經濟",
+  "00991A": "主動復華未來50",
+  "00992A": "主動群益科技創新",
+  "00993A": "主動安聯台灣",
+  "00994A": "主動第一金台股優",
+  "00995A": "主動野村台灣優選高息",
+  "00996A": "主動兆豐台灣豐收",
+  "00997A": "主動群益美國增長",
+  "00998A": "主動復華金融股息",
+  "00999A": "主動台股ETF",
+};
+
+function isActiveEtfCodeV80(code: any) {
+  const c = String(code || '').trim().toUpperCase();
+  return /^[0-9]{5}A$/.test(c);
+}
+
+function normalizeEtfCodeV80(code: any) {
+  return String(code || '').trim().toUpperCase();
+}
+
+async function selectMaybePagedV80(table: string, build: (q: any) => any, pageSize = 1000) {
+  const out: any[] = [];
+
+  for (let from = 0; ; from += pageSize) {
+    const to = from + pageSize - 1;
+    const rows = await selectMaybe(table, (q) => build(q).range(from, to));
+    out.push(...(rows || []));
+
+    if (!rows || rows.length < pageSize) break;
+    if (from > 200000) break;
   }
 
-  return ETF_CODES.map((code) => normalizeQuote(code, map[code]));
+  return out;
+}
+
+export async function getEtfListRows() {
+  const [quotes, holdingCodes] = await Promise.all([
+    selectMaybe('etf_quotes', (q) => q),
+    selectMaybePagedV80(
+      'holdings',
+      (q) => q.select('etf_code,data_date').order('data_date', { ascending: false })
+    ),
+  ]);
+
+  const quoteMap: Record<string, any> = {};
+  const latestHoldingDateMap: Record<string, string> = {};
+  const codeSet = new Set<string>();
+
+  for (const code of ETF_CODES || []) {
+    const c = normalizeEtfCodeV80(code);
+    if (isActiveEtfCodeV80(c)) codeSet.add(c);
+  }
+
+  for (const q of quotes || []) {
+    const c = normalizeEtfCodeV80(q.etf_code || q.code || q.stock_code);
+    if (!isActiveEtfCodeV80(c)) continue;
+    quoteMap[c] = q;
+    codeSet.add(c);
+  }
+
+  for (const r of holdingCodes || []) {
+    const c = normalizeEtfCodeV80(r.etf_code);
+    const d = String(r.data_date || '');
+    if (!isActiveEtfCodeV80(c)) continue;
+    codeSet.add(c);
+    if (d && (!latestHoldingDateMap[c] || d > latestHoldingDateMap[c])) {
+      latestHoldingDateMap[c] = d;
+    }
+  }
+
+  return Array.from(codeSet)
+    .sort()
+    .map((code) => {
+      const q = quoteMap[code] || {};
+      const fallbackName = ETF_NAME_FALLBACK_V80[code] || q.etf_name || q.name || q.stock_name || code;
+      const normalized = normalizeQuote(code, {
+        ...q,
+        etf_code: code,
+        code,
+        stock_code: code,
+        etf_name: q.etf_name || q.name || q.stock_name || fallbackName,
+        name: q.name || q.etf_name || q.stock_name || fallbackName,
+        stock_name: q.stock_name || q.etf_name || q.name || fallbackName,
+      });
+
+      return {
+        ...normalized,
+        ...q,
+        etf_code: code,
+        code,
+        stock_code: code,
+        etf_name: normalized.etf_name || normalized.name || fallbackName,
+        name: normalized.name || normalized.etf_name || fallbackName,
+        stock_name: normalized.stock_name || normalized.etf_name || normalized.name || fallbackName,
+        latest_holding_date: latestHoldingDateMap[code] || null,
+        latestHoldingDate: latestHoldingDateMap[code] || null,
+        has_holding_data: !!latestHoldingDateMap[code],
+        has_quote: !!quoteMap[code],
+      };
+    });
 }
 
 export async function getEtfDetailData(code: string) {

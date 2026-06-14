@@ -341,13 +341,98 @@ export default function SignalsClient({ data, initialFilter = null }: { data: an
     });
   }
 
+
+  const signalDetailRowsV80 = data.changes || data.rows || data.detail || [];
+  const signalRowEtfCountV80 = new Set(
+    (signalDetailRowsV80 || [])
+      .map((x: any) => String(x.etf_code || x.etfCode || ''))
+      .filter(Boolean)
+  ).size;
+
+  const totalEtfCountV80 = Number(
+    data.total_etf_count ??
+    data.totalEtfCount ??
+    data.etf_count ??
+    data.etfCount ??
+    data.total_count ??
+    data.totalCount ??
+    data.summary?.total_etf_count ??
+    data.summary?.totalEtfCount ??
+    data.summary?.etf_count ??
+    data.summary?.etfCount ??
+    data.summary?.total_count ??
+    data.summary?.totalCount ??
+    data.stats?.total_etf_count ??
+    data.stats?.totalEtfCount ??
+    data.stats?.etf_count ??
+    data.stats?.etfCount ??
+    data.stats?.total_count ??
+    data.stats?.totalCount ??
+    data.meta?.total_etf_count ??
+    data.meta?.totalEtfCount ??
+    data.meta?.etf_count ??
+    data.meta?.etfCount ??
+    data.meta?.total_count ??
+    data.meta?.totalCount ??
+    0
+  );
+
+  const fetchedEtfCountRawV80 = Number(
+    data.fetched_etf_count ??
+    data.fetchedEtfCount ??
+    data.captured_etf_count ??
+    data.capturedEtfCount ??
+    data.included_etf_count ??
+    data.includedEtfCount ??
+    data.summary?.fetched_etf_count ??
+    data.summary?.fetchedEtfCount ??
+    data.summary?.captured_etf_count ??
+    data.summary?.capturedEtfCount ??
+    data.summary?.included_etf_count ??
+    data.summary?.includedEtfCount ??
+    data.stats?.fetched_etf_count ??
+    data.stats?.fetchedEtfCount ??
+    data.stats?.captured_etf_count ??
+    data.stats?.capturedEtfCount ??
+    data.stats?.included_etf_count ??
+    data.stats?.includedEtfCount ??
+    data.meta?.fetched_etf_count ??
+    data.meta?.fetchedEtfCount ??
+    data.meta?.captured_etf_count ??
+    data.meta?.capturedEtfCount ??
+    data.meta?.included_etf_count ??
+    data.meta?.includedEtfCount ??
+    0
+  );
+
+  const fetchedEtfCountV80 =
+    fetchedEtfCountRawV80 ||
+    signalRowEtfCountV80 ||
+    ((totalEtfCountV80 > 0 && (signalDetailRowsV80 || []).length > 0) ? totalEtfCountV80 : 0);
+
+  const dataDateV80 =
+    data.data_date ||
+    data.dataDate ||
+    data.latest_data_date ||
+    data.latestDataDate ||
+    data.meta?.data_date ||
+    data.meta?.dataDate ||
+    data.meta?.latest_data_date ||
+    data.meta?.latestDataDate ||
+    '';
+
+  const completeV80 =
+    totalEtfCountV80 > 0 &&
+    fetchedEtfCountV80 > 0 &&
+    fetchedEtfCountV80 >= totalEtfCountV80;
+
   return (
     <main className="page signals-v7-page">
       <div className="signals-title-block">
         <h2>{mmdd ? `${mmdd} 今日訊號` : '今日訊號'}</h2>
-        <div className={`signals-data-status ${complete ? 'ok' : 'warn'}`}>
-          已抓取 {data.fetched_etf_count || 0} / {data.total_etf_count || 0} 檔 ETF
-          {data.data_date ? `，資料日期 ${data.data_date}` : ''}
+        <div className={`signals-data-status ${completeV80 ? 'ok' : 'warn'}`}>
+          已抓取 {fetchedEtfCountV80} / {totalEtfCountV80} 檔 ETF
+          {dataDateV80 ? `，資料日期 ${dataDateV80}` : ''}` : ''}
         </div>
       </div>
 
