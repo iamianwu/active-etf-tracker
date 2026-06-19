@@ -5757,3 +5757,48 @@ a:focus-visible{
     font-size: 16px;
   }
 }
+
+
+
+/* ===== V94 stock recent operation records ===== */
+.v94-op-section { margin: 20px 0 28px; }
+.v94-op-title-row { display: flex; align-items: center; gap: 8px; }
+.v94-op-title-row h2 { margin: 0; }
+.v94-info-btn {
+  width: 26px; height: 26px; border-radius: 999px; border: 2px solid #9aa5b5;
+  background: #fff; color: #7b8797; font-size: 16px; font-weight: 950; line-height: 1;
+}
+.v94-op-table { margin-top: 12px; overflow: hidden; border: 1px solid #e6edf5; border-radius: 16px; background: #fff; }
+.v94-op-head {
+  display: grid; grid-template-columns: 52px minmax(0, 1fr) 112px 60px; gap: 8px;
+  padding: 12px 10px; background: #f4f6f8; color: #4b5563; font-size: 14px; font-weight: 950; line-height: 1.25;
+}
+.v94-op-tr {
+  display: grid; grid-template-columns: 52px minmax(0, 1fr) 112px 60px; gap: 8px; align-items: center;
+  padding: 14px 10px; border-top: 1px solid #edf2f7; text-decoration: none; color: inherit;
+}
+.v94-date { font-size: 16px; font-weight: 850; color: #2b2f36; }
+.v94-etf { min-width: 0; }
+.v94-etf b { display: block; font-size: 19px; line-height: 1.1; font-weight: 950; color: #222831; }
+.v94-etf span { display: block; margin-top: 4px; font-size: 14px; font-weight: 800; color: #666f7c; white-space: normal; line-height: 1.25; }
+.v94-change { text-align: right; }
+.v94-change b { display: block; font-size: 17px; line-height: 1.15; font-weight: 950; white-space: nowrap; }
+.v94-change span { display: block; margin-top: 4px; font-size: 15px; font-weight: 850; color: #5d6470; }
+.v94-status { font-size: 17px; font-weight: 950; text-align: right; }
+.v94-change.red, .v94-status.red { color: #e15661; }
+.v94-change.green, .v94-status.green { color: #2fa67c; }
+.v94-modal-mask {
+  position: fixed; inset: 0; z-index: 9999; background: rgba(15,23,42,.35);
+  display: flex; align-items: center; justify-content: center; padding: 22px;
+}
+.v94-modal { width: min(520px, 100%); max-height: 82vh; overflow: auto; border-radius: 18px; background: #fff; padding: 22px; box-shadow: 0 20px 60px rgba(15,23,42,.25); }
+.v94-modal h3 { text-align: center; font-size: 24px; margin: 0 0 18px; }
+.v94-modal ul { padding-left: 20px; margin: 0; }
+.v94-modal li { margin: 14px 0; font-size: 17px; line-height: 1.7; font-weight: 650; }
+.v94-modal button { width: 100%; margin-top: 20px; border: 0; border-radius: 12px; background: #5798e8; color: white; padding: 14px 12px; font-size: 19px; font-weight: 950; }
+@media(max-width:390px){
+  .v94-op-head, .v94-op-tr { grid-template-columns: 46px minmax(0, 1fr) 96px 52px; gap: 6px; padding-left: 8px; padding-right: 8px; }
+  .v94-etf b { font-size: 17px; }
+  .v94-etf span { font-size: 13px; }
+  .v94-change b, .v94-status { font-size: 15px; }
+}

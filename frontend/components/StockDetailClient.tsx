@@ -196,6 +196,7 @@ export default function StockDetailClient(props: any) {
           totalValue={totalValue}
           onMore={() => setTab('detail')}
         />
+        <StockRecentOperationRecords data={data} etfRows={etfRows} />
       </section>}
 
       {tab === 'whale' && <section className="v89-section">
@@ -249,6 +250,167 @@ function RankCard({ title, rows, keyName, positive }: any) {
   );
 }
 
+
+
+function pickObjValue(obj: any, keys: string[]): any {
+  for (const k of keys) {
+    if (obj && obj[k] !== undefined && obj[k] !== null && obj[k] !== '') return obj[k];
+  }
+  return undefined;
+}
+
+function asLotsSmart(v: any): number {
+  const n = num(v);
+  if (!Number.isFinite(n)) return NaN;
+  return Math.abs(n) >= 100000 ? n / 1000 : n;
+}
+
+function recordDateOf(r: any): string {
+  return String(pickObjValue(r, ['data_date', 'date', 'trade_date', 'updated_date', 'dt']) || '');
+}
+
+function recordEtfCodeOf(r: any): string {
+  return String(pickObjValue(r, ['etf_code', 'etfCode', 'code', 'fund_code']) || '');
+}
+
+function recordEtfNameOf(r: any, etfMap: Record<string, any>): string {
+  const code = recordEtfCodeOf(r);
+  return String(pickObjValue(r, ['etf_name', 'etfName', 'name', 'fund_name']) || etfMap[code]?.name || etfMap[code]?.etf_name || '');
+}
+
+function recordLotsOf(r: any): number {
+  return asLotsSmart(pickObjValue(r, ['shares', 'shares_lots', 'lots', 'holding_lots', 'quantity', 'qty']));
+}
+
+function buildStockOperationRecords(data: any, etfRows: any[]) {
+  const raw = ([] as any[]).concat(
+    Array.isArray(data?.operation_records) ? data.operation_records : [],
+    Array.isArray(data?.operationRecords) ? data.operationRecords : [],
+    Array.isArray(data?.recent_operations) ? data.recent_operations : [],
+    Array.isArray(data?.recentOperations) ? data.recentOperations : []
+  );
+
+  const etfMap: Record<string, any> = {};
+  for (const e of etfRows || []) etfMap[String(e.code || e.etf_code || '')] = e;
+
+  if (raw.length) {
+    return raw.map((r: any) => {
+      const code = recordEtfCodeOf(r);
+      const lots = asLotsSmart(pickObjValue(r, [
+        'delta_lots', 'change_lots', 'deltaLots', 'changeLots',
+        'shares_change', 'delta_shares', 'sharesChange', 'deltaShares',
+        'change_shares', 'changeShares'
+      ]));
+      const pct = num(pickObjValue(r, ['change_pct', 'delta_pct', 'changePct', 'deltaPct', 'change_percent']));
+      return {
+        date: recordDateOf(r),
+        code,
+        name: recordEtfNameOf(r, etfMap),
+        lots,
+        pct,
+        status: String(pickObjValue(r, ['status', 'action']) || (lots >= 0 ? '加碼' : '減碼')),
+      };
+    }).filter((r: any) => r.code && Number.isFinite(r.lots) && r.lots !== 0);
+  }
+
+  const hist = ([] as any[]).concat(
+    Array.isArray(data?.holding_history) ? data.holding_history : [],
+    Array.isArray(data?.holdingHistory) ? data.holdingHistory : [],
+    Array.isArray(data?.historyRows) ? data.historyRows : [],
+    Array.isArray(data?.history) ? data.history : []
+  );
+
+  const grouped: Record<string, any[]> = {};
+  for (const r of hist) {
+    const code = recordEtfCodeOf(r);
+    const date = recordDateOf(r);
+    if (!code || !date) continue;
+    if (!grouped[code]) grouped[code] = [];
+    grouped[code].push(r);
+  }
+
+  const out: any[] = [];
+  for (const code of Object.keys(grouped)) {
+    const rows = grouped[code].sort((a, b) => recordDateOf(a).localeCompare(recordDateOf(b)));
+    for (let i = 1; i < rows.length; i++) {
+      const prevLots = recordLotsOf(rows[i - 1]);
+      const currLots = recordLotsOf(rows[i]);
+      if (!Number.isFinite(prevLots) || !Number.isFinite(currLots)) continue;
+      const delta = currLots - prevLots;
+      if (Math.abs(delta) < 0.0001) continue;
+      out.push({
+        date: recordDateOf(rows[i]),
+        code,
+        name: recordEtfNameOf(rows[i], etfMap),
+        lots: delta,
+        pct: prevLots ? (delta / Math.abs(prevLots)) * 100 : NaN,
+        status: delta >= 0 ? '加碼' : '減碼',
+      });
+    }
+  }
+
+  return out.sort((a, b) => String(b.date).localeCompare(String(a.date)) || Math.abs(b.lots) - Math.abs(a.lots));
+}
+
+function StockRecentOperationRecords({ data, etfRows }: { data: any; etfRows: any[] }) {
+  const records = buildStockOperationRecords(data, etfRows).slice(0, 30);
+  const [openInfo, setOpenInfo] = useState(false);
+
+  if (!records.length) return null;
+
+  return (
+    <section className="v94-op-section">
+      <div className="v94-op-title-row">
+        <h2>近30日操作記錄</h2>
+        <button type="button" className="v94-info-btn" onClick={() => setOpenInfo(true)}>i</button>
+      </div>
+
+      <div className="v94-op-table">
+        <div className="v94-op-head">
+          <span>日期</span>
+          <span>ETF</span>
+          <span>變動張數<br />變動幅度</span>
+          <span>狀態</span>
+        </div>
+
+        {records.map((r: any, i: number) => {
+          const positive = r.lots >= 0;
+          const mmdd = String(r.date || '').slice(5, 10).replace('-', '/');
+          const pctText = Number.isFinite(r.pct) ? `${fmtFree(r.pct, Math.abs(r.pct) >= 10 ? 1 : 2)}%` : '-';
+
+          return (
+            <Link key={`${r.date}-${r.code}-${i}`} href={`/etf/${r.code}?from=stock`} className="v94-op-tr">
+              <div className="v94-date">{mmdd || '-'}</div>
+              <div className="v94-etf">
+                <b>{r.code}</b>
+                <span>{r.name || '-'}</span>
+              </div>
+              <div className={`v94-change ${positive ? 'red' : 'green'}`}>
+                <b>{fmtSigned(r.lots, Math.abs(r.lots) < 1 ? 1 : 0, ' 張')}</b>
+                <span>{pctText}</span>
+              </div>
+              <div className={`v94-status ${positive ? 'red' : 'green'}`}>{r.status}</div>
+            </Link>
+          );
+        })}
+      </div>
+
+      {openInfo && (
+        <div className="v94-modal-mask" onClick={() => setOpenInfo(false)}>
+          <div className="v94-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>變動資料說明</h3>
+            <ul>
+              <li><b>變動張數：</b>以 1 張為最小顯示單位，原始資料若為股數會自動換算為張數，例如 600,000 股會顯示為 600 張。</li>
+              <li><b>變動幅度：</b>用於衡量加減碼強度。當變動幅度超過 100% 時，通常代表原始持股基數較小，請搭配變動張數判讀。</li>
+              <li><b>判讀提醒：</b>ETF 持股變化不等於立即買賣建議，建議搭配股價、權重與連續多日趨勢一起看。</li>
+            </ul>
+            <button type="button" onClick={() => setOpenInfo(false)}>我知道了</button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
 
 function TopEtfPreview({ rows, totalValue, onMore }: { rows: any[]; totalValue: number; onMore: () => void }) {
   if (!rows?.length) return <div className="v89-empty-box">目前沒有 ETF 持股資料</div>;
