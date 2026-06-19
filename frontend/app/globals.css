@@ -6026,3 +6026,11 @@ a:focus-visible{
     font-size: 13px;
   }
 }
+
+/* ===== V97 duplicate signal range guard ===== */
+.signals-v7-page .signal-range-block + .signal-range-block,
+.signals-v7-page .signals-range-block + .signals-range-block,
+.signals-v7-page .v75-range-block + .v75-range-block,
+.signals-v7-page .signal-range-tabs-wrap + .signal-range-tabs-wrap {
+  display: none !important;
+}

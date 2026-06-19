@@ -173,6 +173,19 @@ function StatusPill({ status, count, active, onClick }: any) {
   return <button className={`v89-status-pill ${status} ${active ? 'active' : ''}`} onClick={onClick}><span>{status}</span><b>{count}</b></button>;
 }
 
+
+function stableSignalCompareV97(a: any, b: any) {
+  const ac = String(a?.stock_code || a?.code || '');
+  const bc = String(b?.stock_code || b?.code || '');
+  if (ac !== bc) return ac.localeCompare(bc);
+  const an = String(a?.stock_name || a?.name || '');
+  const bn = String(b?.stock_name || b?.name || '');
+  if (an !== bn) return an.localeCompare(bn);
+  const as = String(a?.status || '');
+  const bs = String(b?.status || '');
+  return as.localeCompare(bs);
+}
+
 export default function SignalsClient(props: any) {
   const data = props?.data || props;
 

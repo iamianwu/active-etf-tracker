@@ -332,6 +332,8 @@ function stockOpFormatPct(v: number): string {
 }
 
 function buildStockRecentOperationRows(data: any, etfRows: any[]) {
+  data = data?.data || data;
+  etfRows = Array.isArray(etfRows) ? etfRows : (Array.isArray(etfRows?.etfRows) ? etfRows.etfRows : []);
   const etfMap: Record<string, any> = {};
   for (const e of etfRows || []) etfMap[String(e?.code || e?.etf_code || e?.fund_code || '')] = e;
 
