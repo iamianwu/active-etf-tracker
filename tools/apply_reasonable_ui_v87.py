@@ -1,3 +1,29 @@
+#!/usr/bin/env python3
+from pathlib import Path
+
+ROOT = Path.cwd()
+FRONTEND = ROOT / "frontend"
+COMP = FRONTEND / "components"
+APP = FRONTEND / "app"
+
+if not FRONTEND.exists():
+    raise SystemExit("❌ 找不到 frontend 目錄，請在 active-etf-tracker-fix repo 根目錄執行。")
+if not COMP.exists():
+    raise SystemExit("❌ 找不到 frontend/components 目錄。")
+
+def backup(path: Path):
+    if path.exists():
+        bak = path.with_suffix(path.suffix + ".bak_v87")
+        if not bak.exists():
+            bak.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+
+def write(path: Path, content: str):
+    backup(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content.strip() + "\n", encoding="utf-8")
+    print(f"✅ wrote {path.relative_to(ROOT)}")
+
+signals_client = r"""
 'use client';
 
 import Link from 'next/link';
@@ -227,3 +253,211 @@ export default function SignalsClient(props: any) {
     </main>
   );
 }
+"""
+
+write(COMP / "SignalsClient.tsx", signals_client)
+
+css_path = APP / "globals.css"
+if not css_path.exists():
+    raise SystemExit("❌ 找不到 frontend/app/globals.css")
+
+css = r"""
+
+/* ===== V87 reasonability fixes ===== */
+
+.v87-signals-page .v86-range-block {
+  display: none !important;
+}
+
+.v86-focus-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.v86-focus-card.compact {
+  min-height: 142px;
+  padding: 11px 12px !important;
+}
+
+.v87-focus-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.v86-focus-title {
+  font-size: 16px !important;
+  margin-bottom: 8px !important;
+}
+
+.v86-focus-stock {
+  font-size: 17px !important;
+  line-height: 1.15 !important;
+  white-space: normal !important;
+}
+
+.v86-focus-stock span {
+  font-size: 13px !important;
+  margin-left: 5px !important;
+}
+
+.v86-focus-price {
+  font-size: 25px !important;
+  line-height: 1.05 !important;
+}
+
+.v86-focus-price small {
+  font-size: 13px !important;
+}
+
+.v86-focus-meta {
+  grid-template-columns: auto 1fr;
+  column-gap: 6px;
+  row-gap: 1px;
+  font-size: 11.5px !important;
+}
+
+.v86-focus-meta strong {
+  font-size: 12.5px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v86-empty-mini {
+  color: #8a95a6;
+  font-weight: 900;
+  font-size: 14px;
+  padding-top: 12px;
+}
+
+.v86-title-block h1,
+.v86-list-head h1 {
+  font-size: 28px !important;
+}
+
+.v86-status-pill {
+  padding: 8px 12px !important;
+  font-size: 16px !important;
+}
+
+.v86-signal-row {
+  grid-template-columns: minmax(86px, 1fr) 78px 62px 80px !important;
+  min-height: 68px !important;
+  gap: 6px !important;
+  padding: 10px 4px !important;
+}
+
+.v86-row-left b,
+.v86-holding-row b,
+.v86-etf-holding-row b {
+  font-size: 17px !important;
+}
+
+.v86-row-left span,
+.v86-holding-row span,
+.v86-etf-holding-row span {
+  font-size: 13px !important;
+}
+
+.v86-row-mid b {
+  font-size: 18px !important;
+}
+
+.v86-row-mid span {
+  font-size: 13px !important;
+}
+
+.v86-badge {
+  font-size: 13px !important;
+  padding: 4px 9px !important;
+}
+
+.v86-etf-card,
+.v86-stock-card {
+  padding: 10px 11px !important;
+  border-radius: 13px !important;
+  margin-bottom: 9px !important;
+}
+
+.v86-etf-top b,
+.v86-stock-card b {
+  font-size: 19px !important;
+}
+
+.v86-etf-price strong,
+.v86-stock-price strong {
+  font-size: 20px !important;
+}
+
+.v86-etf-metrics {
+  gap: 4px !important;
+  margin-top: 8px !important;
+}
+
+.v86-etf-metrics span {
+  font-size: 11.5px !important;
+}
+
+.v86-badge-row {
+  margin-top: 8px !important;
+}
+
+.v86-badge-row span {
+  font-size: 11.5px !important;
+  padding: 3px 7px !important;
+}
+
+.v86-search-line input {
+  height: 42px !important;
+  font-size: 15px !important;
+}
+
+@media (max-width: 390px) {
+  .v86-focus-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .v86-signal-row {
+    grid-template-columns: minmax(78px, 1fr) 72px 56px 72px !important;
+  }
+}
+"""
+
+old_css = css_path.read_text(encoding="utf-8")
+if "V87 reasonability fixes" not in old_css:
+    css_path.write_text(old_css + css, encoding="utf-8")
+    print("✅ appended V87 CSS")
+else:
+    print("ℹ️ V87 CSS already exists")
+
+readme = r"""
+# V87 Reasonability Fixes
+
+修正 v86 目前不合理的地方：
+
+1. 今日訊號「訊號區間」重複顯示  
+   - SignalsClient 不再另外渲染區間切換，避免跟 page-level tabs 重複。
+
+2. 今日訊號重點卡片不要亂抓 fallback  
+   - 資金流入：只取 flow > 0 的有效個股  
+   - 資金流出：只取 flow < 0 的有效個股  
+   - 最多 ETF 加碼：必須 addCount > 0  
+   - 最多 ETF 減碼：必須 reduceCount > 0  
+   - 如果沒有有效訊號，顯示「尚無有效訊號」，不要硬塞台積電 0:0。
+
+3. 卡片太大、字太大、內容太散  
+   - 今日訊號改成 2 欄小卡  
+   - 明細列、ETF 卡片、資金持股卡片縮小字級與 padding  
+   - 手機小螢幕仍自動變 1 欄。
+
+4. 明細 row 過度巨大  
+   - 壓縮 row 高度與欄寬，降低滑動負擔。
+"""
+
+write(ROOT / "README_REASONABLE_UI_V87.md", readme)
+
+print("\n✅ v87 已套用。請執行：")
+print("cd frontend")
+print("[ -d node_modules ] || npm install")
+print("npm run build")
