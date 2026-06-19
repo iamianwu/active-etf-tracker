@@ -483,7 +483,7 @@ export default function EtfDetailClient({ data }: { data: any }) {
     <main className={showChangeInfo ? "etf-v11-detail modal-open" : "etf-v11-detail"}>
       <div className="etf-v36-sticky-detail-nav">
         <header className="etf-v11-detail-header">
-          <button type="button" className="etf-v37-page-back" onClick={goBackToPreviousPage} aria-label="回上一頁">‹</button>
+          <button type="button" className="etf-v37-page-back" onClick={handleFastBackV83} aria-label="回上一頁">‹</button>
           <button type="button" className="etf-v37-etf-prev" onClick={() => goToEtf(prevCode)} aria-label="上一檔 ETF">◀</button>
           <div className="etf-v37-title">
             <h1>{data.code}</h1>
