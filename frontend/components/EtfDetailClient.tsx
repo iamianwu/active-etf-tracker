@@ -10,6 +10,105 @@ type SortKey = 'weight' | 'value' | 'shares' | 'price' | 'pct' | 'code';
 function useBack() { return () => { if (typeof window !== 'undefined' && window.history.length > 1) window.history.back(); else window.location.href = '/etfs'; }; }
 function SortButton({ label, k, sortKey, sortDir, onClick }: any) { const active = sortKey === k; return <button className={active ? 'active' : ''} onClick={onClick}>{label}<span>{active ? (sortDir === 'desc' ? '↓' : '↑') : '↕'}</span></button>; }
 
+
+function opDeltaLots(r: any): number {
+  const directLots = num(r?.delta_lots ?? r?.change_lots ?? r?.deltaLots ?? r?.changeLots);
+  if (Number.isFinite(directLots)) {
+    // 有些舊資料欄位名稱雖叫 lots，但實際塞的是股數；數字太大時自動換成張
+    return Math.abs(directLots) >= 100000 ? directLots / 1000 : directLots;
+  }
+
+  const shares = num(
+    r?.shares_change ??
+    r?.delta_shares ??
+    r?.sharesChange ??
+    r?.deltaShares ??
+    r?.change_shares ??
+    r?.changeShares
+  );
+  if (Number.isFinite(shares)) return shares / 1000;
+
+  return NaN;
+}
+
+function opAmountBillion(r: any, lots: number): number {
+  const direct = num(
+    r?.amount_billion ??
+    r?.flow_billion ??
+    r?.money_billion ??
+    r?.delta_amount_billion ??
+    r?.net_amount_billion ??
+    r?.value_change_billion ??
+    r?.market_value_change_billion
+  );
+  if (Number.isFinite(direct)) return direct;
+
+  const raw = num(
+    r?.amount ??
+    r?.flow_amount ??
+    r?.delta_amount ??
+    r?.net_amount ??
+    r?.value_change ??
+    r?.market_value_change
+  );
+  if (Number.isFinite(raw)) return raw / 100000000;
+
+  const px = priceOf(r);
+  if (Number.isFinite(lots) && Number.isFinite(px)) return lots * 1000 * px / 100000000;
+
+  return NaN;
+}
+
+function OperationRows({ changes }: { changes: any[] }) {
+  if (!Array.isArray(changes) || changes.length === 0) {
+    return <div className="v89-empty-box">目前沒有操作日報資料</div>;
+  }
+
+  return (
+    <div className="v93-op-list">
+      {changes.map((r: any, i: number) => {
+        const s = statusOf(r);
+        const code = stockCode(r);
+        const lots = opDeltaLots(r);
+        const amount = opAmountBillion(r, lots);
+        const weight = weightOf(r);
+        const positive = Number.isFinite(lots) ? lots >= 0 : s === '新增' || s === '加碼';
+
+        return (
+          <Link href={`/stock/${code}?from=etf`} key={`${code}-${i}`} className="v93-op-row">
+            <div className="v93-op-main">
+              <div className="v93-op-name">
+                <b>{stockName(r)}</b>
+                <span>{code}</span>
+              </div>
+              <div className={`v89-pill ${s}`}>{s}</div>
+            </div>
+
+            <div className="v93-op-metrics">
+              <div>
+                <span>持股變動</span>
+                <b className={positive ? 'v89-red' : 'v89-green'}>
+                  {Number.isFinite(lots) ? fmtSigned(lots, 0, ' 張') : '-'}
+                </b>
+              </div>
+              <div>
+                <span>估算金額</span>
+                <b className={Number.isFinite(amount) ? (amount >= 0 ? 'v89-red' : 'v89-green') : ''}>
+                  {Number.isFinite(amount) ? fmtSigned(amount, 2, ' 億') : '-'}
+                </b>
+              </div>
+              <div>
+                <span>目前權重</span>
+                <b>{Number.isFinite(weight) ? `${fmtFree(weight, 2)}%` : '-'}</b>
+              </div>
+            </div>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function EtfDetailClient(props: any) {
   const data = props?.data || props;
   const quote = quoteOf(data);
@@ -39,7 +138,7 @@ export default function EtfDetailClient(props: any) {
       <nav className="v89-detail-tabs five">{([['overview','總覽'],['live','即時'],['operation','操作日報'],['holdings','成分股'],['basic','基本']] as any).map(([k,l]: any) => <button key={k} className={tab===k?'active':''} onClick={() => setTab(k)}>{l}</button>)}</nav>
       {tab === 'overview' && <section className="v89-section"><div className="v89-kpi-grid four"><div><span>股價</span><b className={toneClass(changePctOf(quote))}>{fmtFree(priceOf(quote), 2)}</b><small>{fmtPct(changePctOf(quote), 2)}</small></div><div><span>成交金額</span><b>{fmtFree(amountBillionOf(quote), 1)}</b><small>億</small></div><div><span>持股異動</span><b>{Array.isArray(changes) ? changes.length : 0}</b><small>檔</small></div><div><span>資料狀態</span><b className={holdings.length ? 'v89-green' : 'v89-red'}>{holdings.length ? '完整' : '待補'}</b><small>股價 / 成分股 / 歷史</small></div></div><h2>淨值 / 股價走勢</h2><Chart rows={chartRows} color={changePctOf(quote) >= 0 ? 'red' : 'green'} /><h2>前五大持股</h2><HoldingRows rows={sortedHoldings.slice(0, 5)} /></section>}
       {tab === 'live' && <section className="v89-section"><div className="v89-stock-quote"><div><span>股價</span><b className={toneClass(changePctOf(quote))}>{fmtFree(priceOf(quote), 2)}</b><small>{fmtPct(changePctOf(quote), 2)}</small></div><div><span>成交量</span><b>{fmtFree(volumeOf(quote), 0)}</b><small>{fmtFree(amountBillionOf(quote), 1)} 億</small></div></div></section>}
-      {tab === 'operation' && <section className="v89-section"><h1>操作日報</h1><div className="v89-dense-list">{(Array.isArray(changes) ? changes : []).map((r: any, i: number) => { const s=statusOf(r); const delta=num(r?.delta_lots ?? r?.change_lots ?? r?.shares_change ?? r?.delta_shares); return <Link href={`/stock/${stockCode(r)}?from=etf`} key={`${stockCode(r)}-${i}`} className="v89-signal-row"><div className="v89-name-cell"><b>{stockName(r)}</b><span>{stockCode(r)}</span></div><div className={`v89-pill ${s}`}>{s}</div><div className={delta>=0?'v89-red':'v89-green'}>{Number.isFinite(delta)?fmtSigned(delta,0,' 張'):'-'}</div><div>{fmtFree(weightOf(r),2)}%</div></Link>; })}</div></section>}
+      {tab === 'operation' && <section className="v89-section"><h1>操作日報</h1><OperationRows changes={Array.isArray(changes) ? changes : []} /></section>}
       {tab === 'holdings' && <section className="v89-section"><div className="v89-sort-row sticky"><SortButton label="權重" k="weight" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('weight')} /><SortButton label="市值" k="value" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('value')} /><SortButton label="張數" k="shares" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('shares')} /><SortButton label="漲跌幅" k="pct" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('pct')} /></div><HoldingRows rows={sortedHoldings} /></section>}
       {tab === 'basic' && <section className="v89-section"><div className="v89-info-card"><p><span>資產規模</span><b>{fmtFree(quote?.aum_billion ?? quote?.fund_size_billion, 1)} 億</b></p><p><span>內扣費用</span><b>{Number.isFinite(num(quote?.expense_ratio)) ? fmtFree(quote?.expense_ratio, 2) + '%' : '-'}</b></p><p><span>成立日</span><b>{quote?.inception_date || quote?.listing_date || '-'}</b></p><p><span>更新時間</span><b>{shortDate(latestDateOf(quote))}</b></p></div></section>}
     </main>
