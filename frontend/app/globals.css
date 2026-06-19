@@ -6775,3 +6775,267 @@ a:focus-visible{
   }
 }
 
+
+/* ===== V105 signal page: compact list instead of cards ===== */
+.signal105-page {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+.signal105-page .signal103-range,
+.signal105-page .signal103-label,
+.signal105-page .signal103-range-tabs,
+.signal105-page .signal104-focus-grid,
+.signal105-page .signal104-detail,
+.signal105-page .signal104-row,
+.signal105-page .signal104-list {
+  display: none !important;
+}
+
+.signal105-title-block h2 {
+  font-size: clamp(38px, 7vw, 52px);
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+.signal105-focus-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 22px 0 28px;
+}
+
+.signal105-focus {
+  border-radius: 20px;
+  padding: 16px;
+  min-height: 190px;
+  border: 1.5px solid #e8eef6;
+  background: #fff;
+  overflow: hidden;
+}
+
+.signal105-focus.red { background: #fff7f8; border-color: #f5ccd2; }
+.signal105-focus.green { background: #f2fffa; border-color: #bfe8da; }
+
+.signal105-focus-title {
+  font-size: clamp(19px, 4.5vw, 24px);
+  font-weight: 950;
+  margin-bottom: 8px;
+}
+
+.signal105-focus.red .signal105-focus-title { color: #df5662; }
+.signal105-focus.green .signal105-focus-title { color: #25a67d; }
+
+.signal105-focus-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: clamp(20px, 4.9vw, 25px);
+  font-weight: 950;
+  color: #172033;
+  white-space: nowrap;
+}
+
+.signal105-focus-name b {
+  font-size: 16px;
+  color: #8a96a8;
+}
+
+.signal105-focus-price {
+  font-size: clamp(30px, 7vw, 39px);
+  font-weight: 950;
+  line-height: 1.08;
+  margin: 5px 0 8px;
+  color: #df5662;
+  white-space: nowrap;
+}
+
+.signal105-focus-price span {
+  font-size: clamp(16px, 3.7vw, 20px);
+}
+
+.signal105-focus-sub {
+  display: grid;
+  gap: 2px;
+  font-size: 14px;
+  font-weight: 900;
+  color: #8190a4;
+}
+
+.signal105-focus-sub b { font-weight: 950; }
+
+.signal105-detail h3 {
+  font-size: clamp(31px, 6.4vw, 42px);
+  line-height: 1.15;
+  margin: 8px 0 16px;
+}
+
+.signal105-pill-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 0 10px;
+  scrollbar-width: none;
+}
+
+.signal105-pill-row::-webkit-scrollbar { display: none; }
+
+.signal105-pill {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 2px solid #cbd5e1;
+  background: #fff;
+  color: #667386;
+  font-size: 20px;
+  font-weight: 950;
+  padding: 10px 15px;
+  min-height: 44px;
+}
+
+.signal105-pill b { margin-left: 5px; }
+
+.signal105-pill.status.新增.active { color: #b99a00; border-color: #c7aa00; background: #fffdea; }
+.signal105-pill.status.刪除.active { color: #6b7280; border-color: #a7b0bd; background: #f8fafc; }
+.signal105-pill.status.加碼.active { color: #df5662; border-color: #df5662; background: #fff7f8; }
+.signal105-pill.status.減碼.active { color: #22a77d; border-color: #22a77d; background: #f2fffa; }
+.signal105-pill.sort.active { color: #2f6fcc; border-color: #bfdbfe; background: #eff6ff; }
+
+.signal105-list { margin-top: 2px; }
+
+.signal105-row {
+  border-bottom: 1px solid #e6edf5;
+  padding: 16px 0 14px;
+}
+
+.signal105-main {
+  display: grid;
+  grid-template-columns: minmax(92px, 1.05fr) minmax(72px, 0.72fr) minmax(58px, 0.58fr) minmax(90px, 0.9fr);
+  column-gap: 10px;
+  align-items: center;
+}
+
+.signal105-stock b {
+  display: block;
+  font-size: clamp(22px, 5.5vw, 30px);
+  font-weight: 950;
+  color: #172033;
+  line-height: 1.1;
+}
+
+.signal105-stock span {
+  display: block;
+  font-size: 18px;
+  font-weight: 850;
+  color: #8b98aa;
+  margin-top: 2px;
+}
+
+.signal105-price b {
+  display: block;
+  font-size: clamp(21px, 5vw, 28px);
+  font-weight: 950;
+  color: #172033;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.signal105-price span {
+  display: block;
+  font-size: 17px;
+  font-weight: 950;
+  margin-top: 3px;
+  white-space: nowrap;
+}
+
+.signal105-status-wrap { text-align: center; }
+
+.signal105-status {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 17px;
+  font-weight: 950;
+  background: #eef2f7;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.signal105-status.新增 { background: #fff6bf; color: #b59a00; }
+.signal105-status.加碼 { background: #ffecef; color: #df5662; }
+.signal105-status.減碼, .signal105-status.刪除 { background: #eafaf4; color: #25a67d; }
+
+.signal105-amount { text-align: right; }
+
+.signal105-amount small {
+  display: block;
+  color: #8390a3;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+
+.signal105-amount b {
+  display: block;
+  font-size: clamp(18px, 4.4vw, 24px);
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.signal105-meta {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px 14px;
+  color: #7f8da0;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.signal105-meta b {
+  font-weight: 950;
+  color: #172033;
+}
+
+.signal105-empty, .signal105-empty-list {
+  color: #7f8da0;
+  font-size: 18px;
+  font-weight: 900;
+  padding: 10px 0;
+}
+
+.signal105-empty-list {
+  border: 1px dashed #d6e0ec;
+  border-radius: 16px;
+  padding: 22px;
+}
+
+.signal105-page .up { color: #df5662 !important; }
+.signal105-page .down { color: #25a67d !important; }
+.signal105-page .flat { color: #7f8da0 !important; }
+
+@media (max-width: 430px) {
+  .signal105-focus-grid { gap: 10px; }
+  .signal105-focus { padding: 14px 12px; min-height: 180px; }
+  .signal105-focus-sub { font-size: 13px; }
+  .signal105-pill { font-size: 18px; padding: 9px 13px; }
+
+  .signal105-main {
+    grid-template-columns: minmax(96px, 1fr) minmax(76px, 0.78fr) minmax(56px, 0.56fr) minmax(82px, 0.82fr);
+    column-gap: 7px;
+  }
+
+  .signal105-status {
+    font-size: 15px;
+    padding: 5px 8px;
+  }
+
+  .signal105-meta {
+    font-size: 15px;
+    justify-content: flex-end;
+    gap: 4px 10px;
+  }
+}
+

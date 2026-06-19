@@ -6,13 +6,7 @@ type AnyRow = Record<string, any>;
 type SortKey = 'amount' | 'lots' | 'consensus' | 'price' | 'pct' | 'status';
 type SortDir = 'asc' | 'desc';
 
-const STATUS_ORDER: Record<string, number> = {
-  新增: 1,
-  加碼: 2,
-  減碼: 3,
-  刪除: 4,
-  異動: 5,
-};
+const STATUS_ORDER: Record<string, number> = { 新增: 1, 加碼: 2, 減碼: 3, 刪除: 4, 異動: 5 };
 
 function num(v: any, fallback = 0): number {
   if (v === null || v === undefined || v === '') return fallback;
@@ -50,62 +44,13 @@ function getPct(row: AnyRow): number | null {
 
 function getLots(row: AnyRow): number {
   let v = firstNum(row, [
-    'net_lots',
-    'display_delta_lots',
-    'change_lots',
-    'delta_lots',
-    'lot_change',
-    'shares_change',
-    'delta_shares',
+    'net_lots', 'display_delta_lots', 'change_lots', 'delta_lots',
+    'lot_change', 'shares_change', 'delta_shares',
   ], 0);
 
-  // 兼容舊資料：若來源是「股」且數值過大，自動換算成「張」。
+  // 兼容舊資料：若還是「股」，自動轉成「張」
   if (Math.abs(v) >= 100000) v = v / 1000;
   return v;
-}
-
-function getAmountBillion(row: AnyRow): number {
-  const v = firstNum(row, [
-    'flow_billion',
-    'money_billion',
-    'amount_billion',
-    'delta_amount_billion',
-    'delta_value_billion',
-    'net_amount_billion',
-    'trade_amount_billion',
-  ], NaN);
-
-  if (Number.isFinite(v)) return v;
-
-  const price = getPrice(row);
-  const lots = getLots(row);
-  if (price !== null && Number.isFinite(lots)) {
-    return price * lots * 1000 / 100000000;
-  }
-
-  return 0;
-}
-
-function getBuyCount(row: AnyRow): number {
-  const direct = firstNum(row, ['add_etf_count', 'add_count', 'buy_count', 'buy_etf_count', 'increase_count'], NaN);
-  if (Number.isFinite(direct)) return Math.max(0, Math.round(direct));
-
-  const status = rowStatus(row);
-  const etfCount = Math.max(0, Math.round(firstNum(row, ['etf_count', 'count'], 0)));
-  return status === '新增' || status === '加碼' ? etfCount : 0;
-}
-
-function getSellCount(row: AnyRow): number {
-  const direct = firstNum(row, ['reduce_etf_count', 'sell_count', 'sell_etf_count', 'decrease_count'], NaN);
-  if (Number.isFinite(direct)) return Math.max(0, Math.round(direct));
-
-  const status = rowStatus(row);
-  const etfCount = Math.max(0, Math.round(firstNum(row, ['etf_count', 'count'], 0)));
-  return status === '刪除' || status === '減碼' ? etfCount : 0;
-}
-
-function getConsensusScore(row: AnyRow): number {
-  return getBuyCount(row) - getSellCount(row);
 }
 
 function rowStatus(row: AnyRow): string {
@@ -115,6 +60,42 @@ function rowStatus(row: AnyRow): string {
   if (lots > 0) return '加碼';
   if (lots < 0) return '減碼';
   return '異動';
+}
+
+function getBuyCount(row: AnyRow): number {
+  const direct = firstNum(row, ['add_etf_count', 'add_count', 'buy_count', 'buy_etf_count', 'increase_count'], NaN);
+  if (Number.isFinite(direct)) return Math.max(0, Math.round(direct));
+  const status = rowStatus(row);
+  const etfCount = Math.max(0, Math.round(firstNum(row, ['etf_count', 'count'], 0)));
+  return status === '新增' || status === '加碼' ? etfCount : 0;
+}
+
+function getSellCount(row: AnyRow): number {
+  const direct = firstNum(row, ['reduce_etf_count', 'sell_count', 'sell_etf_count', 'decrease_count'], NaN);
+  if (Number.isFinite(direct)) return Math.max(0, Math.round(direct));
+  const status = rowStatus(row);
+  const etfCount = Math.max(0, Math.round(firstNum(row, ['etf_count', 'count'], 0)));
+  return status === '刪除' || status === '減碼' ? etfCount : 0;
+}
+
+function getConsensusScore(row: AnyRow): number {
+  return getBuyCount(row) - getSellCount(row);
+}
+
+function getAmountBillion(row: AnyRow): number {
+  const v = firstNum(row, [
+    'flow_billion', 'money_billion', 'amount_billion',
+    'delta_amount_billion', 'delta_value_billion',
+    'net_amount_billion', 'trade_amount_billion',
+  ], NaN);
+
+  if (Number.isFinite(v)) return v;
+
+  const price = getPrice(row);
+  const lots = getLots(row);
+  if (price !== null && Number.isFinite(lots)) return price * lots * 1000 / 100000000;
+
+  return 0;
 }
 
 function getRows(data: any): AnyRow[] {
@@ -170,9 +151,9 @@ function toneByValue(v: number): 'up' | 'down' | 'flat' {
 function FocusCard({ title, item, tone }: { title: string; item?: AnyRow | null; tone: 'red' | 'green' }) {
   if (!item) {
     return (
-      <div className={`signal104-focus ${tone}`}>
-        <div className="signal104-focus-title">{title}</div>
-        <div className="signal104-empty">尚無有效訊號</div>
+      <div className={`signal105-focus ${tone}`}>
+        <div className="signal105-focus-title">{title}</div>
+        <div className="signal105-empty">尚無有效訊號</div>
       </div>
     );
   }
@@ -185,71 +166,26 @@ function FocusCard({ title, item, tone }: { title: string; item?: AnyRow | null;
   const sell = getSellCount(item);
 
   return (
-    <div className={`signal104-focus ${tone}`}>
-      <div className="signal104-focus-title">{title}</div>
-      <div className="signal104-focus-name">
-        <span>{getName(item)}</span>
-        <b>{getCode(item)}</b>
-      </div>
-      <div className="signal104-focus-price">
-        {fmtPrice(price)} <span className={toneByValue(pct ?? 0)}>{fmtPct(pct)}</span>
-      </div>
-
-      <div className="signal104-focus-kpis">
-        <div>
-          <small>交易淨額</small>
-          <b className={toneByValue(amount)}>{fmtBillion(amount)}</b>
-        </div>
-        <div>
-          <small>張數</small>
-          <b className={toneByValue(lots)}>{fmtSigned(lots, ' 張')}</b>
-        </div>
-        <div>
-          <small>多空共識</small>
-          <b>買賣 {buy}:{sell}</b>
-        </div>
+    <div className={`signal105-focus ${tone}`}>
+      <div className="signal105-focus-title">{title}</div>
+      <div className="signal105-focus-name"><span>{getName(item)}</span><b>{getCode(item)}</b></div>
+      <div className="signal105-focus-price">{fmtPrice(price)} <span className={toneByValue(pct ?? 0)}>{fmtPct(pct)}</span></div>
+      <div className="signal105-focus-sub">
+        <span>淨額 <b className={toneByValue(amount)}>{fmtBillion(amount)}</b></span>
+        <span>張數 <b className={toneByValue(lots)}>{fmtSigned(lots, '張')}</b></span>
+        <span>買賣 <b>{buy}:{sell}</b></span>
       </div>
     </div>
   );
 }
 
-function SortPill({
-  label,
-  sortKey,
-  activeKey,
-  dir,
-  onClick,
-}: {
-  label: string;
-  sortKey: SortKey;
-  activeKey: SortKey;
-  dir: SortDir;
-  onClick: (key: SortKey) => void;
-}) {
+function SortPill({ label, sortKey, activeKey, dir, onClick }: { label: string; sortKey: SortKey; activeKey: SortKey; dir: SortDir; onClick: (key: SortKey) => void }) {
   const active = activeKey === sortKey;
-  return (
-    <button className={`signal104-pill sort ${active ? 'active' : ''}`} onClick={() => onClick(sortKey)} type="button">
-      {label} {active ? (dir === 'desc' ? '↓' : '↑') : '↕'}
-    </button>
-  );
+  return <button className={`signal105-pill sort ${active ? 'active' : ''}`} onClick={() => onClick(sortKey)} type="button">{label} {active ? (dir === 'desc' ? '↓' : '↑') : '↕'}</button>;
 }
 
-function StatusPill({
-  label,
-  active,
-  count,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  count: number;
-  onClick: () => void;
-}) {
-  return (
-    <button className={`signal104-pill status ${label} ${active ? 'active' : ''}`} onClick={onClick} type="button">
-      {label}<b>{count || 0}</b>
-    </button>
-  );
+function StatusPill({ label, active, count, onClick }: { label: string; active: boolean; count: number; onClick: () => void }) {
+  return <button className={`signal105-pill status ${label} ${active ? 'active' : ''}`} onClick={onClick} type="button">{label}<b>{count || 0}</b></button>;
 }
 
 function SignalRow({ row }: { row: AnyRow }) {
@@ -262,37 +198,16 @@ function SignalRow({ row }: { row: AnyRow }) {
   const sell = getSellCount(row);
 
   return (
-    <div className="signal104-row">
-      <div className="signal104-row-top">
-        <div className="signal104-stock">
-          <div className="signal104-stock-name">{getName(row)}</div>
-          <div className="signal104-stock-code">{getCode(row)}</div>
-        </div>
-
-        <div className="signal104-amountbox">
-          <small>交易淨額</small>
-          <b className={toneByValue(amount)}>{fmtBillion(amount)}</b>
-        </div>
+    <div className="signal105-row">
+      <div className="signal105-main">
+        <div className="signal105-stock"><b>{getName(row)}</b><span>{getCode(row)}</span></div>
+        <div className="signal105-price"><b>{fmtPrice(price)}</b><span className={toneByValue(pct ?? 0)}>{fmtPct(pct)}</span></div>
+        <div className="signal105-status-wrap"><span className={`signal105-status ${status}`}>{status}</span></div>
+        <div className="signal105-amount"><small>淨額</small><b className={toneByValue(amount)}>{fmtBillion(amount)}</b></div>
       </div>
-
-      <div className="signal104-row-mid">
-        <div>
-          <small>股價</small>
-          <b>{fmtPrice(price)}</b>
-          <span className={toneByValue(pct ?? 0)}>{fmtPct(pct)}</span>
-        </div>
-        <div>
-          <small>狀態</small>
-          <b className={`signal104-status ${status}`}>{status}</b>
-        </div>
-        <div>
-          <small>張數</small>
-          <b className={toneByValue(lots)}>{fmtSigned(lots, ' 張')}</b>
-        </div>
-        <div>
-          <small>多空共識</small>
-          <b>買賣 {buy}:{sell}</b>
-        </div>
+      <div className="signal105-meta">
+        <span>張數 <b className={toneByValue(lots)}>{fmtSigned(lots, ' 張')}</b></span>
+        <span>多空共識 <b>買賣 {buy}:{sell}</b></span>
       </div>
     </div>
   );
@@ -311,20 +226,13 @@ export default function SignalsClient(props: any) {
 
     const valueOf = (r: AnyRow) => {
       switch (sortKey) {
-        case 'amount':
-          return Math.abs(getAmountBillion(r));
-        case 'lots':
-          return Math.abs(getLots(r));
-        case 'consensus':
-          return Math.abs(getConsensusScore(r));
-        case 'price':
-          return getPrice(r) ?? -Infinity;
-        case 'pct':
-          return Math.abs(getPct(r) ?? 0);
-        case 'status':
-          return STATUS_ORDER[rowStatus(r)] ?? 99;
-        default:
-          return 0;
+        case 'amount': return Math.abs(getAmountBillion(r));
+        case 'lots': return Math.abs(getLots(r));
+        case 'consensus': return Math.abs(getConsensusScore(r));
+        case 'price': return getPrice(r) ?? -Infinity;
+        case 'pct': return Math.abs(getPct(r) ?? 0);
+        case 'status': return STATUS_ORDER[rowStatus(r)] ?? 99;
+        default: return 0;
       }
     };
 
@@ -351,11 +259,8 @@ export default function SignalsClient(props: any) {
     const addLike = usable.filter((r) => ['新增', '加碼'].includes(rowStatus(r)));
     const reduceLike = usable.filter((r) => ['刪除', '減碼'].includes(rowStatus(r)));
 
-    const maxBy = (arr: AnyRow[], fn: (x: AnyRow) => number) =>
-      arr.length ? [...arr].sort((a, b) => fn(b) - fn(a))[0] : null;
-
-    const minBy = (arr: AnyRow[], fn: (x: AnyRow) => number) =>
-      arr.length ? [...arr].sort((a, b) => fn(a) - fn(b))[0] : null;
+    const maxBy = (arr: AnyRow[], fn: (x: AnyRow) => number) => arr.length ? [...arr].sort((a, b) => fn(b) - fn(a))[0] : null;
+    const minBy = (arr: AnyRow[], fn: (x: AnyRow) => number) => arr.length ? [...arr].sort((a, b) => fn(a) - fn(b))[0] : null;
 
     return {
       inflow: maxBy(positive, getAmountBillion),
@@ -370,49 +275,41 @@ export default function SignalsClient(props: any) {
   const total = data?.total_etf_count ?? data?.totalEtfCount ?? 0;
 
   function toggleStatus(s: string) {
-    setSelectedStatuses((prev) => {
-      if (prev.includes(s)) return prev.filter((x) => x !== s);
-      return [...prev, s];
-    });
+    setSelectedStatuses((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
   }
 
   function toggleSort(k: SortKey) {
-    if (sortKey === k) {
-      setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
-    } else {
-      setSortKey(k);
-      setSortDir('desc');
-    }
+    if (sortKey === k) setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+    else { setSortKey(k); setSortDir('desc'); }
   }
 
   return (
-    <main className="page signals-v7-page signal104-page">
-      <div className="signals-title-block signal104-title-block">
+    <main className="page signals-v7-page signal105-page">
+      <div className="signals-title-block signal105-title-block">
         <h2>今日訊號</h2>
         <div className="signals-data-status ok">
-          已抓取 {fetched || total || 0} / {total || fetched || 0} 檔 ETF
-          {dataDate ? `，資料日期 ${mmdd(dataDate)}` : ''}
+          已抓取 {fetched || total || 0} / {total || fetched || 0} 檔 ETF{dataDate ? `，資料日期 ${mmdd(dataDate)}` : ''}
         </div>
       </div>
 
-      <div className="signal104-focus-grid">
+      <div className="signal105-focus-grid">
         <FocusCard title="淨資金流入最多" item={focus.inflow} tone="red" />
         <FocusCard title="淨資金流出最多" item={focus.outflow} tone="green" />
         <FocusCard title="最多 ETF 加碼" item={focus.mostAdd} tone="red" />
         <FocusCard title="最多 ETF 減碼" item={focus.mostReduce} tone="green" />
       </div>
 
-      <section className="signal104-detail">
+      <section className="signal105-detail">
         <h3>資金交易明細：共 {fmt0(rows.length)} 檔</h3>
 
-        <div className="signal104-pill-row">
+        <div className="signal105-pill-row">
           <StatusPill label="新增" active={selectedStatuses.includes('新增')} count={summary['新增']} onClick={() => toggleStatus('新增')} />
           <StatusPill label="刪除" active={selectedStatuses.includes('刪除')} count={summary['刪除']} onClick={() => toggleStatus('刪除')} />
           <StatusPill label="加碼" active={selectedStatuses.includes('加碼')} count={summary['加碼']} onClick={() => toggleStatus('加碼')} />
           <StatusPill label="減碼" active={selectedStatuses.includes('減碼')} count={summary['減碼']} onClick={() => toggleStatus('減碼')} />
         </div>
 
-        <div className="signal104-pill-row sortrow">
+        <div className="signal105-pill-row sortrow">
           <SortPill label="金額" sortKey="amount" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
           <SortPill label="張數" sortKey="lots" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
           <SortPill label="共識" sortKey="consensus" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
@@ -421,10 +318,8 @@ export default function SignalsClient(props: any) {
           <SortPill label="狀態" sortKey="status" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
         </div>
 
-        <div className="signal104-list">
-          {rows.length ? rows.map((row, idx) => <SignalRow key={`${getCode(row)}-${idx}`} row={row} />) : (
-            <div className="signal104-empty-list">目前沒有符合篩選的訊號。</div>
-          )}
+        <div className="signal105-list">
+          {rows.length ? rows.map((row, idx) => <SignalRow key={`${getCode(row)}-${idx}`} row={row} />) : <div className="signal105-empty-list">目前沒有符合篩選的訊號。</div>}
         </div>
       </section>
     </main>
