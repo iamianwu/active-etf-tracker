@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
 type AnyRow = Record<string, any>;
@@ -51,6 +52,18 @@ function getPrice(row: AnyRow): number | null {
 function getPct(row: AnyRow): number | null {
   const v = firstNum(row, ['change_pct', 'pct', 'percent', 'changePercent'], NaN);
   return Number.isFinite(v) ? v : null;
+}
+
+function isLimitUp(row: AnyRow): boolean {
+  const pct = getPct(row);
+  if (pct === null) return false;
+  return pct >= 9.7;
+}
+
+function isLimitDown(row: AnyRow): boolean {
+  const pct = getPct(row);
+  if (pct === null) return false;
+  return pct <= -9.7;
 }
 
 function getLots(row: AnyRow): number {
@@ -185,21 +198,22 @@ function FocusCard({ title, item, tone }: { title: string; item?: AnyRow | null;
   const sell = getSellCount(item);
 
   return (
-    <div className={`signal106-focus ${tone}`}>
+    <Link href={`/stock/${getCode(item)}`} className={`signal106-focus ${tone} signal107-link-card`}>
       <div className="signal106-focus-title">{title}</div>
       <div className="signal106-focus-name">
         <span>{getName(item)}</span>
         <b>{getCode(item)}</b>
       </div>
-      <div className="signal106-focus-price">
-        {fmtPrice(price)} <span className={toneByValue(pct ?? 0)}>{fmtPct(pct)}</span>
+      <div className={`signal106-focus-price ${isLimitUp(item) ? 'limit-up' : ''} ${isLimitDown(item) ? 'limit-down' : ''}`}>
+        <span className="signal107-price-number">{fmtPrice(price)}</span>
+        <span className={toneByValue(pct ?? 0)}>{fmtPct(pct)}</span>
       </div>
       <div className="signal106-focus-sub">
         <span>淨額 <b className={toneByValue(amount)}>{fmtBillion(amount)}</b></span>
         <span>張數 <b className={toneByValue(lots)}>{fmtSigned(lots, '張')}</b></span>
         <span>買賣 <b>{buy}:{sell}</b></span>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -243,6 +257,7 @@ function StatusPill({
 }
 
 function SignalRow({ row }: { row: AnyRow }) {
+  const code = getCode(row);
   const status = rowStatus(row);
   const price = getPrice(row);
   const pct = getPct(row);
@@ -250,15 +265,17 @@ function SignalRow({ row }: { row: AnyRow }) {
   const lots = getLots(row);
   const buy = getBuyCount(row);
   const sell = getSellCount(row);
+  const limitUp = isLimitUp(row);
+  const limitDown = isLimitDown(row);
 
   return (
-    <div className="signal106-row">
+    <Link href={`/stock/${code}`} className={`signal106-row signal107-clickable-row ${limitUp ? 'limit-up-row' : ''} ${limitDown ? 'limit-down-row' : ''}`}>
       <div className="signal106-cell stock">
         <b>{getName(row)}</b>
-        <span>{getCode(row)}</span>
+        <span>{code}</span>
       </div>
 
-      <div className="signal106-cell quote">
+      <div className={`signal106-cell quote ${limitUp ? 'limit-up' : ''} ${limitDown ? 'limit-down' : ''}`}>
         <b>{fmtPrice(price)}</b>
         <span className={toneByValue(pct ?? 0)}>{fmtPct(pct)}</span>
       </div>
@@ -272,7 +289,7 @@ function SignalRow({ row }: { row: AnyRow }) {
         <span className={`signal106-status ${status}`}>{status}</span>
         <em>買賣 {buy}:{sell}</em>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -290,14 +307,10 @@ export default function SignalsClient(props: any) {
     const valueOf = (r: AnyRow) => {
       switch (sortKey) {
         case 'amount':
-          // V106 修正：金額排序用「有正負號的淨額」，不是絕對值。
-          // 因此金額↓ = 流入最多在前；金額↑ = 流出最多在前。
           return getAmountBillion(r);
         case 'lots':
-          // 張數同樣用正負號；張數↓ = 加碼最多，張數↑ = 減碼最多。
           return getLots(r);
         case 'consensus':
-          // 共識 = 買方 ETF 檔數 - 賣方 ETF 檔數。
           return getConsensusScore(r);
         case 'price':
           return getPrice(r) ?? -Infinity;
@@ -368,7 +381,7 @@ export default function SignalsClient(props: any) {
   }
 
   return (
-    <main className="page signals-v7-page signal106-page">
+    <main className="page signals-v7-page signal106-page signal107-page">
       <div className="signals-title-block signal106-title-block">
         <h2>今日訊號</h2>
         <div className="signals-data-status ok">

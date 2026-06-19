@@ -7426,3 +7426,75 @@ a:focus-visible{
   }
 }
 
+
+/* ===== V107 signal page: clickable rows + limit up/down lighting ===== */
+.signal107-page a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.signal107-clickable-row {
+  cursor: pointer;
+  -webkit-tap-highlight-color: rgba(47, 111, 204, 0.12);
+}
+
+.signal107-clickable-row:active {
+  background: #f4f8ff;
+}
+
+.signal107-link-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: rgba(47, 111, 204, 0.12);
+}
+
+.signal107-link-card:active {
+  transform: scale(0.995);
+}
+
+.signal106-cell.quote.limit-up b,
+.signal106-focus-price.limit-up .signal107-price-number {
+  display: inline-block;
+  background: #df5662;
+  color: #fff !important;
+  border-radius: 8px;
+  padding: 1px 8px 2px;
+  line-height: 1.05;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+}
+
+.signal106-cell.quote.limit-down b,
+.signal106-focus-price.limit-down .signal107-price-number {
+  display: inline-block;
+  background: #25a67d;
+  color: #fff !important;
+  border-radius: 8px;
+  padding: 1px 8px 2px;
+  line-height: 1.05;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+}
+
+.signal107-clickable-row.limit-up-row {
+  background: linear-gradient(90deg, rgba(223, 86, 98, 0.045), transparent 62%);
+}
+
+.signal107-clickable-row.limit-down-row {
+  background: linear-gradient(90deg, rgba(37, 166, 125, 0.045), transparent 62%);
+}
+
+.signal106-focus-price.limit-up,
+.signal106-focus-price.limit-down {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 430px) {
+  .signal106-cell.quote.limit-up b,
+  .signal106-cell.quote.limit-down b {
+    padding: 1px 7px 2px;
+  }
+}
+
