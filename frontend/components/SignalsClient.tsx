@@ -16,7 +16,7 @@ const STATUS_ORDER: Record<string, number> = {
 
 function num(v: any, fallback = 0): number {
   if (v === null || v === undefined || v === '') return fallback;
-  const x = Number(String(v).replace(/,/g, ''));
+  const x = Number(String(v).replace(/,/g, '').replace(/[^\d.-]/g, ''));
   return Number.isFinite(x) ? x : fallback;
 }
 
@@ -48,6 +48,22 @@ function getPct(row: AnyRow): number | null {
   return Number.isFinite(v) ? v : null;
 }
 
+function getLots(row: AnyRow): number {
+  let v = firstNum(row, [
+    'net_lots',
+    'display_delta_lots',
+    'change_lots',
+    'delta_lots',
+    'lot_change',
+    'shares_change',
+    'delta_shares',
+  ], 0);
+
+  // 兼容舊資料：若來源是「股」且數值過大，自動換算成「張」。
+  if (Math.abs(v) >= 100000) v = v / 1000;
+  return v;
+}
+
 function getAmountBillion(row: AnyRow): number {
   const v = firstNum(row, [
     'flow_billion',
@@ -70,28 +86,11 @@ function getAmountBillion(row: AnyRow): number {
   return 0;
 }
 
-function getLots(row: AnyRow): number {
-  let v = firstNum(row, [
-    'net_lots',
-    'display_delta_lots',
-    'change_lots',
-    'delta_lots',
-    'shares_change',
-    'lot_change',
-    'delta_shares',
-  ], 0);
-
-  // 舊版資料有時候 delta_shares 是「股」，但畫面標成「張」。
-  // 若數值異常大，就自動除以 1000。
-  if (Math.abs(v) >= 100000) v = v / 1000;
-
-  return v;
-}
-
 function getBuyCount(row: AnyRow): number {
   const direct = firstNum(row, ['add_etf_count', 'add_count', 'buy_count', 'buy_etf_count', 'increase_count'], NaN);
   if (Number.isFinite(direct)) return Math.max(0, Math.round(direct));
-  const status = String(row.status ?? '');
+
+  const status = rowStatus(row);
   const etfCount = Math.max(0, Math.round(firstNum(row, ['etf_count', 'count'], 0)));
   return status === '新增' || status === '加碼' ? etfCount : 0;
 }
@@ -99,13 +98,35 @@ function getBuyCount(row: AnyRow): number {
 function getSellCount(row: AnyRow): number {
   const direct = firstNum(row, ['reduce_etf_count', 'sell_count', 'sell_etf_count', 'decrease_count'], NaN);
   if (Number.isFinite(direct)) return Math.max(0, Math.round(direct));
-  const status = String(row.status ?? '');
+
+  const status = rowStatus(row);
   const etfCount = Math.max(0, Math.round(firstNum(row, ['etf_count', 'count'], 0)));
   return status === '刪除' || status === '減碼' ? etfCount : 0;
 }
 
 function getConsensusScore(row: AnyRow): number {
   return getBuyCount(row) - getSellCount(row);
+}
+
+function rowStatus(row: AnyRow): string {
+  const s = String(row.status ?? row.type ?? '').trim();
+  if (s) return s;
+  const lots = getLots(row);
+  if (lots > 0) return '加碼';
+  if (lots < 0) return '減碼';
+  return '異動';
+}
+
+function getRows(data: any): AnyRow[] {
+  const src = data?.rows ?? data?.changes ?? data?.aggregate ?? data?.items ?? [];
+  return Array.isArray(src) ? src : [];
+}
+
+function mmdd(dateLike: any): string {
+  const s = String(dateLike ?? '').trim();
+  const m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[2]}-${m[3]}`;
+  return s;
 }
 
 function fmt0(v: any): string {
@@ -140,50 +161,18 @@ function fmtBillion(v: number): string {
   return `${sign}${v.toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: digits })} 億`;
 }
 
-function toneByValue(v: number): string {
+function toneByValue(v: number): 'up' | 'down' | 'flat' {
   if (v > 0) return 'up';
   if (v < 0) return 'down';
   return 'flat';
 }
 
-function rowStatus(row: AnyRow): string {
-  const s = String(row.status ?? row.type ?? '').trim();
-  if (s) return s;
-  const lots = getLots(row);
-  if (lots > 0) return '加碼';
-  if (lots < 0) return '減碼';
-  return '異動';
-}
-
-function getRows(data: any): AnyRow[] {
-  const src = data?.rows ?? data?.changes ?? data?.aggregate ?? data?.items ?? [];
-  return Array.isArray(src) ? src : [];
-}
-
-function mmdd(dateLike: any): string {
-  const s = String(dateLike ?? '').trim();
-  const m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return `${m[2]}-${m[3]}`;
-  return s;
-}
-
-function rangeLabel(days: number) {
-  return days <= 1 ? '今日' : `${days}日`;
-}
-
-function changeRange(days: number) {
-  const url = new URL(window.location.href);
-  url.searchParams.set('rangeDays', String(days));
-  url.searchParams.set('signalRangeDays', String(days));
-  window.location.href = url.toString();
-}
-
 function FocusCard({ title, item, tone }: { title: string; item?: AnyRow | null; tone: 'red' | 'green' }) {
   if (!item) {
     return (
-      <div className={`signal103-focus ${tone}`}>
-        <div className="signal103-focus-title">{title}</div>
-        <div className="signal103-empty">尚無有效訊號</div>
+      <div className={`signal104-focus ${tone}`}>
+        <div className="signal104-focus-title">{title}</div>
+        <div className="signal104-empty">尚無有效訊號</div>
       </div>
     );
   }
@@ -194,24 +183,31 @@ function FocusCard({ title, item, tone }: { title: string; item?: AnyRow | null;
   const amount = getAmountBillion(item);
   const buy = getBuyCount(item);
   const sell = getSellCount(item);
-  const amountTone = toneByValue(amount);
-  const lotsTone = toneByValue(lots);
 
   return (
-    <div className={`signal103-focus ${tone}`}>
-      <div className="signal103-focus-title">{title}</div>
-      <div className="signal103-focus-name">
+    <div className={`signal104-focus ${tone}`}>
+      <div className="signal104-focus-title">{title}</div>
+      <div className="signal104-focus-name">
         <span>{getName(item)}</span>
         <b>{getCode(item)}</b>
       </div>
-      <div className="signal103-focus-price">
-        {fmtPrice(price)}
-        <span className={toneByValue(pct ?? 0)}>{fmtPct(pct)}</span>
+      <div className="signal104-focus-price">
+        {fmtPrice(price)} <span className={toneByValue(pct ?? 0)}>{fmtPct(pct)}</span>
       </div>
-      <div className="signal103-focus-meta">
-        <span>交易淨額 <b className={amountTone}>{fmtBillion(amount)}</b></span>
-        <span>張數 <b className={lotsTone}>{fmtSigned(lots, ' 張')}</b></span>
-        <span>多空共識 <b>買賣檔數 {buy}:{sell}</b></span>
+
+      <div className="signal104-focus-kpis">
+        <div>
+          <small>交易淨額</small>
+          <b className={toneByValue(amount)}>{fmtBillion(amount)}</b>
+        </div>
+        <div>
+          <small>張數</small>
+          <b className={toneByValue(lots)}>{fmtSigned(lots, ' 張')}</b>
+        </div>
+        <div>
+          <small>多空共識</small>
+          <b>買賣 {buy}:{sell}</b>
+        </div>
       </div>
     </div>
   );
@@ -232,7 +228,7 @@ function SortPill({
 }) {
   const active = activeKey === sortKey;
   return (
-    <button className={`signal103-pill sort ${active ? 'active' : ''}`} onClick={() => onClick(sortKey)} type="button">
+    <button className={`signal104-pill sort ${active ? 'active' : ''}`} onClick={() => onClick(sortKey)} type="button">
       {label} {active ? (dir === 'desc' ? '↓' : '↑') : '↕'}
     </button>
   );
@@ -250,7 +246,7 @@ function StatusPill({
   onClick: () => void;
 }) {
   return (
-    <button className={`signal103-pill status ${label} ${active ? 'active' : ''}`} onClick={onClick} type="button">
+    <button className={`signal104-pill status ${label} ${active ? 'active' : ''}`} onClick={onClick} type="button">
       {label}<b>{count || 0}</b>
     </button>
   );
@@ -264,33 +260,39 @@ function SignalRow({ row }: { row: AnyRow }) {
   const lots = getLots(row);
   const buy = getBuyCount(row);
   const sell = getSellCount(row);
-  const amountTone = toneByValue(amount);
-  const lotsTone = toneByValue(lots);
-  const pctTone = toneByValue(pct ?? 0);
 
   return (
-    <div className="signal103-row">
-      <div className="signal103-row-main">
-        <div className="signal103-stock">
-          <div className="signal103-stock-name">{getName(row)}</div>
-          <div className="signal103-stock-code">{getCode(row)}</div>
+    <div className="signal104-row">
+      <div className="signal104-row-top">
+        <div className="signal104-stock">
+          <div className="signal104-stock-name">{getName(row)}</div>
+          <div className="signal104-stock-code">{getCode(row)}</div>
         </div>
 
-        <div className="signal103-pricebox">
-          <div className="signal103-price">{fmtPrice(price)}</div>
-          <div className={`signal103-pct ${pctTone}`}>{fmtPct(pct)}</div>
+        <div className="signal104-amountbox">
+          <small>交易淨額</small>
+          <b className={toneByValue(amount)}>{fmtBillion(amount)}</b>
         </div>
-
-        <div className="signal103-statusbox">
-          <span className={`signal103-status ${status}`}>{status}</span>
-        </div>
-
-        <div className={`signal103-amount ${amountTone}`}>{fmtBillion(amount)}</div>
       </div>
 
-      <div className="signal103-row-extra">
-        <span>張數 <b className={lotsTone}>{fmtSigned(lots, ' 張')}</b></span>
-        <span>多空共識 <b>買賣檔數 {buy}:{sell}</b></span>
+      <div className="signal104-row-mid">
+        <div>
+          <small>股價</small>
+          <b>{fmtPrice(price)}</b>
+          <span className={toneByValue(pct ?? 0)}>{fmtPct(pct)}</span>
+        </div>
+        <div>
+          <small>狀態</small>
+          <b className={`signal104-status ${status}`}>{status}</b>
+        </div>
+        <div>
+          <small>張數</small>
+          <b className={toneByValue(lots)}>{fmtSigned(lots, ' 張')}</b>
+        </div>
+        <div>
+          <small>多空共識</small>
+          <b>買賣 {buy}:{sell}</b>
+        </div>
       </div>
     </div>
   );
@@ -299,7 +301,6 @@ function SignalRow({ row }: { row: AnyRow }) {
 export default function SignalsClient(props: any) {
   const data = props?.data ?? props ?? {};
   const sourceRows = getRows(data);
-  const initialDays = Number(data?.signalRangeDays ?? data?.rangeDays ?? data?.range_days ?? props?.rangeDays ?? 1) || 1;
 
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['新增', '刪除', '加碼', '減碼']);
   const [sortKey, setSortKey] = useState<SortKey>('amount');
@@ -330,7 +331,6 @@ export default function SignalsClient(props: any) {
     return [...filtered].sort((a, b) => {
       const av = valueOf(a);
       const bv = valueOf(b);
-      if (sortKey === 'status') return sortDir === 'desc' ? bv - av : av - bv;
       return sortDir === 'desc' ? bv - av : av - bv;
     });
   }, [sourceRows, selectedStatuses, sortKey, sortDir]);
@@ -386,49 +386,33 @@ export default function SignalsClient(props: any) {
   }
 
   return (
-    <main className="page signals-v7-page signal103-page">
-      <section className="signal103-range">
-        <div className="signal103-label">訊號區間</div>
-        <div className="signal103-range-tabs">
-          {[1, 5, 10, 20].map((d) => (
-            <button
-              key={d}
-              className={Number(initialDays) === d ? 'active' : ''}
-              onClick={() => changeRange(d)}
-              type="button"
-            >
-              {rangeLabel(d)}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <div className="signals-title-block signal103-title-block">
-        <h2>{initialDays <= 1 ? '今日訊號' : `${initialDays}日訊號`}</h2>
+    <main className="page signals-v7-page signal104-page">
+      <div className="signals-title-block signal104-title-block">
+        <h2>今日訊號</h2>
         <div className="signals-data-status ok">
           已抓取 {fetched || total || 0} / {total || fetched || 0} 檔 ETF
           {dataDate ? `，資料日期 ${mmdd(dataDate)}` : ''}
         </div>
       </div>
 
-      <div className="signal103-focus-grid">
+      <div className="signal104-focus-grid">
         <FocusCard title="淨資金流入最多" item={focus.inflow} tone="red" />
         <FocusCard title="淨資金流出最多" item={focus.outflow} tone="green" />
         <FocusCard title="最多 ETF 加碼" item={focus.mostAdd} tone="red" />
         <FocusCard title="最多 ETF 減碼" item={focus.mostReduce} tone="green" />
       </div>
 
-      <section className="signal103-detail">
+      <section className="signal104-detail">
         <h3>資金交易明細：共 {fmt0(rows.length)} 檔</h3>
 
-        <div className="signal103-pill-row">
+        <div className="signal104-pill-row">
           <StatusPill label="新增" active={selectedStatuses.includes('新增')} count={summary['新增']} onClick={() => toggleStatus('新增')} />
           <StatusPill label="刪除" active={selectedStatuses.includes('刪除')} count={summary['刪除']} onClick={() => toggleStatus('刪除')} />
           <StatusPill label="加碼" active={selectedStatuses.includes('加碼')} count={summary['加碼']} onClick={() => toggleStatus('加碼')} />
           <StatusPill label="減碼" active={selectedStatuses.includes('減碼')} count={summary['減碼']} onClick={() => toggleStatus('減碼')} />
         </div>
 
-        <div className="signal103-pill-row sortrow">
+        <div className="signal104-pill-row sortrow">
           <SortPill label="金額" sortKey="amount" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
           <SortPill label="張數" sortKey="lots" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
           <SortPill label="共識" sortKey="consensus" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
@@ -437,9 +421,9 @@ export default function SignalsClient(props: any) {
           <SortPill label="狀態" sortKey="status" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
         </div>
 
-        <div className="signal103-list">
+        <div className="signal104-list">
           {rows.length ? rows.map((row, idx) => <SignalRow key={`${getCode(row)}-${idx}`} row={row} />) : (
-            <div className="signal103-empty-list">目前沒有符合篩選的訊號。</div>
+            <div className="signal104-empty-list">目前沒有符合篩選的訊號。</div>
           )}
         </div>
       </section>

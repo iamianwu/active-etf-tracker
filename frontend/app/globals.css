@@ -6427,3 +6427,351 @@ a:focus-visible{
   }
 }
 
+
+/* ===== V104 signal page: clean mobile redesign ===== */
+.signal104-page {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+/* 避免舊版或父層重複的訊號區間互相擠壓 */
+.signal104-page .signal103-range,
+.signal104-page .signal103-label,
+.signal104-page .signal103-range-tabs {
+  display: none !important;
+}
+
+.signal104-title-block h2 {
+  font-size: clamp(38px, 7vw, 52px);
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+.signal104-focus-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 22px 0 28px;
+}
+
+.signal104-focus {
+  border-radius: 20px;
+  padding: 16px;
+  min-height: 218px;
+  border: 1.5px solid #e8eef6;
+  background: #fff;
+  overflow: hidden;
+}
+
+.signal104-focus.red {
+  background: #fff7f8;
+  border-color: #f5ccd2;
+}
+
+.signal104-focus.green {
+  background: #f2fffa;
+  border-color: #bfe8da;
+}
+
+.signal104-focus-title {
+  font-size: clamp(20px, 4.7vw, 25px);
+  font-weight: 950;
+  margin-bottom: 10px;
+}
+
+.signal104-focus.red .signal104-focus-title {
+  color: #df5662;
+}
+
+.signal104-focus.green .signal104-focus-title {
+  color: #25a67d;
+}
+
+.signal104-focus-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: clamp(20px, 4.9vw, 25px);
+  font-weight: 950;
+  color: #172033;
+  white-space: nowrap;
+}
+
+.signal104-focus-name b {
+  font-size: 16px;
+  color: #8a96a8;
+}
+
+.signal104-focus-price {
+  font-size: clamp(30px, 7vw, 39px);
+  font-weight: 950;
+  line-height: 1.08;
+  margin: 6px 0 12px;
+  color: #df5662;
+  white-space: nowrap;
+}
+
+.signal104-focus-price span {
+  font-size: clamp(16px, 3.7vw, 20px);
+}
+
+.signal104-focus-kpis {
+  display: grid;
+  gap: 6px;
+}
+
+.signal104-focus-kpis div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 6px;
+}
+
+.signal104-focus-kpis small {
+  color: #8190a4;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.signal104-focus-kpis b {
+  font-size: 16px;
+  font-weight: 950;
+  min-width: 0;
+}
+
+.signal104-detail h3 {
+  font-size: clamp(31px, 6.4vw, 42px);
+  line-height: 1.15;
+  margin: 8px 0 16px;
+}
+
+.signal104-pill-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 0 10px;
+  scrollbar-width: none;
+}
+
+.signal104-pill-row::-webkit-scrollbar {
+  display: none;
+}
+
+.signal104-pill {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 2px solid #cbd5e1;
+  background: #fff;
+  color: #667386;
+  font-size: 20px;
+  font-weight: 950;
+  padding: 10px 15px;
+  min-height: 44px;
+}
+
+.signal104-pill b {
+  margin-left: 5px;
+}
+
+.signal104-pill.status.新增.active {
+  color: #b99a00;
+  border-color: #c7aa00;
+  background: #fffdea;
+}
+
+.signal104-pill.status.刪除.active {
+  color: #6b7280;
+  border-color: #a7b0bd;
+  background: #f8fafc;
+}
+
+.signal104-pill.status.加碼.active {
+  color: #df5662;
+  border-color: #df5662;
+  background: #fff7f8;
+}
+
+.signal104-pill.status.減碼.active {
+  color: #22a77d;
+  border-color: #22a77d;
+  background: #f2fffa;
+}
+
+.signal104-pill.sort.active {
+  color: #2f6fcc;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.signal104-list {
+  margin-top: 8px;
+}
+
+.signal104-row {
+  border-bottom: 1px solid #e6edf5;
+  padding: 18px 0;
+}
+
+.signal104-row-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.signal104-stock-name {
+  font-size: clamp(24px, 5.7vw, 31px);
+  font-weight: 950;
+  color: #172033;
+  line-height: 1.14;
+}
+
+.signal104-stock-code {
+  font-size: 19px;
+  font-weight: 850;
+  color: #8b98aa;
+  margin-top: 2px;
+}
+
+.signal104-amountbox {
+  text-align: right;
+  min-width: 96px;
+}
+
+.signal104-amountbox small,
+.signal104-row-mid small {
+  display: block;
+  color: #8390a3;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.signal104-amountbox b {
+  display: block;
+  font-size: clamp(20px, 4.8vw, 25px);
+  font-weight: 950;
+  white-space: nowrap;
+  margin-top: 4px;
+}
+
+.signal104-row-mid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 0.92fr 0.72fr 1fr 1.12fr;
+  gap: 8px;
+  align-items: center;
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 10px;
+}
+
+.signal104-row-mid b {
+  display: block;
+  font-size: clamp(17px, 4vw, 21px);
+  font-weight: 950;
+  color: #172033;
+  white-space: nowrap;
+  margin-top: 3px;
+}
+
+.signal104-row-mid span {
+  display: block;
+  font-size: 15px;
+  font-weight: 950;
+  margin-top: 1px;
+}
+
+.signal104-status {
+  display: inline-flex !important;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  min-width: 52px;
+  padding: 5px 9px;
+  font-size: 16px !important;
+  background: #eef2f7;
+  color: #64748b !important;
+}
+
+.signal104-status.新增 {
+  background: #fff6bf;
+  color: #b59a00 !important;
+}
+
+.signal104-status.加碼 {
+  background: #ffecef;
+  color: #df5662 !important;
+}
+
+.signal104-status.減碼,
+.signal104-status.刪除 {
+  background: #eafaf4;
+  color: #25a67d !important;
+}
+
+.signal104-empty,
+.signal104-empty-list {
+  color: #7f8da0;
+  font-size: 18px;
+  font-weight: 900;
+  padding: 10px 0;
+}
+
+.signal104-empty-list {
+  border: 1px dashed #d6e0ec;
+  border-radius: 16px;
+  padding: 22px;
+}
+
+.signal104-page .up {
+  color: #df5662 !important;
+}
+
+.signal104-page .down {
+  color: #25a67d !important;
+}
+
+.signal104-page .flat {
+  color: #7f8da0 !important;
+}
+
+@media (max-width: 430px) {
+  .signal104-focus-grid {
+    gap: 10px;
+  }
+
+  .signal104-focus {
+    padding: 14px 12px;
+    min-height: 212px;
+  }
+
+  .signal104-focus-kpis div {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .signal104-focus-kpis small {
+    font-size: 13px;
+  }
+
+  .signal104-focus-kpis b {
+    font-size: 14px;
+  }
+
+  .signal104-pill {
+    font-size: 18px;
+    padding: 9px 13px;
+  }
+
+  .signal104-row-mid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 10px;
+  }
+
+  .signal104-amountbox {
+    min-width: 88px;
+  }
+}
+
