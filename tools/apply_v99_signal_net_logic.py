@@ -1,3 +1,28 @@
+#!/usr/bin/env python3
+from pathlib import Path
+
+ROOT = Path.cwd()
+FRONTEND = ROOT / "frontend"
+COMP = FRONTEND / "components"
+APP = FRONTEND / "app"
+
+signals = COMP / "SignalsClient.tsx"
+css = APP / "globals.css"
+
+if not FRONTEND.exists():
+    raise SystemExit("❌ 找不到 frontend 目錄，請在 repo 根目錄執行。")
+if not signals.exists():
+    raise SystemExit("❌ 找不到 frontend/components/SignalsClient.tsx。")
+
+def backup(path: Path, tag="v99"):
+    if path.exists():
+        bak = path.with_suffix(path.suffix + f".bak_{tag}")
+        if not bak.exists():
+            bak.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+
+backup(signals)
+
+signals_code = r'''
 'use client';
 
 import Link from 'next/link';
@@ -361,3 +386,40 @@ export default function SignalsClient(props: any) {
     </main>
   );
 }
+'''
+
+signals.write_text(signals_code.strip() + "\n", encoding="utf-8")
+print("✅ wrote frontend/components/SignalsClient.tsx")
+
+if css.exists():
+    backup(css)
+    c = css.read_text(encoding="utf-8")
+    patch_css = r'''
+/* ===== V99 signal net logic / duplicate range guard ===== */
+.signals-v7-page .signal-range-block + .signal-range-block,
+.signals-v7-page .signals-range-block + .signals-range-block,
+.signals-v7-page .v75-range-block + .v75-range-block,
+.signals-v7-page .signal-range-tabs-wrap + .signal-range-tabs-wrap,
+.v89-page .v89-range-card {
+  display: none !important;
+}
+'''
+    if "V99 signal net logic" not in c:
+        css.write_text(c + "\n\n" + patch_css, encoding="utf-8")
+        print("✅ appended V99 CSS")
+
+readme = ROOT / "README_V99_SIGNAL_NET_LOGIC.md"
+readme.write_text(
+    "# V99 Signal Net Logic\n\n"
+    "修正今日訊號焦點卡與明細方向不一致的問題。\n\n"
+    "核心修正：\n"
+    "1. 先依 stock_code 合併同一檔股票。\n"
+    "2. 用淨張數 net lots 決定方向：正數為加碼，負數為減碼。\n"
+    "3. 金額改用「淨張數 × 股價」估算交易淨額，不再把股價上漲造成的市值變化誤判為資金流入。\n"
+    "4. 焦點卡只能從方向一致的股票挑選：流入只挑加碼/新增，流出只挑減碼/刪除。\n"
+    "5. 保留排序功能。\n",
+    encoding="utf-8",
+)
+print("✅ wrote README_V99_SIGNAL_NET_LOGIC.md")
+
+print("\n下一步：git status / commit / push，並等 Vercel Ready。")

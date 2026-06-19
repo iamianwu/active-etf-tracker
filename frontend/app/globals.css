@@ -6034,3 +6034,14 @@ a:focus-visible{
 .signals-v7-page .signal-range-tabs-wrap + .signal-range-tabs-wrap {
   display: none !important;
 }
+
+
+
+/* ===== V99 signal net logic / duplicate range guard ===== */
+.signals-v7-page .signal-range-block + .signal-range-block,
+.signals-v7-page .signals-range-block + .signals-range-block,
+.signals-v7-page .v75-range-block + .v75-range-block,
+.signals-v7-page .signal-range-tabs-wrap + .signal-range-tabs-wrap,
+.v89-page .v89-range-card {
+  display: none !important;
+}
