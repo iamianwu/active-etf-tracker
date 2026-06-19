@@ -1,11 +1,56 @@
 'use client';
+
 import Link from 'next/link';
-import{useMemo,useState}from'react';
-import{ResponsiveContainer,AreaChart,Area,XAxis,YAxis,CartesianGrid,Tooltip}from'recharts';
-import{ecode,ename,code,name,fmt,fm,pct,toneCls,price,cpct,mvb,lots,chartRows,ddate,num,region,fav}from'./mobileV86Utils';
-type Tab='overview'|'live'|'operation'|'holdings'|'basic';
-const back=()=>{if(typeof window!=='undefined'&&window.history.length>1)window.history.back();else location.href='/etfs'};
-function Header({c,nm,type}:{c:string,nm:string,type:'etf'|'stock'}){return <header className="v86-dh"><button onClick={back}>‹</button><div><b>{c}</b><span>{nm}</span></div><button onClick={()=>fav(c,nm,type)}>☆</button></header>}
-function Chart({rows,red=true}:any){return rows.length?<div className="v86-chart"><ResponsiveContainer width="100%" height={190}><AreaChart data={rows}><CartesianGrid strokeDasharray="4 4" vertical={false}/><XAxis dataKey="date" tickFormatter={(v)=>String(v).slice(5,10)} minTickGap={18}/><YAxis width={38} domain={['auto','auto']}/><Tooltip/><Area type="monotone" dataKey="value" stroke={red?'#df555d':'#27a575'} fill={red?'#fff1f2':'#ecfdf5'} strokeWidth={2.2}/></AreaChart></ResponsiveContainer></div>:<div className="v86-empty">尚無趨勢資料</div>}
-function HRows({rows}:any){const a=Array.isArray(rows)?rows:[];return <section className="v86-list">{a.slice(0,120).map((r:any,i:number)=><Link key={(code(r)||ecode(r))+i} href={`/stock/${code(r)}?from=etf`} className="v86-hrow"><div><b>{name(r)}</b><span>{code(r)}</span></div><div><b>{fm(mvb(r))} 億</b><span>{fm(lots(r))} 張</span></div><div><b>{fm(r.weight,2)}%</b></div><div><b>{fm(price(r),1)}</b><span className={toneCls(cpct(r))}>{pct(cpct(r),2)}</span></div></Link>)}</section>}
-export default function EtfDetailClient(props:any){const data=props?.data||props,q=data?.quote||data?.etf||data;const c=ecode(q)||data?.code||data?.etf_code,nm=ename(q)||data?.name||data?.etf_name;const[tab,setTab]=useState<Tab>('overview');const holdings=data?.currentRows||data?.current_rows||data?.holdings||data?.rows||[];const changes=data?.changes||data?.operationRows||data?.operation_rows||[];const ch=useMemo(()=>chartRows(data),[data]);return <main className="v86-detail"><Header c={c} nm={nm} type="etf"/><nav className="v86-tabs">{([['overview','總覽'],['live','即時'],['operation','操作日報'],['holdings','成分股'],['basic','基本']] as any).map(([k,t]:any)=><button onClick={()=>setTab(k)} className={tab===k?'on':''} key={k}>{t}</button>)}</nav>{tab==='overview'&&<section><div className="v86-kpis"><div><span>股價</span><b className={toneCls(cpct(q))}>{fm(price(q),2)}</b><small>{pct(cpct(q),2)}</small></div><div><span>成立以來</span><b>{pct(q?.total_return??q?.since_inception_return,1)}</b><small>報酬</small></div><div><span>今日淨流動</span><b>{fm(q?.net_flow_billion??q?.flow_billion,1)} 億</b><small>估算</small></div><div><span>資料狀態</span><b className={holdings?.length?'v86-green':'v86-red'}>{holdings?.length?'完整':'待補'}</b><small>股價/成分股/歷史</small></div></div><h2>淨值 / 股價走勢</h2><Chart rows={ch} red={num(cpct(q),0)>=0}/><h2>前五大持股</h2><HRows rows={holdings}/></section>}{tab==='live'&&<section><div className="v86-kpis"><div><span>股價</span><b className={toneCls(cpct(q))}>{fm(price(q),2)}</b><small>{pct(cpct(q),2)}</small></div><div><span>成交量</span><b>{fm(q?.volume)}</b><small>{fm(q?.amount_billion,1)} 億</small></div></div><div className="v86-info"><p><span>更新時間</span><b>{String(q?.updated_at||ddate(data)||'-').slice(0,19).replace('T',' ')}</b></p></div></section>}{tab==='operation'&&<section><div className="v86-pills"><span className="新增">異動 {changes.length}</span></div><HRows rows={changes}/></section>}{tab==='holdings'&&<HRows rows={holdings}/>} {tab==='basic'&&<section className="v86-info"><p><span>資產規模</span><b>{fm(q?.aum_billion??q?.fund_size_billion,1)} 億</b></p><p><span>內扣費用</span><b>{fm(q?.expense_ratio,2)}%</b></p><p><span>投資區域</span><b>{region(q)}</b></p><p><span>成立日</span><b>{q?.inception_date||q?.listing_date||'-'}</b></p></section>}</main>}
+import { useMemo, useState } from 'react';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { rowsOf, quoteOf, etfCode, etfName, stockCode, stockName, fmtFree, fmtPct, priceOf, changePctOf, amountBillionOf, volumeOf, marketValueBillionOf, sharesLotsOf, weightOf, trendRowsFromAny, latestDateOf, shortDate, sortRows, toneClass, statusOf, fmtSigned, num, toggleFavorite, favoriteExists, type SortDir } from './mobileV89Utils';
+
+type Tab = 'overview' | 'live' | 'operation' | 'holdings' | 'basic';
+type SortKey = 'weight' | 'value' | 'shares' | 'price' | 'pct' | 'code';
+function useBack() { return () => { if (typeof window !== 'undefined' && window.history.length > 1) window.history.back(); else window.location.href = '/etfs'; }; }
+function SortButton({ label, k, sortKey, sortDir, onClick }: any) { const active = sortKey === k; return <button className={active ? 'active' : ''} onClick={onClick}>{label}<span>{active ? (sortDir === 'desc' ? '↓' : '↑') : '↕'}</span></button>; }
+
+export default function EtfDetailClient(props: any) {
+  const data = props?.data || props;
+  const quote = quoteOf(data);
+  const code = etfCode(quote) || data?.etf_code || data?.code;
+  const name = etfName(quote) || data?.etf_name || data?.name;
+  const back = useBack();
+  const [fav, setFav] = useState(false);
+  const [tab, setTab] = useState<Tab>('overview');
+  const [sortKey, setSortKey] = useState<SortKey>('weight');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const holdings = rowsOf(data);
+  const changes = data?.changes || data?.operationRows || data?.operation_rows || data?.changeRows || [];
+  const chartRows = trendRowsFromAny(data);
+  const sortedHoldings = useMemo(() => sortRows(holdings, (r: any) => {
+    if (sortKey === 'value') return marketValueBillionOf(r);
+    if (sortKey === 'shares') return sharesLotsOf(r);
+    if (sortKey === 'price') return priceOf(r);
+    if (sortKey === 'pct') return changePctOf(r);
+    if (sortKey === 'code') return stockCode(r);
+    return weightOf(r);
+  }, sortDir), [holdings, sortKey, sortDir]);
+  function toggleSort(k: SortKey) { if (sortKey === k) setSortDir((d) => d === 'desc' ? 'asc' : 'desc'); else { setSortKey(k); setSortDir('desc'); } }
+
+  return (
+    <main className="v89-detail-page">
+      <header className="v89-detail-header"><button onClick={back} className="back">‹</button><div><b>{code}</b><span>{name}</span></div><button className="star" onClick={() => setFav(toggleFavorite({ code, name, type: 'etf' }))}>{fav || favoriteExists(code, 'etf') ? '★' : '☆'}</button></header>
+      <nav className="v89-detail-tabs five">{([['overview','總覽'],['live','即時'],['operation','操作日報'],['holdings','成分股'],['basic','基本']] as any).map(([k,l]: any) => <button key={k} className={tab===k?'active':''} onClick={() => setTab(k)}>{l}</button>)}</nav>
+      {tab === 'overview' && <section className="v89-section"><div className="v89-kpi-grid four"><div><span>股價</span><b className={toneClass(changePctOf(quote))}>{fmtFree(priceOf(quote), 2)}</b><small>{fmtPct(changePctOf(quote), 2)}</small></div><div><span>成交金額</span><b>{fmtFree(amountBillionOf(quote), 1)}</b><small>億</small></div><div><span>持股異動</span><b>{Array.isArray(changes) ? changes.length : 0}</b><small>檔</small></div><div><span>資料狀態</span><b className={holdings.length ? 'v89-green' : 'v89-red'}>{holdings.length ? '完整' : '待補'}</b><small>股價 / 成分股 / 歷史</small></div></div><h2>淨值 / 股價走勢</h2><Chart rows={chartRows} color={changePctOf(quote) >= 0 ? 'red' : 'green'} /><h2>前五大持股</h2><HoldingRows rows={sortedHoldings.slice(0, 5)} /></section>}
+      {tab === 'live' && <section className="v89-section"><div className="v89-stock-quote"><div><span>股價</span><b className={toneClass(changePctOf(quote))}>{fmtFree(priceOf(quote), 2)}</b><small>{fmtPct(changePctOf(quote), 2)}</small></div><div><span>成交量</span><b>{fmtFree(volumeOf(quote), 0)}</b><small>{fmtFree(amountBillionOf(quote), 1)} 億</small></div></div></section>}
+      {tab === 'operation' && <section className="v89-section"><h1>操作日報</h1><div className="v89-dense-list">{(Array.isArray(changes) ? changes : []).map((r: any, i: number) => { const s=statusOf(r); const delta=num(r?.delta_lots ?? r?.change_lots ?? r?.shares_change ?? r?.delta_shares); return <Link href={`/stock/${stockCode(r)}?from=etf`} key={`${stockCode(r)}-${i}`} className="v89-signal-row"><div className="v89-name-cell"><b>{stockName(r)}</b><span>{stockCode(r)}</span></div><div className={`v89-pill ${s}`}>{s}</div><div className={delta>=0?'v89-red':'v89-green'}>{Number.isFinite(delta)?fmtSigned(delta,0,' 張'):'-'}</div><div>{fmtFree(weightOf(r),2)}%</div></Link>; })}</div></section>}
+      {tab === 'holdings' && <section className="v89-section"><div className="v89-sort-row sticky"><SortButton label="權重" k="weight" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('weight')} /><SortButton label="市值" k="value" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('value')} /><SortButton label="張數" k="shares" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('shares')} /><SortButton label="漲跌幅" k="pct" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('pct')} /></div><HoldingRows rows={sortedHoldings} /></section>}
+      {tab === 'basic' && <section className="v89-section"><div className="v89-info-card"><p><span>資產規模</span><b>{fmtFree(quote?.aum_billion ?? quote?.fund_size_billion, 1)} 億</b></p><p><span>內扣費用</span><b>{Number.isFinite(num(quote?.expense_ratio)) ? fmtFree(quote?.expense_ratio, 2) + '%' : '-'}</b></p><p><span>成立日</span><b>{quote?.inception_date || quote?.listing_date || '-'}</b></p><p><span>更新時間</span><b>{shortDate(latestDateOf(quote))}</b></p></div></section>}
+    </main>
+  );
+}
+
+function Chart({ rows, color }: any) {
+  if (!Array.isArray(rows) || rows.length < 2) return <div className="v89-empty-box">目前沒有足夠的歷史資料</div>;
+  return <div className="v89-chart-box"><ResponsiveContainer width="100%" height={190}><AreaChart data={rows}><CartesianGrid strokeDasharray="4 4" vertical={false} /><XAxis dataKey="date" tickFormatter={(v) => shortDate(v)} minTickGap={20} /><YAxis width={38} domain={['auto','auto']} /><Tooltip /><Area type="monotone" dataKey="value" stroke={color==='red'?'#df555d':'#27a575'} fill={color==='red'?'#fff1f2':'#ecfdf5'} strokeWidth={2.2} /></AreaChart></ResponsiveContainer></div>;
+}
+
+function HoldingRows({ rows }: { rows: any[] }) {
+  return <div className="v89-etf-holding-list">{rows.map((r) => <Link key={stockCode(r)} href={`/stock/${stockCode(r)}?from=etf`} className="v89-etf-holding-row"><div><b>{stockName(r)}</b><span>{stockCode(r)}</span></div><div><b>{fmtFree(marketValueBillionOf(r), 1)} 億</b><span>{fmtFree(sharesLotsOf(r), 0)} 張</span></div><div><b>{fmtFree(weightOf(r), 2)}%</b><span>權重</span></div><div><b>{fmtFree(priceOf(r), 1)}</b><span className={toneClass(changePctOf(r))}>{fmtPct(changePctOf(r), 2)}</span></div></Link>)}</div>;
+}

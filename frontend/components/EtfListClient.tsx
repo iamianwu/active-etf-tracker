@@ -1,9 +1,93 @@
 'use client';
+
 import Link from 'next/link';
-import {useMemo,useState} from 'react';
-import {ecode,ename,fm,pct,toneCls,price,cpct,num,region,ddate} from './mobileV86Utils';
-type T='live'|'return'|'basic';
-const amt=(r:any)=>{const x=Number(r?.amount_billion??r?.turnover_billion??r?.trading_amount_billion);if(Number.isFinite(x))return x;const y=Number(r?.amount??r?.turnover??r?.trading_amount);return Number.isFinite(y)?y/100000000:NaN};
-const aum=(r:any)=>r?.aum_billion??r?.fund_size_billion??r?.asset_billion??r?.scale_billion;const r1w=(r:any)=>r?.one_week_return??r?.return_1w??r?.week_return;const tr=(r:any)=>r?.total_return??r?.since_inception_return??r?.return_since_inception??r?.ytd_return;const fee=(r:any)=>r?.expense_ratio??r?.fee??r?.management_fee??r?.total_fee;
-function Card({r,tab}:any){const c=ecode(r),p=cpct(r);return <Link href={`/etf/${c}?from=etfs`} className="v86-card"><i className={p>=0?'red':'green'}/><div><div className="v86-card-top"><h3>{c}<span>{ename(r)}</span></h3><strong>{fm(price(r),2)}<small className={toneCls(p)}>{pct(p,2)}</small></strong></div>{tab==='live'&&<p><span>成交量 <b>{fm(r?.volume??r?.trade_volume)}</b></span><span>成交金額 <b>{fm(amt(r),1)} 億</b></span><span>更新 <b>{String(ddate(r)||r?.updated_at||'-').slice(5,16).replace('T',' ')}</b></span></p>}{tab==='return'&&<p><span>1週報酬 <b className={toneCls(r1w(r))}>{pct(r1w(r),1)}</b></span><span>成立以來 <b className={toneCls(tr(r))}>{pct(tr(r),1)}</b></span><span>配息 <b>{r?.dividend_frequency||'-'}</b></span></p>}{tab==='basic'&&<p><span>資產規模 <b>{fm(aum(r))} 億</b></span><span>費用 <b>{Number.isFinite(Number(fee(r)))?fm(fee(r),2)+'%':'-'}</b></span><span>區域 <b>{region(r)}</b></span></p>}<div className="v86-badges"><span>股價 {Number.isFinite(Number(price(r)))?'✓':'-'}</span><span>成分股 {(r?.has_holding_data||r?.latest_holding_date||r?.latestHoldingDate)?'✓':'-'}</span><span>歷史 {(r?.has_price_history||r?.history_ready)?'✓':'-'}</span></div></div></Link>}
-export default function EtfListClient(props:any){const rows:any[]=props?.rows||props?.data?.rows||props?.data||props?.etfs||[];const[tab,setTab]=useState<T>('live');const[q,setQ]=useState('');const sorted=useMemo(()=>{const f=(Array.isArray(rows)?rows:[]).filter(r=>`${ecode(r)} ${ename(r)}`.toLowerCase().includes(q.trim().toLowerCase()));return[...f].sort((a,b)=>tab==='return'?num(tr(b),-999)-num(tr(a),-999):tab==='basic'?num(aum(b),-999)-num(aum(a),-999):num(cpct(b),-999)-num(cpct(a),-999))},[rows,tab,q]);return <main className="page v86-page"><section className="v86-head"><div><h1>ETF 列表</h1><p>共 {sorted.length} 檔，每檔 ETF 可點進詳情。</p></div><div className="v86-mini"><button onClick={()=>setTab('live')} className={tab==='live'?'on':''}>即時</button><button onClick={()=>setTab('return')} className={tab==='return'?'on':''}>報酬</button><button onClick={()=>setTab('basic')} className={tab==='basic'?'on':''}>基本</button></div></section><input className="v86-search" value={q} onChange={e=>setQ(e.target.value)} placeholder="搜尋 ETF 或代號"/><section>{sorted.map((r,i)=><Card r={r} tab={tab} key={ecode(r)+i}/>)}</section></main>}
+import { useMemo, useState } from 'react';
+import { rowsOf, etfCode, etfName, fmtFree, fmtPct, priceOf, changePctOf, amountBillionOf, volumeOf, etfRegion, sortRows, toneClass, latestDateOf, shortDate, num, type SortDir } from './mobileV89Utils';
+
+type Tab = 'live' | 'return' | 'basic';
+type SortKey = 'pct' | 'price' | 'amount' | 'volume' | 'aum' | 'return' | 'fee' | 'code';
+
+function aumOf(r: any) { return num(r?.aum_billion ?? r?.fund_size_billion ?? r?.asset_billion ?? r?.scale_billion); }
+function returnOf(r: any) { return num(r?.total_return ?? r?.since_inception_return ?? r?.return_since_inception ?? r?.one_week_return ?? r?.return_1w); }
+function feeOf(r: any) { return num(r?.expense_ratio ?? r?.fee ?? r?.management_fee ?? r?.total_fee); }
+function SortButton({ label, k, sortKey, sortDir, onClick }: any) { const active = sortKey === k; return <button className={active ? 'active' : ''} onClick={onClick}>{label}<span>{active ? (sortDir === 'desc' ? '↓' : '↑') : '↕'}</span></button>; }
+
+export default function EtfListClient(props: any) {
+  const rows = rowsOf(props);
+  const [tab, setTab] = useState<Tab>('live');
+  const [sortKey, setSortKey] = useState<SortKey>('pct');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [q, setQ] = useState('');
+
+  const filtered = rows.filter((r) => (`${etfCode(r)} ${etfName(r)}`).toLowerCase().includes(q.trim().toLowerCase()));
+  const sorted = useMemo(() => sortRows(filtered, (r: any) => {
+    if (sortKey === 'price') return priceOf(r);
+    if (sortKey === 'amount') return amountBillionOf(r);
+    if (sortKey === 'volume') return volumeOf(r);
+    if (sortKey === 'aum') return aumOf(r);
+    if (sortKey === 'return') return returnOf(r);
+    if (sortKey === 'fee') return feeOf(r);
+    if (sortKey === 'code') return etfCode(r);
+    return changePctOf(r);
+  }, sortDir), [filtered, sortKey, sortDir]);
+
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) setSortDir((d) => d === 'desc' ? 'asc' : 'desc');
+    else { setSortKey(k); setSortDir('desc'); }
+  }
+
+  return (
+    <main className="page v89-page">
+      <section className="v89-list-title-row">
+        <div><h1>ETF 列表</h1><p>共 {sorted.length} 檔，每檔 ETF 可點進詳情。</p></div>
+        <div className="v89-segment compact">
+          <button className={tab === 'live' ? 'active' : ''} onClick={() => { setTab('live'); setSortKey('pct'); }}>即時</button>
+          <button className={tab === 'return' ? 'active' : ''} onClick={() => { setTab('return'); setSortKey('return'); }}>報酬</button>
+          <button className={tab === 'basic' ? 'active' : ''} onClick={() => { setTab('basic'); setSortKey('aum'); }}>基本</button>
+        </div>
+      </section>
+
+      <div className="v89-search-filter"><button>篩選</button><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="搜尋 ETF 或代號" /></div>
+
+      <div className="v89-sort-row">
+        {tab === 'live' && <>
+          <SortButton label="漲跌幅" k="pct" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('pct')} />
+          <SortButton label="股價" k="price" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('price')} />
+          <SortButton label="成交額" k="amount" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('amount')} />
+          <SortButton label="成交量" k="volume" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('volume')} />
+        </>}
+        {tab === 'return' && <>
+          <SortButton label="報酬" k="return" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('return')} />
+          <SortButton label="股價" k="price" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('price')} />
+          <SortButton label="漲跌幅" k="pct" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('pct')} />
+        </>}
+        {tab === 'basic' && <>
+          <SortButton label="規模" k="aum" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('aum')} />
+          <SortButton label="費用" k="fee" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('fee')} />
+          <SortButton label="代號" k="code" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('code')} />
+        </>}
+      </div>
+
+      <section className="v89-etf-cards">
+        {sorted.map((r, i) => {
+          const code = etfCode(r);
+          return (
+            <Link key={`${code}-${i}`} href={`/etf/${code}?from=etfs`} className="v89-etf-card">
+              <div className={`v89-side-line ${changePctOf(r) >= 0 ? 'red' : 'green'}`} />
+              <div className="v89-etf-main">
+                <div className="v89-etf-top">
+                  <div><b>{code}</b><span>{etfName(r)}</span></div>
+                  <div><strong>{fmtFree(priceOf(r), 2)}</strong><em className={toneClass(changePctOf(r))}>{fmtPct(changePctOf(r), 2)}</em></div>
+                </div>
+                {tab === 'live' && <div className="v89-etf-meta three"><span>成交量<b>{fmtFree(volumeOf(r), 0)}</b></span><span>成交金額<b>{fmtFree(amountBillionOf(r), 1)} 億</b></span><span>更新<b>{shortDate(latestDateOf(r))}</b></span></div>}
+                {tab === 'return' && <div className="v89-etf-meta three"><span>報酬<b className={toneClass(returnOf(r))}>{fmtPct(returnOf(r), 1)}</b></span><span>成交額<b>{fmtFree(amountBillionOf(r), 1)} 億</b></span><span>區域<b>{etfRegion(r)}</b></span></div>}
+                {tab === 'basic' && <div className="v89-etf-meta three"><span>資產規模<b>{fmtFree(aumOf(r), 0)} 億</b></span><span>內扣費用<b>{Number.isFinite(feeOf(r)) ? fmtFree(feeOf(r), 2) + '%' : '-'}</b></span><span>投資區域<b>{etfRegion(r)}</b></span></div>}
+                <div className="v89-data-badges"><span className={Number.isFinite(priceOf(r)) ? 'ok' : 'miss'}>股價 {Number.isFinite(priceOf(r)) ? '✓' : '-'}</span><span className="ok">成分股 ✓</span><span className="miss">歷史 -</span></div>
+              </div>
+            </Link>
+          );
+        })}
+      </section>
+    </main>
+  );
+}

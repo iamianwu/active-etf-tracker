@@ -1,11 +1,154 @@
 'use client';
+
 import Link from 'next/link';
-import {useMemo,useState} from 'react';
-import {code,name,fmt,fm,pct,toneCls,cpct,price,num,ddate} from './mobileV86Utils';
-type S='新增'|'刪除'|'加碼'|'減碼';
-const flow=(r:any)=>{const x=Number(r?.amount_billion??r?.flow_billion??r?.capital_flow_billion??r?.delta_amount_billion??r?.money_billion);if(Number.isFinite(x))return x;const y=Number(r?.amount??r?.flow_amount??r?.delta_amount??r?.market_value_change);if(Number.isFinite(y))return y/100000000;return num(r?.delta_shares??r?.shares_change??r?.change_lots,0)*num(price(r),0)*1000/100000000};
-const addc=(r:any)=>num(r?.buy_etf_count??r?.add_etf_count??r?.etf_add_count??r?.positive_etf_count??r?.buy_count??r?.add_count,0);
-const redc=(r:any)=>num(r?.sell_etf_count??r?.reduce_etf_count??r?.etf_reduce_count??r?.negative_etf_count??r?.sell_count??r?.reduce_count,0);
-const st=(r:any):S=>{const s=String(r?.status||r?.action||r?.change_type||'');if(s.includes('新增'))return'新增';if(s.includes('刪'))return'刪除';if(s.includes('減'))return'減碼';if(s.includes('加'))return'加碼';const d=num(r?.delta_shares??r?.shares_change??r?.change_lots,0);return d<0?'減碼':d>0?'加碼':'加碼'};
-function Focus({title,item,kind}:any){if(!item)return null;const c=code(item),p=cpct(item),f=flow(item);return <Link href={`/stock/${c}?from=signals`} className={`v86-focus ${kind}`}><b>{title}</b><div className="v86-focus-grid2"><div><h3>{name(item)} <span>{c}</span></h3><strong className={toneCls(p)}>{fm(price(item),1)} <small>{pct(p,2)}</small></strong></div><div><em>資金動向</em><i className={f>=0?'v86-red':'v86-green'}>{f>=0?'+':''}{fmt(f,1)} 億</i><em>多空共識</em><i>{addc(item)}:{redc(item)}</i></div></div></Link>}
-export default function SignalsClient(props:any){const data=props?.data||props;const rows:any[]=data?.rows||data?.items||data?.signals||[];const[range,setRange]=useState(String(data?.range_days||data?.signalRangeDays||data?.days||1));const[sel,setSel]=useState<S[]>(['新增','刪除','加碼','減碼']);const m=useMemo(()=>{const by=[...rows].sort((a,b)=>flow(b)-flow(a));const sum:any={新增:0,刪除:0,加碼:0,減碼:0};rows.forEach(r=>sum[st(r)]++);return{inflow:by.find(x=>flow(x)>0)||by[0],outflow:[...rows].sort((a,b)=>flow(a)-flow(b)).find(x=>flow(x)<0)||rows[0],mostAdd:[...rows].sort((a,b)=>addc(b)-addc(a)||flow(b)-flow(a))[0],mostReduce:[...rows].sort((a,b)=>redc(b)-redc(a)||flow(a)-flow(b))[0],sum}},[rows]);const shown=rows.filter(r=>sel.includes(st(r)));const fetched=data?.fetched_etf_count??data?.fetchedEtfCount??0,total=data?.total_etf_count??data?.totalEtfCount??fetched;const miss=data?.missing_etfs||data?.missingEtfs||[];return <main className="page v86-page"><section><div className="v86-label">訊號區間</div><div className="v86-seg">{[['1','今日'],['5','5日'],['10','10日'],['20','20日']].map(([v,t])=><button key={v} onClick={()=>setRange(v)} className={range===v?'on':''}>{t}</button>)}</div></section><section className="v86-title"><h1>{range==='1'?'今日':range+'日'}訊號</h1><p>已抓取 {fetched||total||0} / {total||fetched||0} 檔 ETF，資料日期 {ddate(data)||'-'}</p>{Array.isArray(miss)&&miss.length>0&&<mark>⚠️ {miss.length} 檔資料待補：{miss.slice(0,4).join('、')}</mark>}</section><section className="v86-focus-wrap"><Focus title="資金流入最多" item={m.inflow} kind="red"/><Focus title="資金流出最多" item={m.outflow} kind="green"/><Focus title="最多 ETF 加碼" item={m.mostAdd} kind="red"/><Focus title="最多 ETF 減碼" item={m.mostReduce} kind="green"/></section><h2 className="v86-h2">資金交易明細：共 {shown.length} 檔</h2><div className="v86-pills">{(['新增','刪除','加碼','減碼'] as S[]).map(x=><button key={x} onClick={()=>setSel(p=>p.includes(x)?p.filter(v=>v!==x):[...p,x])} className={`${sel.includes(x)?'on':''} ${x}`}>{x} <b>{m.sum[x]}</b></button>)}</div><section className="v86-list">{shown.slice(0,120).map((r,i)=>{const c=code(r),f=flow(r),p=cpct(r),x=st(r);return <Link href={`/stock/${c}?from=signals`} key={c+i} className="v86-row"><div><b>{name(r)}</b><span>{c}</span></div><div><b>{fm(price(r),1)}</b><span className={toneCls(p)}>{pct(p,2)}</span></div><em className={x}>{x}</em><strong className={f>=0?'v86-red':'v86-green'}>{f>=0?'+':''}{fmt(f,2)} 億</strong></Link>})}</section></main>}
+import { useMemo, useState } from 'react';
+import {
+  rowsOf, latestDateOf, shortDate, stockCode, stockName, fmt, fmtPct, fmtSigned,
+  priceOf, changePctOf, flowBillionOf, addEtfCount, reduceEtfCount,
+  statusOf, sortRows, toneClass, isStockCode, type SortDir
+} from './mobileV89Utils';
+
+type Status = '新增' | '刪除' | '加碼' | '減碼' | '異動';
+type SortKey = 'flow' | 'price' | 'pct' | 'status' | 'name';
+
+const statusOrder: Record<string, number> = { 新增: 4, 加碼: 3, 減碼: 2, 刪除: 1, 異動: 0 };
+
+function usable(r: any) {
+  return isStockCode(stockCode(r)) && !!stockName(r);
+}
+
+function SortButton({ label, k, sortKey, sortDir, onClick }: any) {
+  const active = sortKey === k;
+  return <button className={active ? 'active' : ''} onClick={onClick}>{label}<span>{active ? (sortDir === 'desc' ? '↓' : '↑') : '↕'}</span></button>;
+}
+
+function RangeTabs({ current }: { current: string }) {
+  const tabs = [
+    ['1', '今日', '/signals'],
+    ['5', '5日', '/signals?days=5'],
+    ['10', '10日', '/signals?days=10'],
+    ['20', '20日', '/signals?days=20'],
+  ];
+  return (
+    <section className="v89-range-card">
+      <div className="v89-range-title">訊號區間</div>
+      <div className="v89-segment four">
+        {tabs.map(([v, label, href]) => <Link key={v} href={href} className={String(current) === v ? 'active' : ''}>{label}</Link>)}
+      </div>
+    </section>
+  );
+}
+
+function FocusCard({ title, item, tone }: { title: string; item: any; tone: 'red' | 'green' }) {
+  if (!item) return <div className={`v89-focus ${tone}`}><h3>{title}</h3><div className="v89-empty">尚無有效訊號</div></div>;
+  const code = stockCode(item);
+  const flow = flowBillionOf(item);
+  return (
+    <Link href={`/stock/${code}?from=signals`} className={`v89-focus ${tone}`}>
+      <h3>{title}</h3>
+      <div className="v89-focus-grid">
+        <div>
+          <div className="v89-focus-name">{stockName(item)} <span>{code}</span></div>
+          <div className={toneClass(changePctOf(item)) + ' v89-focus-price'}>{fmt(priceOf(item), 1)} <small>{fmtPct(changePctOf(item), 2)}</small></div>
+        </div>
+        <div className="v89-focus-info">
+          <span>資金動向</span><b className={flow >= 0 ? 'v89-red' : 'v89-green'}>{Number.isFinite(flow) ? fmtSigned(flow, 1, ' 億') : '-'}</b>
+          <span>多空共識</span><b>{addEtfCount(item)}:{reduceEtfCount(item)}</b>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function StatusPill({ status, count, active, onClick }: any) {
+  return <button className={`v89-status-pill ${status} ${active ? 'active' : ''}`} onClick={onClick}><span>{status}</span><b>{count}</b></button>;
+}
+
+export default function SignalsClient(props: any) {
+  const data = props?.data || props;
+  const rows = rowsOf(data).filter(usable);
+  const [enabled, setEnabled] = useState<Status[]>(['新增', '刪除', '加碼', '減碼', '異動']);
+  const [sortKey, setSortKey] = useState<SortKey>('flow');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const range = String(data?.range_days || data?.signalRangeDays || data?.days || 1);
+
+  const { summary, focus } = useMemo(() => {
+    const summary: Record<Status, number> = { 新增: 0, 刪除: 0, 加碼: 0, 減碼: 0, 異動: 0 };
+    rows.forEach((r) => { summary[statusOf(r) as Status] += 1; });
+    const withFlow = rows.map((r) => ({ r, flow: flowBillionOf(r), add: addEtfCount(r), reduce: reduceEtfCount(r) })).filter((x) => Number.isFinite(x.flow));
+    return {
+      summary,
+      focus: {
+        inflow: [...withFlow].filter((x) => x.flow > 0).sort((a, b) => b.flow - a.flow)[0]?.r || null,
+        outflow: [...withFlow].filter((x) => x.flow < 0).sort((a, b) => a.flow - b.flow)[0]?.r || null,
+        mostAdd: [...withFlow].filter((x) => x.add > 0).sort((a, b) => b.add - a.add || b.flow - a.flow)[0]?.r || null,
+        mostReduce: [...withFlow].filter((x) => x.reduce > 0).sort((a, b) => b.reduce - a.reduce || a.flow - b.flow)[0]?.r || null,
+      }
+    };
+  }, [rows]);
+
+  const filtered = rows.filter((r) => enabled.includes(statusOf(r) as Status));
+  const sorted = useMemo(() => {
+    return sortRows(filtered, (r: any) => {
+      if (sortKey === 'flow') return flowBillionOf(r);
+      if (sortKey === 'price') return priceOf(r);
+      if (sortKey === 'pct') return changePctOf(r);
+      if (sortKey === 'status') return statusOrder[statusOf(r)] || 0;
+      return stockName(r);
+    }, sortDir);
+  }, [filtered, sortKey, sortDir]);
+
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) setSortDir((d) => d === 'desc' ? 'asc' : 'desc');
+    else { setSortKey(k); setSortDir('desc'); }
+  }
+
+  const fetched = data?.fetched_etf_count ?? data?.fetchedEtfCount ?? data?.complete_etf_count ?? 0;
+  const total = data?.total_etf_count ?? data?.totalEtfCount ?? 0;
+
+  return (
+    <main className="page v89-page">
+      <RangeTabs current={range} />
+      <section className="v89-title">
+        <h1>{range === '1' ? '今日訊號' : `${range}日訊號`}</h1>
+        <p>已抓取 {fetched || total || 0} / {total || fetched || 0} 檔 ETF，資料日期 {shortDate(latestDateOf(data))}</p>
+      </section>
+
+      <section className="v89-focus-wrap">
+        <FocusCard title="資金流入最多" item={focus.inflow} tone="red" />
+        <FocusCard title="資金流出最多" item={focus.outflow} tone="green" />
+        <FocusCard title="最多 ETF 加碼" item={focus.mostAdd} tone="red" />
+        <FocusCard title="最多 ETF 減碼" item={focus.mostReduce} tone="green" />
+      </section>
+
+      <section className="v89-table-head"><h2>資金交易明細：共 {sorted.length} 檔</h2></section>
+      <div className="v89-status-row">
+        {(['新增', '刪除', '加碼', '減碼'] as Status[]).map((s) => (
+          <StatusPill key={s} status={s} count={summary[s]} active={enabled.includes(s)} onClick={() => setEnabled((old) => old.includes(s) ? old.filter((x) => x !== s) : [...old, s])} />
+        ))}
+      </div>
+      <div className="v89-sort-row">
+        <SortButton label="金額" k="flow" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('flow')} />
+        <SortButton label="股價" k="price" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('price')} />
+        <SortButton label="漲跌幅" k="pct" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('pct')} />
+        <SortButton label="狀態" k="status" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('status')} />
+      </div>
+
+      <section className="v89-dense-list">
+        {sorted.slice(0, 160).map((r, i) => {
+          const s = statusOf(r);
+          const code = stockCode(r);
+          const flow = flowBillionOf(r);
+          return (
+            <Link href={`/stock/${code}?from=signals`} className="v89-signal-row" key={`${code}-${i}`}>
+              <div className="v89-name-cell"><b>{stockName(r)}</b><span>{code}</span></div>
+              <div className="v89-num-cell"><b>{fmt(priceOf(r), 1)}</b><span className={toneClass(changePctOf(r))}>{fmtPct(changePctOf(r), 2)}</span></div>
+              <div className={`v89-pill ${s}`}>{s}</div>
+              <div className={flow >= 0 ? 'v89-red v89-flow' : 'v89-green v89-flow'}>{Number.isFinite(flow) ? fmtSigned(flow, 2, ' 億') : '-'}</div>
+            </Link>
+          );
+        })}
+      </section>
+    </main>
+  );
+}
