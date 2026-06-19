@@ -190,8 +190,12 @@ export default function StockDetailClient(props: any) {
         </div>
         <h2>主動 ETF 總持股趨勢</h2>
         <MiniArea rows={holdingTrend.length ? holdingTrend : priceTrend} color={delta20 >= 0 ? 'red' : 'green'} />
-        <h2>持有 ETF 明細</h2>
-        <EtfHoldingList rows={sortedEtfRows.slice(0, 8)} />
+        <h2>前五大持有 ETF</h2>
+        <TopEtfPreview
+          rows={[...etfRows].sort((a: any, b: any) => (Number.isFinite(b.value) ? b.value : 0) - (Number.isFinite(a.value) ? a.value : 0)).slice(0, 5)}
+          totalValue={totalValue}
+          onMore={() => setTab('detail')}
+        />
       </section>}
 
       {tab === 'whale' && <section className="v89-section">
@@ -241,6 +245,36 @@ function RankCard({ title, rows, keyName, positive }: any) {
           <strong>{fmtSigned(r[keyName], 0, ' 張')}</strong>
         </Link>
       ))}
+    </section>
+  );
+}
+
+
+function TopEtfPreview({ rows, totalValue, onMore }: { rows: any[]; totalValue: number; onMore: () => void }) {
+  if (!rows?.length) return <div className="v89-empty-box">目前沒有 ETF 持股資料</div>;
+  const maxValue = Math.max(...rows.map((r) => Number.isFinite(r.value) ? r.value : 0), 1);
+
+  return (
+    <section className="v92-top-etf-preview">
+      <div className="v92-preview-note">依目前持股市值排序。完整清單與近 5 / 20 / 60 日排序請到「持股明細」。</div>
+      {rows.map((r) => {
+        const pct = totalValue > 0 && Number.isFinite(r.value) ? (r.value / totalValue) * 100 : NaN;
+        const width = Math.max(8, Math.min(100, ((Number.isFinite(r.value) ? r.value : 0) / maxValue) * 100));
+        return (
+          <Link key={r.code} href={`/etf/${r.code}?from=stock`} className="v92-top-etf-row">
+            <div className="v92-top-etf-main">
+              <b>{r.code}</b>
+              <span>{r.name}</span>
+            </div>
+            <div className="v92-top-etf-value">
+              <b>{fmtFree(r.value, 2)} 億</b>
+              <span>{fmtFree(r.lots, 0)} 張{Number.isFinite(pct) ? `｜占 ${fmtFree(pct, 1)}%` : ''}</span>
+            </div>
+            <div className="v92-top-etf-bar"><i style={{ width: `${width}%` }} /></div>
+          </Link>
+        );
+      })}
+      <button className="v92-more-btn" onClick={onMore}>查看完整持股明細與排序 ›</button>
     </section>
   );
 }
