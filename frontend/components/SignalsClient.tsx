@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import {
   rowsOf, latestDateOf, shortDate, stockCode, stockName, fmt, fmtPct, fmtSigned,
   priceOf, changePctOf, flowBillionOf, addEtfCount, reduceEtfCount,
-  statusOf, sortRows, toneClass, isStockCode, type SortDir
+  statusOf, sortRows, toneClass, isStockCode, num, type SortDir
 } from './mobileV89Utils';
 
 type Status = '新增' | '刪除' | '加碼' | '減碼' | '異動';
@@ -15,6 +15,10 @@ const statusOrder: Record<string, number> = { 新增: 4, 加碼: 3, 減碼: 2, �
 
 function usable(r: any) {
   return isStockCode(stockCode(r)) && !!stockName(r);
+}
+
+function lotsDelta(r: any) {
+  return num(r?.delta_lots ?? r?.change_lots ?? r?.shares_change ?? r?.delta_shares ?? r?.deltaShares ?? r?.changeShares, 0);
 }
 
 function SortButton({ label, k, sortKey, sortDir, onClick }: any) {
@@ -43,6 +47,11 @@ function FocusCard({ title, item, tone }: { title: string; item: any; tone: 'red
   if (!item) return <div className={`v89-focus ${tone}`}><h3>{title}</h3><div className="v89-empty">尚無有效訊號</div></div>;
   const code = stockCode(item);
   const flow = flowBillionOf(item);
+  const add = addEtfCount(item);
+  const reduce = reduceEtfCount(item);
+  const delta = lotsDelta(item);
+  const consensus = add || reduce ? `${add}:${reduce}` : (delta ? `張數 ${fmtSigned(delta, 0)}` : '0:0');
+
   return (
     <Link href={`/stock/${code}?from=signals`} className={`v89-focus ${tone}`}>
       <h3>{title}</h3>
@@ -53,7 +62,7 @@ function FocusCard({ title, item, tone }: { title: string; item: any; tone: 'red
         </div>
         <div className="v89-focus-info">
           <span>資金動向</span><b className={flow >= 0 ? 'v89-red' : 'v89-green'}>{Number.isFinite(flow) ? fmtSigned(flow, 1, ' 億') : '-'}</b>
-          <span>多空共識</span><b>{addEtfCount(item)}:{reduceEtfCount(item)}</b>
+          <span>多空共識</span><b>{consensus}</b>
         </div>
       </div>
     </Link>
@@ -75,14 +84,39 @@ export default function SignalsClient(props: any) {
   const { summary, focus } = useMemo(() => {
     const summary: Record<Status, number> = { 新增: 0, 刪除: 0, 加碼: 0, 減碼: 0, 異動: 0 };
     rows.forEach((r) => { summary[statusOf(r) as Status] += 1; });
-    const withFlow = rows.map((r) => ({ r, flow: flowBillionOf(r), add: addEtfCount(r), reduce: reduceEtfCount(r) })).filter((x) => Number.isFinite(x.flow));
+
+    const withFlow = rows.map((r) => ({
+      r,
+      flow: flowBillionOf(r),
+      add: addEtfCount(r),
+      reduce: reduceEtfCount(r),
+      status: statusOf(r),
+      delta: lotsDelta(r),
+    }));
+
+    const validFlow = withFlow.filter((x) => Number.isFinite(x.flow));
+    const addPoolByCount = withFlow.filter((x) => x.add > 0);
+    const reducePoolByCount = withFlow.filter((x) => x.reduce > 0);
+    const addPoolFallback = withFlow.filter((x) => x.status === '加碼' || x.delta > 0);
+    const reducePoolFallback = withFlow.filter((x) => x.status === '減碼' || x.delta < 0);
+
+    const mostAdd =
+      [...addPoolByCount].sort((a, b) => b.add - a.add || Math.abs(b.flow || 0) - Math.abs(a.flow || 0))[0]?.r ||
+      [...addPoolFallback].sort((a, b) => Math.abs(b.flow || 0) - Math.abs(a.flow || 0) || Math.abs(b.delta) - Math.abs(a.delta))[0]?.r ||
+      null;
+
+    const mostReduce =
+      [...reducePoolByCount].sort((a, b) => b.reduce - a.reduce || Math.abs(b.flow || 0) - Math.abs(a.flow || 0))[0]?.r ||
+      [...reducePoolFallback].sort((a, b) => Math.abs(b.flow || 0) - Math.abs(a.flow || 0) || Math.abs(b.delta) - Math.abs(a.delta))[0]?.r ||
+      null;
+
     return {
       summary,
       focus: {
-        inflow: [...withFlow].filter((x) => x.flow > 0).sort((a, b) => b.flow - a.flow)[0]?.r || null,
-        outflow: [...withFlow].filter((x) => x.flow < 0).sort((a, b) => a.flow - b.flow)[0]?.r || null,
-        mostAdd: [...withFlow].filter((x) => x.add > 0).sort((a, b) => b.add - a.add || b.flow - a.flow)[0]?.r || null,
-        mostReduce: [...withFlow].filter((x) => x.reduce > 0).sort((a, b) => b.reduce - a.reduce || a.flow - b.flow)[0]?.r || null,
+        inflow: [...validFlow].filter((x) => x.flow > 0).sort((a, b) => b.flow - a.flow)[0]?.r || null,
+        outflow: [...validFlow].filter((x) => x.flow < 0).sort((a, b) => a.flow - b.flow)[0]?.r || null,
+        mostAdd,
+        mostReduce,
       }
     };
   }, [rows]);
@@ -109,6 +143,7 @@ export default function SignalsClient(props: any) {
   return (
     <main className="page v89-page">
       <RangeTabs current={range} />
+
       <section className="v89-title">
         <h1>{range === '1' ? '今日訊號' : `${range}日訊號`}</h1>
         <p>已抓取 {fetched || total || 0} / {total || fetched || 0} 檔 ETF，資料日期 {shortDate(latestDateOf(data))}</p>
@@ -135,7 +170,7 @@ export default function SignalsClient(props: any) {
       </div>
 
       <section className="v89-dense-list">
-        {sorted.slice(0, 160).map((r, i) => {
+        {sorted.slice(0, 180).map((r, i) => {
           const s = statusOf(r);
           const code = stockCode(r);
           const flow = flowBillionOf(r);

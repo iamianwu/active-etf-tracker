@@ -5534,3 +5534,29 @@ a:focus-visible{
 .v89-section h1{font-size:29px;margin-top:20px}.v89-section h2{margin:22px 0 10px;font-size:24px;line-height:1.15;font-weight:950}.v89-stock-quote{display:grid;grid-template-columns:1fr 1fr;gap:12px}.v89-stock-quote>div,.v89-kpi-grid>div,.v89-info-card,.v89-chart-box,.v89-insight,.v89-rank-card{border:1px solid var(--v89-line);border-radius:14px;background:#fff;padding:14px;box-shadow:0 2px 10px rgba(15,23,42,.03)}.v89-stock-quote span,.v89-kpi-grid span,.v89-info-card span{display:block;color:#6f7a89;font-size:13px;font-weight:950}.v89-stock-quote b,.v89-kpi-grid b{display:block;margin-top:8px;font-size:25px;line-height:1.05;font-weight:950}.v89-stock-quote small,.v89-kpi-grid small{display:block;margin-top:4px;color:#7d8796;font-size:12px;font-weight:850}.v89-kpi-grid{display:grid;gap:10px}.v89-kpi-grid.four{grid-template-columns:repeat(2,1fr)}.v89-insight{margin-top:12px;background:#fff8f8;border-color:#f4d0d5}.v89-insight.green{background:#f5fffb;border-color:#ccefe2}.v89-insight b{display:block;color:var(--v89-red);font-size:17px;font-weight:950}.v89-insight.green b{color:var(--v89-green)}.v89-insight span{display:block;margin-top:5px;color:#6f7a89;font-size:14px;font-weight:900}.v89-chart-box{padding:10px}.v89-empty-box{padding:24px 12px;text-align:center;border:1px dashed #d2dbe8;border-radius:14px;background:#f8fafc;color:#7d8796;font-weight:900}.v89-empty-box.small{padding:12px}
 .v89-etf-holding-list{display:grid}.v89-etf-holding-row{display:grid;grid-template-columns:minmax(84px,1fr) 98px 66px 66px;gap:7px;align-items:center;min-height:70px;padding:10px 0;color:inherit;text-decoration:none;border-bottom:1px solid var(--v89-line)}.v89-etf-holding-row b{display:block;font-size:16.5px;line-height:1.15;font-weight:950}.v89-etf-holding-row span{display:block;color:#8a95a6;font-size:12.5px;font-weight:850}.v89-rank-card{margin-bottom:14px}.v89-rank-card h2{margin:0 0 12px;color:var(--v89-red);font-size:22px}.v89-rank-card.green h2{color:var(--v89-green)}.v89-rank-item{display:grid;grid-template-columns:28px 1fr 82px;gap:8px;align-items:center;min-height:42px;color:inherit;text-decoration:none;border-bottom:1px solid var(--v89-line)}.v89-rank-item:last-child{border-bottom:0}.v89-rank-item>span{width:22px;height:22px;display:grid;place-items:center;border-radius:999px;background:#f1f5f9;color:var(--v89-red);font-size:13px;font-weight:950}.v89-rank-card.green .v89-rank-item>span{color:var(--v89-green)}.v89-rank-item b{font-size:15px;font-weight:950}.v89-rank-item small{margin-left:5px;color:#7d8796;font-size:13px;font-weight:850}.v89-rank-item strong{text-align:right;color:var(--v89-red);font-size:14px;font-weight:950}.v89-rank-card.green .v89-rank-item strong{color:var(--v89-green)}.v89-info-card{display:grid;gap:0}.v89-info-card p{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0;padding:12px 0;border-bottom:1px solid var(--v89-line)}.v89-info-card p:last-child{border-bottom:0}.v89-info-card b{text-align:right;font-weight:950}.v89-sort-row.sticky{position:sticky;top:122px;z-index:20;background:#fff;padding-top:6px}
 @media(max-width:390px){.v89-focus-wrap{grid-template-columns:1fr}.v89-signal-row{grid-template-columns:minmax(78px,1fr) 72px 56px 72px}.v89-etf-holding-row{grid-template-columns:minmax(76px,1fr) 86px 58px 58px}}
+
+
+
+/* ===== V90 refinement: no duplicate gaps, better mobile charts ===== */
+.v89-page > .v89-range-card + .v89-range-card { display: none !important; }
+.v89-page .v89-range-card { margin-top: 10px; margin-bottom: 14px; }
+.v89-focus { min-height: 134px; }
+.v89-focus-price { font-size: 22px; }
+.v89-focus-info b { white-space: normal; }
+.v89-chart-box .recharts-yAxis .recharts-cartesian-axis-tick-value {
+  font-size: 12px;
+  font-weight: 700;
+}
+.v89-range-mini {
+  margin: 4px 0 12px;
+}
+.v89-range-mini button {
+  min-width: 76px;
+}
+@media(max-width:390px){
+  .v89-focus-wrap{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .v89-focus{padding:10px;min-height:126px}
+  .v89-focus h3{font-size:15px}
+  .v89-focus-name{font-size:15px}
+  .v89-focus-price{font-size:20px}
+}
