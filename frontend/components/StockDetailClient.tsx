@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import {useMemo, useState} from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { rowsOf, quoteOf, stockCode, stockName, etfCode, etfName, fmtFree, fmtPct, fmtSigned, priceOf, changePctOf, marketValueBillionOf, sharesLotsOf, allHoldingHistory, trendRowsFromAny, dateOf, shortDate, sortRows, toneClass, num, toggleFavorite, favoriteExists, type SortDir } from './mobileV89Utils';
 
@@ -196,6 +196,7 @@ export default function StockDetailClient(props: any) {
           totalValue={totalValue}
           onMore={() => setTab('detail')}
         />
+        <StockRecentOperationPanel data={data} etfRows={etfRows} />
         <StockRecentOperationRecords data={data} etfRows={etfRows} />
       </section>}
 
@@ -252,157 +253,250 @@ function RankCard({ title, rows, keyName, positive }: any) {
 
 
 
-function pickObjValue(obj: any, keys: string[]): any {
+
+type StockOpSortKey = 'date' | 'etf' | 'lots' | 'pct' | 'status';
+type StockOpSortDir = 'asc' | 'desc';
+
+function stockOpPick(obj: any, keys: string[]): any {
   for (const k of keys) {
     if (obj && obj[k] !== undefined && obj[k] !== null && obj[k] !== '') return obj[k];
   }
   return undefined;
 }
 
-function asLotsSmart(v: any): number {
-  const n = num(v);
+function stockOpNum(v: any): number {
+  if (typeof num === 'function') return num(v);
+  const n = Number(String(v ?? '').replace(/,/g, ''));
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function stockOpLotsFromAny(v: any): number {
+  const n = stockOpNum(v);
   if (!Number.isFinite(n)) return NaN;
   return Math.abs(n) >= 100000 ? n / 1000 : n;
 }
 
-function recordDateOf(r: any): string {
-  return String(pickObjValue(r, ['data_date', 'date', 'trade_date', 'updated_date', 'dt']) || '');
+function stockOpDate(r: any): string {
+  return String(stockOpPick(r, ['data_date', 'date', 'trade_date', 'updated_date', 'dt']) || '');
 }
 
-function recordEtfCodeOf(r: any): string {
-  return String(pickObjValue(r, ['etf_code', 'etfCode', 'code', 'fund_code']) || '');
+function stockOpCode(r: any): string {
+  return String(stockOpPick(r, ['etf_code', 'etfCode', 'code', 'fund_code', 'fundCode']) || '');
 }
 
-function recordEtfNameOf(r: any, etfMap: Record<string, any>): string {
-  const code = recordEtfCodeOf(r);
-  return String(pickObjValue(r, ['etf_name', 'etfName', 'name', 'fund_name']) || etfMap[code]?.name || etfMap[code]?.etf_name || '');
+function stockOpName(r: any, etfMap: Record<string, any>): string {
+  const code = stockOpCode(r);
+  return String(
+    stockOpPick(r, ['etf_name', 'etfName', 'name', 'fund_name', 'fundName']) ||
+    etfMap[code]?.name ||
+    etfMap[code]?.etf_name ||
+    etfMap[code]?.fund_name ||
+    ''
+  );
 }
 
-function recordLotsOf(r: any): number {
-  return asLotsSmart(pickObjValue(r, ['shares', 'shares_lots', 'lots', 'holding_lots', 'quantity', 'qty']));
+function stockOpHoldingLots(r: any): number {
+  return stockOpLotsFromAny(stockOpPick(r, ['shares', 'shares_lots', 'lots', 'holding_lots', 'quantity', 'qty', 'position_lots']));
 }
 
-function buildStockOperationRecords(data: any, etfRows: any[]) {
+function stockOpFormatMmdd(v: string): string {
+  const s = String(v || '');
+  if (!s) return '-';
+  const m = s.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
+  if (m) return `${m[2]}/${m[3]}`;
+  const m2 = s.match(/(\d{2})[-/](\d{2})/);
+  if (m2) return `${m2[1]}/${m2[2]}`;
+  return s;
+}
+
+function stockOpFormatLotsSigned(v: number): string {
+  if (!Number.isFinite(v)) return '-';
+  const abs = Math.abs(v);
+  if (abs > 0 && abs < 1) return `${v > 0 ? '+' : '-'}<1張`;
+  const rounded = Math.round(abs * 100) / 100;
+  const integerLike = Math.abs(rounded - Math.round(rounded)) < 1e-8;
+  const body = integerLike ? Math.round(rounded).toLocaleString() : rounded.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  return `${v > 0 ? '+' : '-'}${body}張`;
+}
+
+function stockOpFormatPct(v: number): string {
+  if (!Number.isFinite(v)) return '-';
+  const abs = Math.abs(v);
+  if (abs > 100) {
+    const times = Math.min(10, Math.floor(abs / 100));
+    if (times >= 1) return `${v > 0 ? '>' : '-'}${times}倍`;
+  }
+  const digits = abs >= 10 ? 1 : 2;
+  const text = abs.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: 0 });
+  return `${v > 0 ? '+' : '-'}${text}%`;
+}
+
+function buildStockRecentOperationRows(data: any, etfRows: any[]) {
+  const etfMap: Record<string, any> = {};
+  for (const e of etfRows || []) etfMap[String(e?.code || e?.etf_code || e?.fund_code || '')] = e;
+
   const raw = ([] as any[]).concat(
     Array.isArray(data?.operation_records) ? data.operation_records : [],
     Array.isArray(data?.operationRecords) ? data.operationRecords : [],
     Array.isArray(data?.recent_operations) ? data.recent_operations : [],
-    Array.isArray(data?.recentOperations) ? data.recentOperations : []
+    Array.isArray(data?.recentOperations) ? data.recentOperations : [],
+    Array.isArray(data?.stock_operation_records) ? data.stock_operation_records : [],
+    Array.isArray(data?.stockOperationRecords) ? data.stockOperationRecords : []
   );
 
-  const etfMap: Record<string, any> = {};
-  for (const e of etfRows || []) etfMap[String(e.code || e.etf_code || '')] = e;
+  let rows: any[] = [];
 
   if (raw.length) {
-    return raw.map((r: any) => {
-      const code = recordEtfCodeOf(r);
-      const lots = asLotsSmart(pickObjValue(r, [
+    rows = raw.map((r: any) => {
+      const lots = stockOpLotsFromAny(stockOpPick(r, [
         'delta_lots', 'change_lots', 'deltaLots', 'changeLots',
         'shares_change', 'delta_shares', 'sharesChange', 'deltaShares',
-        'change_shares', 'changeShares'
+        'change_shares', 'changeShares', 'delta', 'change'
       ]));
-      const pct = num(pickObjValue(r, ['change_pct', 'delta_pct', 'changePct', 'deltaPct', 'change_percent']));
+      const pct = stockOpNum(stockOpPick(r, ['change_pct', 'delta_pct', 'changePct', 'deltaPct', 'change_percent', 'percent_change', 'pct']));
       return {
-        date: recordDateOf(r),
-        code,
-        name: recordEtfNameOf(r, etfMap),
+        date: stockOpDate(r),
+        code: stockOpCode(r),
+        name: stockOpName(r, etfMap),
         lots,
         pct,
-        status: String(pickObjValue(r, ['status', 'action']) || (lots >= 0 ? '加碼' : '減碼')),
+        status: String(stockOpPick(r, ['status', 'action']) || (lots >= 0 ? '加碼' : '減碼')),
       };
-    }).filter((r: any) => r.code && Number.isFinite(r.lots) && r.lots !== 0);
+    }).filter((r) => r.code && Number.isFinite(r.lots) && r.lots !== 0);
   }
 
-  const hist = ([] as any[]).concat(
-    Array.isArray(data?.holding_history) ? data.holding_history : [],
-    Array.isArray(data?.holdingHistory) ? data.holdingHistory : [],
-    Array.isArray(data?.historyRows) ? data.historyRows : [],
-    Array.isArray(data?.history) ? data.history : []
-  );
+  if (!rows.length) {
+    const hist = ([] as any[]).concat(
+      Array.isArray(data?.holding_history) ? data.holding_history : [],
+      Array.isArray(data?.holdingHistory) ? data.holdingHistory : [],
+      Array.isArray(data?.historyRows) ? data.historyRows : [],
+      Array.isArray(data?.history) ? data.history : []
+    );
 
-  const grouped: Record<string, any[]> = {};
-  for (const r of hist) {
-    const code = recordEtfCodeOf(r);
-    const date = recordDateOf(r);
-    if (!code || !date) continue;
-    if (!grouped[code]) grouped[code] = [];
-    grouped[code].push(r);
-  }
+    const grouped: Record<string, any[]> = {};
+    for (const r of hist) {
+      const code = stockOpCode(r);
+      const date = stockOpDate(r);
+      if (!code || !date) continue;
+      if (!grouped[code]) grouped[code] = [];
+      grouped[code].push(r);
+    }
 
-  const out: any[] = [];
-  for (const code of Object.keys(grouped)) {
-    const rows = grouped[code].sort((a, b) => recordDateOf(a).localeCompare(recordDateOf(b)));
-    for (let i = 1; i < rows.length; i++) {
-      const prevLots = recordLotsOf(rows[i - 1]);
-      const currLots = recordLotsOf(rows[i]);
-      if (!Number.isFinite(prevLots) || !Number.isFinite(currLots)) continue;
-      const delta = currLots - prevLots;
-      if (Math.abs(delta) < 0.0001) continue;
-      out.push({
-        date: recordDateOf(rows[i]),
-        code,
-        name: recordEtfNameOf(rows[i], etfMap),
-        lots: delta,
-        pct: prevLots ? (delta / Math.abs(prevLots)) * 100 : NaN,
-        status: delta >= 0 ? '加碼' : '減碼',
-      });
+    for (const code of Object.keys(grouped)) {
+      const list = grouped[code].sort((a, b) => stockOpDate(a).localeCompare(stockOpDate(b)));
+      for (let i = 1; i < list.length; i++) {
+        const prevLots = stockOpHoldingLots(list[i - 1]);
+        const currLots = stockOpHoldingLots(list[i]);
+        if (!Number.isFinite(prevLots) || !Number.isFinite(currLots)) continue;
+        const delta = currLots - prevLots;
+        if (Math.abs(delta) < 0.0001) continue;
+        rows.push({
+          date: stockOpDate(list[i]),
+          code,
+          name: stockOpName(list[i], etfMap),
+          lots: delta,
+          pct: prevLots ? (delta / Math.abs(prevLots)) * 100 : NaN,
+          status: delta >= 0 ? '加碼' : '減碼',
+        });
+      }
     }
   }
 
-  return out.sort((a, b) => String(b.date).localeCompare(String(a.date)) || Math.abs(b.lots) - Math.abs(a.lots));
+  const seen = new Set<string>();
+  return rows.filter((r) => {
+    const key = [r.date, r.code, r.status, Math.round((r.lots || 0) * 1000)].join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
-function StockRecentOperationRecords({ data, etfRows }: { data: any; etfRows: any[] }) {
-  const records = buildStockOperationRecords(data, etfRows).slice(0, 30);
+function StockRecentOperationPanel({ data, etfRows }: { data: any; etfRows: any[] }) {
+  const baseRows = buildStockRecentOperationRows(data, etfRows);
   const [openInfo, setOpenInfo] = useState(false);
+  const [sortKey, setSortKey] = useState<StockOpSortKey>('date');
+  const [sortDir, setSortDir] = useState<StockOpSortDir>('desc');
 
-  if (!records.length) return null;
+  if (!baseRows.length) return null;
+
+  function toggleSort(key: StockOpSortKey) {
+    if (sortKey === key) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === 'etf' || key === 'status' ? 'asc' : 'desc');
+  }
+
+  function sortValue(row: any, key: StockOpSortKey): any {
+    if (key === 'date') return String(row.date || '');
+    if (key === 'etf') return String(row.code || '');
+    if (key === 'lots') return Math.abs(Number(row.lots || 0));
+    if (key === 'pct') return Math.abs(Number(row.pct || 0));
+    if (key === 'status') return String(row.status || '');
+    return '';
+  }
+
+  const rows = [...baseRows]
+    .sort((a, b) => {
+      const av = sortValue(a, sortKey);
+      const bv = sortValue(b, sortKey);
+      let cmp = 0;
+      if (typeof av === 'number' && typeof bv === 'number') cmp = av - bv;
+      else cmp = String(av).localeCompare(String(bv));
+      return sortDir === 'asc' ? cmp : -cmp;
+    })
+    .slice(0, 30);
+
+  const SortBtn = ({ k, children, right = false }: { k: StockOpSortKey; children: React.ReactNode; right?: boolean }) => (
+    <button type="button" className={`v96-op-head-btn ${right ? 'right' : ''} ${sortKey === k ? 'active' : ''}`} onClick={() => toggleSort(k)}>
+      <span>{children}</span>
+      <em>{sortKey === k ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</em>
+    </button>
+  );
 
   return (
-    <section className="v94-op-section">
-      <div className="v94-op-title-row">
+    <section className="v96-op-panel">
+      <div className="v96-op-title-row">
         <h2>近30日操作記錄</h2>
-        <button type="button" className="v94-info-btn" onClick={() => setOpenInfo(true)}>i</button>
+        <button type="button" className="v96-op-info-btn" onClick={() => setOpenInfo(true)} aria-label="變動資料說明">i</button>
       </div>
 
-      <div className="v94-op-table">
-        <div className="v94-op-head">
-          <span>日期</span>
-          <span>ETF</span>
-          <span>變動張數<br />變動幅度</span>
-          <span>狀態</span>
+      <div className="v96-op-table">
+        <div className="v96-op-head">
+          <SortBtn k="date">日期</SortBtn>
+          <SortBtn k="etf">ETF</SortBtn>
+          <SortBtn k="lots" right>變動張數<br />變動幅度</SortBtn>
+          <SortBtn k="status" right>狀態</SortBtn>
         </div>
 
-        {records.map((r: any, i: number) => {
-          const positive = r.lots >= 0;
-          const mmdd = String(r.date || '').slice(5, 10).replace('-', '/');
-          const pctText = Number.isFinite(r.pct) ? `${fmtFree(r.pct, Math.abs(r.pct) >= 10 ? 1 : 2)}%` : '-';
-
+        {rows.map((r: any, idx: number) => {
+          const isAdd = r.lots >= 0;
           return (
-            <Link key={`${r.date}-${r.code}-${i}`} href={`/etf/${r.code}?from=stock`} className="v94-op-tr">
-              <div className="v94-date">{mmdd || '-'}</div>
-              <div className="v94-etf">
+            <div className="v96-op-row" key={`${r.date}-${r.code}-${idx}`}>
+              <div className="v96-op-date">{stockOpFormatMmdd(r.date)}</div>
+              <div className="v96-op-etf">
                 <b>{r.code}</b>
                 <span>{r.name || '-'}</span>
               </div>
-              <div className={`v94-change ${positive ? 'red' : 'green'}`}>
-                <b>{fmtSigned(r.lots, Math.abs(r.lots) < 1 ? 1 : 0, ' 張')}</b>
-                <span>{pctText}</span>
+              <div className={`v96-op-change ${isAdd ? 'up' : 'down'}`}>
+                <b>{stockOpFormatLotsSigned(r.lots)}</b>
+                <span>{stockOpFormatPct(r.pct)}</span>
               </div>
-              <div className={`v94-status ${positive ? 'red' : 'green'}`}>{r.status}</div>
-            </Link>
+              <div className={`v96-op-status ${isAdd ? 'up' : 'down'}`}>{r.status || (isAdd ? '加碼' : '減碼')}</div>
+            </div>
           );
         })}
       </div>
 
       {openInfo && (
-        <div className="v94-modal-mask" onClick={() => setOpenInfo(false)}>
-          <div className="v94-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="v96-op-modal-mask" onClick={() => setOpenInfo(false)}>
+          <div className="v96-op-modal" onClick={(e) => e.stopPropagation()}>
             <h3>變動資料說明</h3>
             <ul>
-              <li><b>變動張數：</b>以 1 張為最小顯示單位，原始資料若為股數會自動換算為張數，例如 600,000 股會顯示為 600 張。</li>
-              <li><b>變動幅度：</b>用於衡量加減碼強度。當變動幅度超過 100% 時，通常代表原始持股基數較小，請搭配變動張數判讀。</li>
-              <li><b>判讀提醒：</b>ETF 持股變化不等於立即買賣建議，建議搭配股價、權重與連續多日趨勢一起看。</li>
+              <li><b>變動張數：</b>以 1 張為最小顯示單位，未滿 1 張的零股變動不顯示。</li>
+              <li><b>變動幅度：</b>用於衡量加減碼強度。當變動幅度超過 100% 時，以倍數顯示（如 &gt;1倍、&gt;2倍），最多顯示 10 倍，快速識別大幅異動。</li>
+              <li><b>判讀提醒：</b>變動幅度過大，可能源於原始持股基數較小，請搭配變動張數判讀。</li>
             </ul>
             <button type="button" onClick={() => setOpenInfo(false)}>我知道了</button>
           </div>
