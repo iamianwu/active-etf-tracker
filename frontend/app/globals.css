@@ -6045,3 +6045,385 @@ a:focus-visible{
 .v89-page .v89-range-card {
   display: none !important;
 }
+
+
+/* ===== V103 signal page: lots + consensus ===== */
+.signal103-page {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+.signal103-range {
+  margin: 22px 0 22px;
+}
+
+.signal103-label {
+  font-size: 22px;
+  font-weight: 900;
+  color: #7b8798;
+  margin-bottom: 12px;
+}
+
+.signal103-range-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: #edf2f8;
+  border: 1px solid #dbe3ee;
+  border-radius: 999px;
+  padding: 8px;
+  gap: 6px;
+}
+
+.signal103-range-tabs button {
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  color: #64748b;
+  font-size: 22px;
+  font-weight: 950;
+  padding: 13px 8px;
+}
+
+.signal103-range-tabs button.active {
+  background: #fff;
+  color: #2f6fcc;
+  box-shadow: 0 8px 18px rgba(43, 90, 160, 0.12);
+}
+
+.signal103-title-block h2 {
+  font-size: 42px;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+.signal103-focus-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 22px 0 28px;
+}
+
+.signal103-focus {
+  border-radius: 18px;
+  padding: 18px 16px;
+  min-height: 178px;
+  border: 1.5px solid #e8eef6;
+  background: #fff;
+  overflow: hidden;
+}
+
+.signal103-focus.red {
+  background: #fff7f8;
+  border-color: #f5ccd2;
+}
+
+.signal103-focus.green {
+  background: #f2fffa;
+  border-color: #bfe8da;
+}
+
+.signal103-focus-title {
+  font-size: 23px;
+  font-weight: 950;
+  margin-bottom: 12px;
+}
+
+.signal103-focus.red .signal103-focus-title {
+  color: #df5662;
+}
+
+.signal103-focus.green .signal103-focus-title {
+  color: #25a67d;
+}
+
+.signal103-focus-name {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 23px;
+  font-weight: 950;
+  color: #172033;
+  white-space: nowrap;
+}
+
+.signal103-focus-name b {
+  font-size: 17px;
+  color: #8a96a8;
+}
+
+.signal103-focus-price {
+  font-size: 34px;
+  font-weight: 950;
+  line-height: 1.1;
+  margin: 6px 0 10px;
+  color: #df5662;
+  white-space: nowrap;
+}
+
+.signal103-focus-price span {
+  font-size: 18px;
+  margin-left: 7px;
+}
+
+.signal103-focus-meta {
+  display: grid;
+  gap: 4px;
+  font-size: 16px;
+  font-weight: 850;
+  color: #8190a4;
+}
+
+.signal103-focus-meta b {
+  font-weight: 950;
+}
+
+.signal103-detail h3 {
+  font-size: 34px;
+  line-height: 1.15;
+  margin: 8px 0 16px;
+}
+
+.signal103-pill-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 0 10px;
+  scrollbar-width: none;
+}
+
+.signal103-pill-row::-webkit-scrollbar {
+  display: none;
+}
+
+.signal103-pill {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 2px solid #cbd5e1;
+  background: #fff;
+  color: #667386;
+  font-size: 20px;
+  font-weight: 950;
+  padding: 10px 15px;
+  min-height: 44px;
+}
+
+.signal103-pill b {
+  margin-left: 5px;
+}
+
+.signal103-pill.status.新增.active {
+  color: #b99a00;
+  border-color: #c7aa00;
+  background: #fffdea;
+}
+
+.signal103-pill.status.刪除.active {
+  color: #6b7280;
+  border-color: #a7b0bd;
+  background: #f8fafc;
+}
+
+.signal103-pill.status.加碼.active {
+  color: #df5662;
+  border-color: #df5662;
+  background: #fff7f8;
+}
+
+.signal103-pill.status.減碼.active {
+  color: #22a77d;
+  border-color: #22a77d;
+  background: #f2fffa;
+}
+
+.signal103-pill.sort.active {
+  color: #2f6fcc;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.signal103-list {
+  margin-top: 8px;
+}
+
+.signal103-row {
+  border-bottom: 1px solid #e6edf5;
+  padding: 18px 0;
+}
+
+.signal103-row-main {
+  display: grid;
+  grid-template-columns: minmax(110px, 1.05fr) minmax(84px, 0.75fr) minmax(62px, 0.55fr) minmax(90px, 0.85fr);
+  gap: 9px;
+  align-items: center;
+}
+
+.signal103-stock-name {
+  font-size: 24px;
+  font-weight: 950;
+  color: #172033;
+  line-height: 1.15;
+}
+
+.signal103-stock-code {
+  font-size: 18px;
+  font-weight: 850;
+  color: #8b98aa;
+  margin-top: 2px;
+}
+
+.signal103-price {
+  font-size: 24px;
+  font-weight: 950;
+  color: #172033;
+  line-height: 1.15;
+  text-align: right;
+}
+
+.signal103-pct {
+  font-size: 18px;
+  font-weight: 950;
+  text-align: right;
+}
+
+.signal103-statusbox {
+  text-align: center;
+}
+
+.signal103-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  min-width: 54px;
+  padding: 6px 9px;
+  font-size: 17px;
+  font-weight: 950;
+  background: #eef2f7;
+  color: #64748b;
+}
+
+.signal103-status.新增 {
+  background: #fff6bf;
+  color: #b59a00;
+}
+
+.signal103-status.加碼 {
+  background: #ffecef;
+  color: #df5662;
+}
+
+.signal103-status.減碼,
+.signal103-status.刪除 {
+  background: #eafaf4;
+  color: #25a67d;
+}
+
+.signal103-amount {
+  font-size: 20px;
+  font-weight: 950;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.signal103-row-extra {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  color: #7f8da0;
+  font-size: 16px;
+  font-weight: 850;
+  flex-wrap: wrap;
+}
+
+.signal103-row-extra b {
+  font-weight: 950;
+}
+
+.signal103-empty,
+.signal103-empty-list {
+  color: #7f8da0;
+  font-size: 18px;
+  font-weight: 900;
+  padding: 10px 0;
+}
+
+.signal103-empty-list {
+  border: 1px dashed #d6e0ec;
+  border-radius: 16px;
+  padding: 22px;
+}
+
+.signal103-page .up,
+.signal103-page .red .up {
+  color: #df5662;
+}
+
+.signal103-page .down,
+.signal103-page .green .down {
+  color: #25a67d;
+}
+
+.signal103-page .flat {
+  color: #7f8da0;
+}
+
+@media (max-width: 430px) {
+  .signal103-focus-grid {
+    gap: 10px;
+  }
+
+  .signal103-focus {
+    padding: 14px 12px;
+    min-height: 165px;
+  }
+
+  .signal103-focus-title {
+    font-size: 20px;
+  }
+
+  .signal103-focus-name {
+    font-size: 20px;
+  }
+
+  .signal103-focus-price {
+    font-size: 30px;
+  }
+
+  .signal103-focus-meta {
+    font-size: 14px;
+  }
+
+  .signal103-detail h3 {
+    font-size: 30px;
+  }
+
+  .signal103-pill {
+    font-size: 18px;
+    padding: 9px 13px;
+  }
+
+  .signal103-row-main {
+    grid-template-columns: minmax(105px, 1.08fr) minmax(76px, 0.75fr) minmax(54px, 0.5fr) minmax(78px, 0.72fr);
+    gap: 7px;
+  }
+
+  .signal103-stock-name {
+    font-size: 22px;
+  }
+
+  .signal103-price {
+    font-size: 22px;
+  }
+
+  .signal103-amount {
+    font-size: 18px;
+  }
+
+  .signal103-row-extra {
+    font-size: 14px;
+    gap: 10px;
+  }
+}
+

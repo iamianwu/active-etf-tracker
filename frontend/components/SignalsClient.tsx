@@ -1,362 +1,447 @@
 'use client';
 
-import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import {
-  rowsOf, latestDateOf, shortDate, stockCode, stockName, fmt, fmtPct, fmtSigned,
-  priceOf, changePctOf, flowBillionOf, addEtfCount, reduceEtfCount,
-  statusOf, sortRows, toneClass, isStockCode, num, type SortDir
-} from './mobileV89Utils';
 
-type Status = '新增' | '刪除' | '加碼' | '減碼' | '異動';
-type SortKey = 'flow' | 'price' | 'pct' | 'status' | 'name';
+type AnyRow = Record<string, any>;
+type SortKey = 'amount' | 'lots' | 'consensus' | 'price' | 'pct' | 'status';
+type SortDir = 'asc' | 'desc';
 
-const statusOrder: Record<string, number> = { 新增: 4, 加碼: 3, 減碼: 2, 刪除: 1, 異動: 0 };
-
-const STOCK_NAME_FIX: Record<string, string> = {
-  '2330': '台積電',
-  '2327': '國巨',
-  '2454': '聯發科',
-  '2383': '台光電',
-  '2382': '廣達',
-  '2303': '聯電',
-  '3711': '日月光投控',
-  '2317': '鴻海',
-  '6223': '旺矽',
-  '3037': '欣興',
-  '2308': '台達電',
-  '2345': '智邦',
-  '3017': '奇鋐',
-  '6669': '緯穎',
-  '8210': '勤誠',
-  '4105': '東洋',
+const STATUS_ORDER: Record<string, number> = {
+  新增: 1,
+  加碼: 2,
+  減碼: 3,
+  刪除: 4,
+  異動: 5,
 };
 
-function fixedStockName(r: any) {
-  const c = stockCode(r);
-  return STOCK_NAME_FIX[c] || stockName(r);
+function num(v: any, fallback = 0): number {
+  if (v === null || v === undefined || v === '') return fallback;
+  const x = Number(String(v).replace(/,/g, ''));
+  return Number.isFinite(x) ? x : fallback;
 }
 
-function usable(r: any) {
-  return isStockCode(stockCode(r)) && !!fixedStockName(r);
+function firstNum(row: AnyRow, keys: string[], fallback = 0): number {
+  for (const k of keys) {
+    if (row && row[k] !== undefined && row[k] !== null && row[k] !== '') {
+      const v = num(row[k], NaN);
+      if (Number.isFinite(v)) return v;
+    }
+  }
+  return fallback;
 }
 
-function rawLotsDelta(r: any) {
-  return num(
-    r?.net_delta_lots ??
-    r?.delta_lots ??
-    r?.change_lots ??
-    r?.lots_delta ??
-    r?.deltaLots ??
-    r?.shares_change_lots ??
-    r?.delta_shares_lots ??
-    r?.shares_change ??
-    r?.delta_shares ??
-    r?.deltaShares ??
-    r?.changeShares,
-    NaN
-  );
+function getCode(row: AnyRow): string {
+  return String(row.stock_code ?? row.code ?? '').trim();
 }
 
-function normalizeLotsDelta(v: number) {
-  if (!Number.isFinite(v)) return NaN;
-  // 後端有時給「股」，前端需要顯示「張」。
-  // 例如 +3,400,000 應該是 +3,400 張。
-  if (Math.abs(v) >= 100000) return v / 1000;
+function getName(row: AnyRow): string {
+  return String(row.stock_name ?? row.name ?? row.stockName ?? getCode(row)).trim();
+}
+
+function getPrice(row: AnyRow): number | null {
+  const v = firstNum(row, ['price', 'close_price', 'close', 'last_price'], NaN);
+  return Number.isFinite(v) ? v : null;
+}
+
+function getPct(row: AnyRow): number | null {
+  const v = firstNum(row, ['change_pct', 'pct', 'percent', 'changePercent'], NaN);
+  return Number.isFinite(v) ? v : null;
+}
+
+function getAmountBillion(row: AnyRow): number {
+  const v = firstNum(row, [
+    'flow_billion',
+    'money_billion',
+    'amount_billion',
+    'delta_amount_billion',
+    'delta_value_billion',
+    'net_amount_billion',
+    'trade_amount_billion',
+  ], NaN);
+
+  if (Number.isFinite(v)) return v;
+
+  const price = getPrice(row);
+  const lots = getLots(row);
+  if (price !== null && Number.isFinite(lots)) {
+    return price * lots * 1000 / 100000000;
+  }
+
+  return 0;
+}
+
+function getLots(row: AnyRow): number {
+  let v = firstNum(row, [
+    'net_lots',
+    'display_delta_lots',
+    'change_lots',
+    'delta_lots',
+    'shares_change',
+    'lot_change',
+    'delta_shares',
+  ], 0);
+
+  // 舊版資料有時候 delta_shares 是「股」，但畫面標成「張」。
+  // 若數值異常大，就自動除以 1000。
+  if (Math.abs(v) >= 100000) v = v / 1000;
+
   return v;
 }
 
-function rowNetLots(r: any) {
-  const v = normalizeLotsDelta(rawLotsDelta(r));
-  return Number.isFinite(v) ? v : 0;
+function getBuyCount(row: AnyRow): number {
+  const direct = firstNum(row, ['add_etf_count', 'add_count', 'buy_count', 'buy_etf_count', 'increase_count'], NaN);
+  if (Number.isFinite(direct)) return Math.max(0, Math.round(direct));
+  const status = String(row.status ?? '');
+  const etfCount = Math.max(0, Math.round(firstNum(row, ['etf_count', 'count'], 0)));
+  return status === '新增' || status === '加碼' ? etfCount : 0;
 }
 
-function rowAddCount(r: any) {
-  const direct = addEtfCount(r);
-  if (Number.isFinite(direct) && direct > 0) return direct;
-  const s = statusOf(r);
-  return s === '新增' || s === '加碼' ? 1 : 0;
+function getSellCount(row: AnyRow): number {
+  const direct = firstNum(row, ['reduce_etf_count', 'sell_count', 'sell_etf_count', 'decrease_count'], NaN);
+  if (Number.isFinite(direct)) return Math.max(0, Math.round(direct));
+  const status = String(row.status ?? '');
+  const etfCount = Math.max(0, Math.round(firstNum(row, ['etf_count', 'count'], 0)));
+  return status === '刪除' || status === '減碼' ? etfCount : 0;
 }
 
-function rowReduceCount(r: any) {
-  const direct = reduceEtfCount(r);
-  if (Number.isFinite(direct) && direct > 0) return direct;
-  const s = statusOf(r);
-  return s === '刪除' || s === '減碼' ? 1 : 0;
+function getConsensusScore(row: AnyRow): number {
+  return getBuyCount(row) - getSellCount(row);
 }
 
-function statusFromNet(netLots: number, add: number, reduce: number, statuses: string[]): Status {
-  // v99 核心修正：
-  // 只要有淨張數，就用淨張數決定方向，避免「明細減碼，但焦點卡顯示流入」。
-  if (netLots > 0) {
-    if (statuses.includes('新增') && !statuses.includes('刪除') && !statuses.includes('減碼')) return '新增';
-    return '加碼';
-  }
-  if (netLots < 0) {
-    if (statuses.includes('刪除') && !statuses.includes('新增') && !statuses.includes('加碼')) return '刪除';
-    return '減碼';
-  }
+function fmt0(v: any): string {
+  const x = num(v, NaN);
+  if (!Number.isFinite(x)) return '-';
+  return Math.round(x).toLocaleString('zh-TW');
+}
 
-  if (add > reduce) return '加碼';
-  if (reduce > add) return '減碼';
-  if (statuses.includes('新增') && !statuses.includes('刪除')) return '新增';
-  if (statuses.includes('刪除') && !statuses.includes('新增')) return '刪除';
+function fmtPrice(v: number | null): string {
+  if (v === null || !Number.isFinite(v)) return '-';
+  return v.toLocaleString('zh-TW', { maximumFractionDigits: v >= 100 ? 1 : 2 });
+}
+
+function fmtPct(v: number | null): string {
+  if (v === null || !Number.isFinite(v)) return '-';
+  const sign = v > 0 ? '+' : '';
+  return `${sign}${v.toFixed(2)}%`;
+}
+
+function fmtSigned(v: number, suffix = ''): string {
+  if (!Number.isFinite(v)) return '-';
+  if (Math.abs(v) < 0.01) return `0${suffix}`;
+  const sign = v > 0 ? '+' : '';
+  return `${sign}${Math.round(v).toLocaleString('zh-TW')}${suffix}`;
+}
+
+function fmtBillion(v: number): string {
+  if (!Number.isFinite(v)) return '-';
+  const sign = v > 0 ? '+' : '';
+  const abs = Math.abs(v);
+  const digits = abs >= 100 ? 1 : abs >= 10 ? 1 : 2;
+  return `${sign}${v.toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: digits })} 億`;
+}
+
+function toneByValue(v: number): string {
+  if (v > 0) return 'up';
+  if (v < 0) return 'down';
+  return 'flat';
+}
+
+function rowStatus(row: AnyRow): string {
+  const s = String(row.status ?? row.type ?? '').trim();
+  if (s) return s;
+  const lots = getLots(row);
+  if (lots > 0) return '加碼';
+  if (lots < 0) return '減碼';
   return '異動';
 }
 
-function tradeAmountBillionFromLots(lots: number, price: number) {
-  if (!Number.isFinite(lots) || !Number.isFinite(price) || lots === 0) return NaN;
-  return lots * 1000 * price / 100000000;
+function getRows(data: any): AnyRow[] {
+  const src = data?.rows ?? data?.changes ?? data?.aggregate ?? data?.items ?? [];
+  return Array.isArray(src) ? src : [];
 }
 
-function signalAmountBillion(r: any) {
-  const lots = rowNetLots(r);
-  const px = priceOf(r);
-  const computed = tradeAmountBillionFromLots(lots, px);
-  if (Number.isFinite(computed)) return computed;
-
-  // fallback：如果沒有張數，只能用原本 flow，但要依 status 修正方向。
-  const raw = flowBillionOf(r);
-  if (!Number.isFinite(raw)) return NaN;
-  const s = statusOf(r);
-  if (s === '減碼' || s === '刪除') return -Math.abs(raw);
-  if (s === '加碼' || s === '新增') return Math.abs(raw);
-  return raw;
+function mmdd(dateLike: any): string {
+  const s = String(dateLike ?? '').trim();
+  const m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[2]}-${m[3]}`;
+  return s;
 }
 
-function mergeSignalRows(rows: any[]) {
-  const groups: Record<string, any[]> = {};
-  rows.forEach((r) => {
-    const c = stockCode(r);
-    if (!c) return;
-    if (!groups[c]) groups[c] = [];
-    groups[c].push(r);
-  });
-
-  return Object.entries(groups).map(([code, list]) => {
-    const base =
-      [...list].sort((a, b) =>
-        Math.abs(signalAmountBillion(b) || 0) - Math.abs(signalAmountBillion(a) || 0)
-      )[0] || list[0];
-
-    const netLots = list.reduce((sum, r) => sum + rowNetLots(r), 0);
-    const add = list.reduce((sum, r) => sum + rowAddCount(r), 0);
-    const reduce = list.reduce((sum, r) => sum + rowReduceCount(r), 0);
-    const statuses = list.map((r) => statusOf(r));
-    const status = statusFromNet(netLots, add, reduce, statuses);
-    const px = priceOf(base);
-    const computedAmount = tradeAmountBillionFromLots(netLots, px);
-
-    let fallbackFlow = list.reduce((sum, r) => {
-      const v = flowBillionOf(r);
-      return sum + (Number.isFinite(v) ? v : 0);
-    }, 0);
-
-    if (!Number.isFinite(fallbackFlow)) fallbackFlow = 0;
-
-    const amount = Number.isFinite(computedAmount)
-      ? computedAmount
-      : (
-          status === '減碼' || status === '刪除'
-            ? -Math.abs(fallbackFlow)
-            : status === '加碼' || status === '新增'
-              ? Math.abs(fallbackFlow)
-              : fallbackFlow
-        );
-
-    return {
-      ...base,
-      stock_code: code,
-      code,
-      stock_name: fixedStockName(base),
-      name: fixedStockName(base),
-
-      // v99：下面所有 flow 欄位都改成「交易淨額」，不是持股市值因股價波動造成的變化。
-      flow_billion: amount,
-      money_billion: amount,
-      amount_billion: amount,
-      delta_amount_billion: amount,
-      delta_value_billion: amount,
-      net_amount_billion: amount,
-
-      add_etf_count: add,
-      add_count: add,
-      buy_etf_count: add,
-      buy_count: add,
-      reduce_etf_count: reduce,
-      reduce_count: reduce,
-      sell_etf_count: reduce,
-      sell_count: reduce,
-
-      delta_lots: netLots,
-      change_lots: netLots,
-      net_delta_lots: netLots,
-      status,
-      _merged_count: list.length,
-    };
-  });
+function rangeLabel(days: number) {
+  return days <= 1 ? '今日' : `${days}日`;
 }
 
-function isPositiveStatus(r: any) {
-  const s = statusOf(r);
-  return s === '新增' || s === '加碼';
+function changeRange(days: number) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('rangeDays', String(days));
+  url.searchParams.set('signalRangeDays', String(days));
+  window.location.href = url.toString();
 }
 
-function isNegativeStatus(r: any) {
-  const s = statusOf(r);
-  return s === '刪除' || s === '減碼';
-}
-
-function SortButton({ label, k, sortKey, sortDir, onClick }: any) {
-  const active = sortKey === k;
-  return <button className={active ? 'active' : ''} onClick={onClick}>{label}<span>{active ? (sortDir === 'desc' ? '↓' : '↑') : '↕'}</span></button>;
-}
-
-function FocusCard({ title, item, tone, countMode = false }: { title: string; item: any; tone: 'red' | 'green'; countMode?: boolean }) {
+function FocusCard({ title, item, tone }: { title: string; item?: AnyRow | null; tone: 'red' | 'green' }) {
   if (!item) {
-    return <div className={`v89-focus ${tone}`}><h3>{title}</h3><div className="v89-empty">目前沒有明顯訊號</div></div>;
+    return (
+      <div className={`signal103-focus ${tone}`}>
+        <div className="signal103-focus-title">{title}</div>
+        <div className="signal103-empty">尚無有效訊號</div>
+      </div>
+    );
   }
 
-  const code = stockCode(item);
-  const flow = signalAmountBillion(item);
-  const add = addEtfCount(item);
-  const reduce = reduceEtfCount(item);
-  const deltaLots = rowNetLots(item);
-
-  const consensus = countMode
-    ? `買賣檔數 ${add || 0}:${reduce || 0}`
-    : (Number.isFinite(deltaLots) && deltaLots !== 0 ? `淨張數 ${fmtSigned(deltaLots, 0)}` : `買賣檔數 ${add || 0}:${reduce || 0}`);
+  const price = getPrice(item);
+  const pct = getPct(item);
+  const lots = getLots(item);
+  const amount = getAmountBillion(item);
+  const buy = getBuyCount(item);
+  const sell = getSellCount(item);
+  const amountTone = toneByValue(amount);
+  const lotsTone = toneByValue(lots);
 
   return (
-    <Link href={`/stock/${code}?from=signals`} className={`v89-focus ${tone}`}>
-      <h3>{title}</h3>
-      <div className="v89-focus-grid">
-        <div>
-          <div className="v89-focus-name">{fixedStockName(item)} <span>{code}</span></div>
-          <div className={toneClass(changePctOf(item)) + ' v89-focus-price'}>{fmt(priceOf(item), 1)} <small>{fmtPct(changePctOf(item), 2)}</small></div>
-        </div>
-        <div className="v89-focus-info">
-          <span>交易淨額</span><b className={flow >= 0 ? 'v89-red' : 'v89-green'}>{Number.isFinite(flow) ? fmtSigned(flow, 1, ' 億') : '-'}</b>
-          <span>多空共識</span><b>{consensus}</b>
-        </div>
+    <div className={`signal103-focus ${tone}`}>
+      <div className="signal103-focus-title">{title}</div>
+      <div className="signal103-focus-name">
+        <span>{getName(item)}</span>
+        <b>{getCode(item)}</b>
       </div>
-    </Link>
+      <div className="signal103-focus-price">
+        {fmtPrice(price)}
+        <span className={toneByValue(pct ?? 0)}>{fmtPct(pct)}</span>
+      </div>
+      <div className="signal103-focus-meta">
+        <span>交易淨額 <b className={amountTone}>{fmtBillion(amount)}</b></span>
+        <span>張數 <b className={lotsTone}>{fmtSigned(lots, ' 張')}</b></span>
+        <span>多空共識 <b>買賣檔數 {buy}:{sell}</b></span>
+      </div>
+    </div>
   );
 }
 
-function StatusPill({ status, count, active, onClick }: any) {
-  return <button className={`v89-status-pill ${status} ${active ? 'active' : ''}`} onClick={onClick}><span>{status}</span><b>{count}</b></button>;
+function SortPill({
+  label,
+  sortKey,
+  activeKey,
+  dir,
+  onClick,
+}: {
+  label: string;
+  sortKey: SortKey;
+  activeKey: SortKey;
+  dir: SortDir;
+  onClick: (key: SortKey) => void;
+}) {
+  const active = activeKey === sortKey;
+  return (
+    <button className={`signal103-pill sort ${active ? 'active' : ''}`} onClick={() => onClick(sortKey)} type="button">
+      {label} {active ? (dir === 'desc' ? '↓' : '↑') : '↕'}
+    </button>
+  );
+}
+
+function StatusPill({
+  label,
+  active,
+  count,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  count: number;
+  onClick: () => void;
+}) {
+  return (
+    <button className={`signal103-pill status ${label} ${active ? 'active' : ''}`} onClick={onClick} type="button">
+      {label}<b>{count || 0}</b>
+    </button>
+  );
+}
+
+function SignalRow({ row }: { row: AnyRow }) {
+  const status = rowStatus(row);
+  const price = getPrice(row);
+  const pct = getPct(row);
+  const amount = getAmountBillion(row);
+  const lots = getLots(row);
+  const buy = getBuyCount(row);
+  const sell = getSellCount(row);
+  const amountTone = toneByValue(amount);
+  const lotsTone = toneByValue(lots);
+  const pctTone = toneByValue(pct ?? 0);
+
+  return (
+    <div className="signal103-row">
+      <div className="signal103-row-main">
+        <div className="signal103-stock">
+          <div className="signal103-stock-name">{getName(row)}</div>
+          <div className="signal103-stock-code">{getCode(row)}</div>
+        </div>
+
+        <div className="signal103-pricebox">
+          <div className="signal103-price">{fmtPrice(price)}</div>
+          <div className={`signal103-pct ${pctTone}`}>{fmtPct(pct)}</div>
+        </div>
+
+        <div className="signal103-statusbox">
+          <span className={`signal103-status ${status}`}>{status}</span>
+        </div>
+
+        <div className={`signal103-amount ${amountTone}`}>{fmtBillion(amount)}</div>
+      </div>
+
+      <div className="signal103-row-extra">
+        <span>張數 <b className={lotsTone}>{fmtSigned(lots, ' 張')}</b></span>
+        <span>多空共識 <b>買賣檔數 {buy}:{sell}</b></span>
+      </div>
+    </div>
+  );
 }
 
 export default function SignalsClient(props: any) {
-  const data = props?.data || props;
+  const data = props?.data ?? props ?? {};
+  const sourceRows = getRows(data);
+  const initialDays = Number(data?.signalRangeDays ?? data?.rangeDays ?? data?.range_days ?? props?.rangeDays ?? 1) || 1;
 
-  // 只保留 page.tsx 的區間切換；SignalsClient 不再自己產生第二組 range tabs。
-  const rawRows = rowsOf(data).filter(usable);
-  const rows = useMemo(() => mergeSignalRows(rawRows), [rawRows]);
-
-  const [enabled, setEnabled] = useState<Status[]>(['新增', '刪除', '加碼', '減碼', '異動']);
-  const [sortKey, setSortKey] = useState<SortKey>('flow');
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['新增', '刪除', '加碼', '減碼']);
+  const [sortKey, setSortKey] = useState<SortKey>('amount');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const range = String(data?.range_days || data?.signalRangeDays || data?.days || 1);
 
-  const { summary, focus } = useMemo(() => {
-    const summary: Record<Status, number> = { 新增: 0, 刪除: 0, 加碼: 0, 減碼: 0, 異動: 0 };
-    rows.forEach((r) => {
-      const s = statusOf(r) as Status;
-      summary[s] = (summary[s] || 0) + 1;
-    });
+  const rows = useMemo(() => {
+    const filtered = sourceRows.filter((r) => selectedStatuses.includes(rowStatus(r)));
 
-    const withNet = rows
-      .map((r) => ({ r, amount: signalAmountBillion(r), add: addEtfCount(r), reduce: reduceEtfCount(r), lots: rowNetLots(r) }))
-      .filter((x) => Number.isFinite(x.amount));
-
-    return {
-      summary,
-      focus: {
-        // v99 核心：焦點卡必須與下方明細方向一致
-        inflow: [...withNet]
-          .filter((x) => x.amount > 0 && isPositiveStatus(x.r))
-          .sort((a, b) => b.amount - a.amount || b.add - a.add)[0]?.r || null,
-
-        outflow: [...withNet]
-          .filter((x) => x.amount < 0 && isNegativeStatus(x.r))
-          .sort((a, b) => a.amount - b.amount || b.reduce - a.reduce)[0]?.r || null,
-
-        mostAdd: [...withNet]
-          .filter((x) => isPositiveStatus(x.r) && x.add > 0)
-          .sort((a, b) => b.add - a.add || b.amount - a.amount)[0]?.r || null,
-
-        mostReduce: [...withNet]
-          .filter((x) => isNegativeStatus(x.r) && x.reduce > 0)
-          .sort((a, b) => b.reduce - a.reduce || Math.abs(b.amount) - Math.abs(a.amount))[0]?.r || null,
+    const valueOf = (r: AnyRow) => {
+      switch (sortKey) {
+        case 'amount':
+          return Math.abs(getAmountBillion(r));
+        case 'lots':
+          return Math.abs(getLots(r));
+        case 'consensus':
+          return Math.abs(getConsensusScore(r));
+        case 'price':
+          return getPrice(r) ?? -Infinity;
+        case 'pct':
+          return Math.abs(getPct(r) ?? 0);
+        case 'status':
+          return STATUS_ORDER[rowStatus(r)] ?? 99;
+        default:
+          return 0;
       }
     };
-  }, [rows]);
 
-  const filtered = rows.filter((r) => enabled.includes(statusOf(r) as Status));
+    return [...filtered].sort((a, b) => {
+      const av = valueOf(a);
+      const bv = valueOf(b);
+      if (sortKey === 'status') return sortDir === 'desc' ? bv - av : av - bv;
+      return sortDir === 'desc' ? bv - av : av - bv;
+    });
+  }, [sourceRows, selectedStatuses, sortKey, sortDir]);
 
-  const sorted = useMemo(() => {
-    return sortRows(filtered, (r: any) => {
-      if (sortKey === 'flow') return signalAmountBillion(r);
-      if (sortKey === 'price') return priceOf(r);
-      if (sortKey === 'pct') return changePctOf(r);
-      if (sortKey === 'status') return statusOrder[statusOf(r)] || 0;
-      return fixedStockName(r);
-    }, sortDir);
-  }, [filtered, sortKey, sortDir]);
+  const summary = useMemo(() => {
+    const out: Record<string, number> = { 新增: 0, 刪除: 0, 加碼: 0, 減碼: 0 };
+    for (const r of sourceRows) {
+      const s = rowStatus(r);
+      if (out[s] !== undefined) out[s] += 1;
+    }
+    return out;
+  }, [sourceRows]);
 
-  function toggleSort(k: SortKey) {
-    if (sortKey === k) setSortDir((d) => d === 'desc' ? 'asc' : 'desc');
-    else { setSortKey(k); setSortDir('desc'); }
-  }
+  const focus = useMemo(() => {
+    const usable = sourceRows.filter((r) => rowStatus(r) !== '異動');
+    const positive = usable.filter((r) => getAmountBillion(r) > 0);
+    const negative = usable.filter((r) => getAmountBillion(r) < 0);
+    const addLike = usable.filter((r) => ['新增', '加碼'].includes(rowStatus(r)));
+    const reduceLike = usable.filter((r) => ['刪除', '減碼'].includes(rowStatus(r)));
 
-  const fetched = data?.fetched_etf_count ?? data?.fetchedEtfCount ?? data?.complete_etf_count ?? 0;
+    const maxBy = (arr: AnyRow[], fn: (x: AnyRow) => number) =>
+      arr.length ? [...arr].sort((a, b) => fn(b) - fn(a))[0] : null;
+
+    const minBy = (arr: AnyRow[], fn: (x: AnyRow) => number) =>
+      arr.length ? [...arr].sort((a, b) => fn(a) - fn(b))[0] : null;
+
+    return {
+      inflow: maxBy(positive, getAmountBillion),
+      outflow: minBy(negative, getAmountBillion),
+      mostAdd: maxBy(addLike, (r) => getBuyCount(r) * 1000000 + Math.abs(getLots(r))),
+      mostReduce: maxBy(reduceLike, (r) => getSellCount(r) * 1000000 + Math.abs(getLots(r))),
+    };
+  }, [sourceRows]);
+
+  const dataDate = data?.data_date ?? data?.latestDataDate ?? '';
+  const fetched = data?.fetched_etf_count ?? data?.includedEtfCount ?? 0;
   const total = data?.total_etf_count ?? data?.totalEtfCount ?? 0;
 
+  function toggleStatus(s: string) {
+    setSelectedStatuses((prev) => {
+      if (prev.includes(s)) return prev.filter((x) => x !== s);
+      return [...prev, s];
+    });
+  }
+
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) {
+      setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setSortKey(k);
+      setSortDir('desc');
+    }
+  }
+
   return (
-    <main className="page v89-page">
-      <section className="v89-title">
-        <h1>{range === '1' ? '今日訊號' : `${range}日訊號`}</h1>
-        <p>已抓取 {fetched || total || 0} / {total || fetched || 0} 檔 ETF，資料日期 {shortDate(latestDateOf(data))}</p>
+    <main className="page signals-v7-page signal103-page">
+      <section className="signal103-range">
+        <div className="signal103-label">訊號區間</div>
+        <div className="signal103-range-tabs">
+          {[1, 5, 10, 20].map((d) => (
+            <button
+              key={d}
+              className={Number(initialDays) === d ? 'active' : ''}
+              onClick={() => changeRange(d)}
+              type="button"
+            >
+              {rangeLabel(d)}
+            </button>
+          ))}
+        </div>
       </section>
 
-      <section className="v89-focus-wrap">
+      <div className="signals-title-block signal103-title-block">
+        <h2>{initialDays <= 1 ? '今日訊號' : `${initialDays}日訊號`}</h2>
+        <div className="signals-data-status ok">
+          已抓取 {fetched || total || 0} / {total || fetched || 0} 檔 ETF
+          {dataDate ? `，資料日期 ${mmdd(dataDate)}` : ''}
+        </div>
+      </div>
+
+      <div className="signal103-focus-grid">
         <FocusCard title="淨資金流入最多" item={focus.inflow} tone="red" />
         <FocusCard title="淨資金流出最多" item={focus.outflow} tone="green" />
-        <FocusCard title="最多 ETF 加碼" item={focus.mostAdd} tone="red" countMode />
-        <FocusCard title="最多 ETF 減碼" item={focus.mostReduce} tone="green" countMode />
-      </section>
-
-      <section className="v89-table-head"><h2>資金交易明細：共 {sorted.length} 檔</h2></section>
-
-      <div className="v89-status-row">
-        {(['新增', '刪除', '加碼', '減碼'] as Status[]).map((s) => (
-          <StatusPill key={s} status={s} count={summary[s]} active={enabled.includes(s)} onClick={() => setEnabled((old) => old.includes(s) ? old.filter((x) => x !== s) : [...old, s])} />
-        ))}
+        <FocusCard title="最多 ETF 加碼" item={focus.mostAdd} tone="red" />
+        <FocusCard title="最多 ETF 減碼" item={focus.mostReduce} tone="green" />
       </div>
 
-      <div className="v89-sort-row">
-        <SortButton label="金額" k="flow" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('flow')} />
-        <SortButton label="股價" k="price" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('price')} />
-        <SortButton label="漲跌幅" k="pct" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('pct')} />
-        <SortButton label="狀態" k="status" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('status')} />
-      </div>
+      <section className="signal103-detail">
+        <h3>資金交易明細：共 {fmt0(rows.length)} 檔</h3>
 
-      <section className="v89-dense-list">
-        {sorted.slice(0, 180).map((r, i) => {
-          const s = statusOf(r);
-          const code = stockCode(r);
-          const flow = signalAmountBillion(r);
-          return (
-            <Link href={`/stock/${code}?from=signals`} className="v89-signal-row" key={`${code}-${i}`}>
-              <div className="v89-name-cell"><b>{fixedStockName(r)}</b><span>{code}</span></div>
-              <div className="v89-num-cell"><b>{fmt(priceOf(r), 1)}</b><span className={toneClass(changePctOf(r))}>{fmtPct(changePctOf(r), 2)}</span></div>
-              <div className={`v89-pill ${s}`}>{s}</div>
-              <div className={flow >= 0 ? 'v89-red v89-flow' : 'v89-green v89-flow'}>{Number.isFinite(flow) ? fmtSigned(flow, 2, ' 億') : '-'}</div>
-            </Link>
-          );
-        })}
+        <div className="signal103-pill-row">
+          <StatusPill label="新增" active={selectedStatuses.includes('新增')} count={summary['新增']} onClick={() => toggleStatus('新增')} />
+          <StatusPill label="刪除" active={selectedStatuses.includes('刪除')} count={summary['刪除']} onClick={() => toggleStatus('刪除')} />
+          <StatusPill label="加碼" active={selectedStatuses.includes('加碼')} count={summary['加碼']} onClick={() => toggleStatus('加碼')} />
+          <StatusPill label="減碼" active={selectedStatuses.includes('減碼')} count={summary['減碼']} onClick={() => toggleStatus('減碼')} />
+        </div>
+
+        <div className="signal103-pill-row sortrow">
+          <SortPill label="金額" sortKey="amount" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
+          <SortPill label="張數" sortKey="lots" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
+          <SortPill label="共識" sortKey="consensus" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
+          <SortPill label="股價" sortKey="price" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
+          <SortPill label="漲跌幅" sortKey="pct" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
+          <SortPill label="狀態" sortKey="status" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
+        </div>
+
+        <div className="signal103-list">
+          {rows.length ? rows.map((row, idx) => <SignalRow key={`${getCode(row)}-${idx}`} row={row} />) : (
+            <div className="signal103-empty-list">目前沒有符合篩選的訊號。</div>
+          )}
+        </div>
       </section>
     </main>
   );
