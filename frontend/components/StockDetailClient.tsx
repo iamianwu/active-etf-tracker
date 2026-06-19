@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import {
   Area,
@@ -168,6 +168,43 @@ function sumInstitutionalByDate(rows: any[] = []) {
 }
 
 export default function StockDetailClient({ data }: { data: any }) {
+
+  const routerV83 = useRouter();
+
+  function handleFastBackV83(e?: any) {
+    if (e?.preventDefault) e.preventDefault();
+
+    if (typeof window !== 'undefined') {
+      const ref = document.referrer || '';
+      const sameSiteRef = ref.includes(window.location.host);
+
+      // 最快：回到瀏覽器上一頁，不重新 push 到 /signals /holdings /etfs。
+      // 這樣從今日訊號、資金持股、ETF列表點進來，再按左上角 <，通常會直接回到原頁與原捲動位置。
+      if (window.history.length > 1 && sameSiteRef) {
+        window.history.back();
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const from = params.get('from') || params.get('src') || params.get('source') || '';
+
+      if (from === 'signals' || from === 'signal') {
+        routerV83.push('/signals');
+        return;
+      }
+      if (from === 'holdings' || from === 'funds') {
+        routerV83.push('/holdings');
+        return;
+      }
+      if (from === 'search') {
+        routerV83.push('/search');
+        return;
+      }
+    }
+
+    routerV83.push('/etfs');
+  }
+
   const searchParams = useSearchParams();
 
   function resolveStockBackHref() {
@@ -309,7 +346,7 @@ export default function StockDetailClient({ data }: { data: any }) {
   return (
     <main className="stock-v6-page">
       <header className="stock-v6-header">
-        <Link className="stock-v6-back" href={stockBackHref}>‹</Link>
+        <Link className="stock-v6-back" href={stockBackHref} onClick={handleFastBackV83}>‹</Link>
         <div className="stock-v6-title">
           <div className="stock-v6-code">{data.stock_code}</div>
           <div className="stock-v6-name">{data.stock_name}</div>

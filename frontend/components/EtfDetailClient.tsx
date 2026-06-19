@@ -1,5 +1,7 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -258,7 +260,7 @@ function SortArrows({ active, dir }: { active: boolean; dir: SortDir }) {
 
 function SortButton({ active, dir, onClick, children }: any) {
   return (
-    <button type="button" className={`etf-v11-d-sort ${active ? 'active' : ''}`} onClick={onClick}>
+    <button type="button" className={`etf-v11-d-sort ${active ? 'active' : ''}`} onClick={handleFastBackV83}>
       <span>{children}</span>
       <SortArrows active={active} dir={dir} />
     </button>
@@ -266,6 +268,43 @@ function SortButton({ active, dir, onClick, children }: any) {
 }
 
 export default function EtfDetailClient({ data }: { data: any }) {
+
+  const routerV83 = useRouter();
+
+  function handleFastBackV83(e?: any) {
+    if (e?.preventDefault) e.preventDefault();
+
+    if (typeof window !== 'undefined') {
+      const ref = document.referrer || '';
+      const sameSiteRef = ref.includes(window.location.host);
+
+      // 最快：回到瀏覽器上一頁，不重新 push 到 /signals /holdings /etfs。
+      // 這樣從今日訊號、資金持股、ETF列表點進來，再按左上角 <，通常會直接回到原頁與原捲動位置。
+      if (window.history.length > 1 && sameSiteRef) {
+        window.history.back();
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const from = params.get('from') || params.get('src') || params.get('source') || '';
+
+      if (from === 'signals' || from === 'signal') {
+        routerV83.push('/signals');
+        return;
+      }
+      if (from === 'holdings' || from === 'funds') {
+        routerV83.push('/holdings');
+        return;
+      }
+      if (from === 'search') {
+        routerV83.push('/search');
+        return;
+      }
+    }
+
+    routerV83.push('/etfs');
+  }
+
   const [tab, setTab] = useState<Tab>(() => initialTabFromUrl());
   const [holdingSort, setHoldingSort] = useState<'weight' | 'value' | 'price' | 'stock'>('weight');
   const [holdingDir, setHoldingDir] = useState<SortDir>('desc');
