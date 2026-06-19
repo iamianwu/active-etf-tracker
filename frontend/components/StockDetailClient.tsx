@@ -197,7 +197,7 @@ export default function StockDetailClient(props: any) {
           onMore={() => setTab('detail')}
         />
         <StockRecentOperationPanel data={data} etfRows={etfRows} />
-        <StockRecentOperationRecords data={data} etfRows={etfRows} />
+        <StockRecentOperationPanel data={data} etfRows={etfRows} />
       </section>}
 
       {tab === 'whale' && <section className="v89-section">
