@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import './globals.css';
 import AppShell from '@/components/AppShell';
+import RoutePrefetcherV84 from '@/components/RoutePrefetcherV84';
 
 export const metadata = {
   title: '主動式 ETF',
@@ -25,13 +26,12 @@ export const metadata = {
 export const viewport = {
   themeColor: '#173B68',
 };
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-Hant">
       <body>
+        <RoutePrefetcherV84 />
         <AppShell>{children}</AppShell>
       </body>
     </html>

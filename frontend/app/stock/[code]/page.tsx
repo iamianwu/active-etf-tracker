@@ -1,3 +1,5 @@
+export const revalidate = 60;
+
 import { apiGet } from '@/lib/api';
 import StockDetailClient from '@/components/StockDetailClient';
 

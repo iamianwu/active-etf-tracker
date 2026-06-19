@@ -1,3 +1,5 @@
+export const revalidate = 60;
+
 import { getEtfListRows } from '@/lib/etfData';
 import EtfListClient from '@/components/EtfListClient';
 

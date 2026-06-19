@@ -1,8 +1,8 @@
+export const revalidate = 60;
+
 import { apiGet } from '@/lib/api';
 import SignalsClient from '@/components/SignalsClient';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 const VALID_SIGNAL_DAYS = [1, 5, 10, 20];
 
