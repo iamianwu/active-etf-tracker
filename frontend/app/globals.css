@@ -7039,3 +7039,390 @@ a:focus-visible{
   }
 }
 
+
+/* ===== V106 signal page: signed amount sorting + cleaner table list ===== */
+.signal106-page {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+.signal106-page .signal103-range,
+.signal106-page .signal103-label,
+.signal106-page .signal103-range-tabs,
+.signal106-page .signal104-focus-grid,
+.signal106-page .signal104-detail,
+.signal106-page .signal104-row,
+.signal106-page .signal104-list,
+.signal106-page .signal105-focus-grid,
+.signal106-page .signal105-detail,
+.signal106-page .signal105-row,
+.signal106-page .signal105-list {
+  display: none !important;
+}
+
+.signal106-title-block h2 {
+  font-size: clamp(38px, 7vw, 52px);
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+/* 上方摘要保留卡片 */
+.signal106-focus-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 22px 0 28px;
+}
+
+.signal106-focus {
+  border-radius: 20px;
+  padding: 16px;
+  min-height: 188px;
+  border: 1.5px solid #e8eef6;
+  background: #fff;
+  overflow: hidden;
+}
+
+.signal106-focus.red {
+  background: #fff7f8;
+  border-color: #f5ccd2;
+}
+
+.signal106-focus.green {
+  background: #f2fffa;
+  border-color: #bfe8da;
+}
+
+.signal106-focus-title {
+  font-size: clamp(19px, 4.5vw, 24px);
+  font-weight: 950;
+  margin-bottom: 8px;
+}
+
+.signal106-focus.red .signal106-focus-title {
+  color: #df5662;
+}
+
+.signal106-focus.green .signal106-focus-title {
+  color: #25a67d;
+}
+
+.signal106-focus-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: clamp(20px, 4.9vw, 25px);
+  font-weight: 950;
+  color: #172033;
+  white-space: nowrap;
+}
+
+.signal106-focus-name b {
+  font-size: 16px;
+  color: #8a96a8;
+}
+
+.signal106-focus-price {
+  font-size: clamp(30px, 7vw, 39px);
+  font-weight: 950;
+  line-height: 1.08;
+  margin: 5px 0 8px;
+  color: #df5662;
+  white-space: nowrap;
+}
+
+.signal106-focus-price span {
+  font-size: clamp(16px, 3.7vw, 20px);
+}
+
+.signal106-focus-sub {
+  display: grid;
+  gap: 2px;
+  font-size: 14px;
+  font-weight: 900;
+  color: #8190a4;
+}
+
+.signal106-focus-sub b {
+  font-weight: 950;
+}
+
+.signal106-detail h3 {
+  font-size: clamp(31px, 6.4vw, 42px);
+  line-height: 1.15;
+  margin: 8px 0 14px;
+}
+
+.signal106-pill-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 0 10px;
+  scrollbar-width: none;
+}
+
+.signal106-pill-row::-webkit-scrollbar {
+  display: none;
+}
+
+.signal106-pill {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 2px solid #cbd5e1;
+  background: #fff;
+  color: #667386;
+  font-size: 20px;
+  font-weight: 950;
+  padding: 10px 15px;
+  min-height: 44px;
+}
+
+.signal106-pill b {
+  margin-left: 5px;
+}
+
+.signal106-pill.status.新增.active {
+  color: #b99a00;
+  border-color: #c7aa00;
+  background: #fffdea;
+}
+
+.signal106-pill.status.刪除.active {
+  color: #6b7280;
+  border-color: #a7b0bd;
+  background: #f8fafc;
+}
+
+.signal106-pill.status.加碼.active {
+  color: #df5662;
+  border-color: #df5662;
+  background: #fff7f8;
+}
+
+.signal106-pill.status.減碼.active {
+  color: #22a77d;
+  border-color: #22a77d;
+  background: #f2fffa;
+}
+
+.signal106-pill.sort.active {
+  color: #2f6fcc;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+/* 明細改成真正的列表表格 */
+.signal106-header {
+  display: grid;
+  grid-template-columns: minmax(92px, 1.15fr) minmax(72px, 0.8fr) minmax(92px, 1fr) minmax(72px, 0.8fr);
+  gap: 8px;
+  align-items: center;
+  padding: 12px 10px;
+  margin-top: 2px;
+  background: #f2f4f7;
+  color: #596677;
+  font-size: 15px;
+  font-weight: 950;
+  border-radius: 12px 12px 0 0;
+}
+
+.signal106-list {
+  border-top: 1px solid #e6edf5;
+}
+
+.signal106-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 1.15fr) minmax(72px, 0.8fr) minmax(92px, 1fr) minmax(72px, 0.8fr);
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid #e6edf5;
+  padding: 14px 10px;
+}
+
+.signal106-cell b,
+.signal106-cell span,
+.signal106-cell em {
+  display: block;
+}
+
+.signal106-cell.stock b {
+  font-size: clamp(20px, 5vw, 28px);
+  font-weight: 950;
+  color: #172033;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.signal106-cell.stock span {
+  font-size: 17px;
+  font-weight: 850;
+  color: #8b98aa;
+  margin-top: 2px;
+}
+
+.signal106-cell.quote b {
+  font-size: clamp(20px, 4.8vw, 27px);
+  font-weight: 950;
+  color: #172033;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.signal106-cell.quote span {
+  font-size: 16px;
+  font-weight: 950;
+  margin-top: 3px;
+  white-space: nowrap;
+}
+
+.signal106-cell.trade {
+  text-align: right;
+}
+
+.signal106-cell.trade b {
+  font-size: clamp(18px, 4.3vw, 24px);
+  font-weight: 950;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.signal106-cell.trade span {
+  font-size: 16px;
+  font-weight: 950;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
+.signal106-cell.action {
+  text-align: right;
+}
+
+.signal106-status {
+  display: inline-flex !important;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 15px;
+  font-weight: 950;
+  background: #eef2f7;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.signal106-status.新增 {
+  background: #fff6bf;
+  color: #b59a00;
+}
+
+.signal106-status.加碼 {
+  background: #ffecef;
+  color: #df5662;
+}
+
+.signal106-status.減碼,
+.signal106-status.刪除 {
+  background: #eafaf4;
+  color: #25a67d;
+}
+
+.signal106-cell.action em {
+  font-style: normal;
+  color: #667386;
+  font-size: 14px;
+  font-weight: 900;
+  margin-top: 5px;
+  white-space: nowrap;
+}
+
+.signal106-empty,
+.signal106-empty-list {
+  color: #7f8da0;
+  font-size: 18px;
+  font-weight: 900;
+  padding: 10px 0;
+}
+
+.signal106-empty-list {
+  border: 1px dashed #d6e0ec;
+  border-radius: 16px;
+  padding: 22px;
+}
+
+.signal106-page .up {
+  color: #df5662 !important;
+}
+
+.signal106-page .down {
+  color: #25a67d !important;
+}
+
+.signal106-page .flat {
+  color: #7f8da0 !important;
+}
+
+@media (max-width: 430px) {
+  .signal106-focus-grid {
+    gap: 10px;
+  }
+
+  .signal106-focus {
+    padding: 14px 12px;
+    min-height: 178px;
+  }
+
+  .signal106-focus-sub {
+    font-size: 13px;
+  }
+
+  .signal106-pill {
+    font-size: 18px;
+    padding: 9px 13px;
+  }
+
+  .signal106-header {
+    grid-template-columns: minmax(88px, 1.12fr) minmax(68px, 0.76fr) minmax(86px, 0.96fr) minmax(68px, 0.74fr);
+    gap: 6px;
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .signal106-row {
+    grid-template-columns: minmax(88px, 1.12fr) minmax(68px, 0.76fr) minmax(86px, 0.96fr) minmax(68px, 0.74fr);
+    gap: 6px;
+    padding: 13px 8px;
+  }
+
+  .signal106-cell.stock b {
+    font-size: 22px;
+  }
+
+  .signal106-cell.stock span {
+    font-size: 16px;
+  }
+
+  .signal106-cell.quote b {
+    font-size: 22px;
+  }
+
+  .signal106-cell.quote span,
+  .signal106-cell.trade span {
+    font-size: 15px;
+  }
+
+  .signal106-cell.trade b {
+    font-size: 19px;
+  }
+
+  .signal106-status {
+    font-size: 14px;
+    padding: 5px 8px;
+  }
+
+  .signal106-cell.action em {
+    font-size: 13px;
+  }
+}
+
