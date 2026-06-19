@@ -1,3 +1,29 @@
+#!/usr/bin/env python3
+from pathlib import Path
+
+ROOT = Path.cwd()
+FRONTEND = ROOT / "frontend"
+COMP = FRONTEND / "components"
+APP = FRONTEND / "app"
+
+if not FRONTEND.exists():
+    raise SystemExit("❌ 找不到 frontend 目錄，請在 repo 根目錄執行。")
+if not COMP.exists():
+    raise SystemExit("❌ 找不到 frontend/components 目錄。")
+
+def backup(path: Path, tag="v91"):
+    if path.exists():
+        bak = path.with_suffix(path.suffix + f".bak_{tag}")
+        if not bak.exists():
+            bak.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+
+def write(path: Path, content: str):
+    backup(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content.strip() + "\n", encoding="utf-8")
+    print(f"✅ wrote {path.relative_to(ROOT)}")
+
+signals_client = r'''
 'use client';
 
 import Link from 'next/link';
@@ -278,3 +304,63 @@ export default function SignalsClient(props: any) {
     </main>
   );
 }
+'''
+
+write(COMP / "SignalsClient.tsx", signals_client)
+
+css_path = APP / "globals.css"
+if css_path.exists():
+    backup(css_path)
+    old = css_path.read_text(encoding="utf-8")
+    patch_css = r'''
+/* ===== V91 signal cleanup ===== */
+.v89-page .v89-title { margin-top: 18px; }
+.v89-page > .v89-range-card { display: none !important; }
+.v89-focus-grid { gap: 8px; }
+.v89-focus-info b { line-height: 1.15; }
+.v89-focus-name span { margin-left: 4px; }
+.v89-signal-row .v89-name-cell b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+  display: block;
+}
+@media(max-width:390px){
+  .v89-focus-info { font-size: 12px; }
+  .v89-focus-price small { font-size: 13px; }
+  .v89-signal-row { grid-template-columns: 1.08fr .84fr .58fr .78fr; }
+}
+'''
+    if "V91 signal cleanup" not in old:
+        css_path.write_text(old + "\n\n" + patch_css, encoding="utf-8")
+        print("✅ appended V91 CSS")
+    else:
+        print("ℹ️ V91 CSS already exists")
+
+readme = r'''
+# V91 Signal Cleanup
+
+修正畫面不合理之處：
+
+1. 今日訊號重複出現兩組「訊號區間」
+   - SignalsClient 不再產生自己的區間切換，保留 page 上面那組。
+
+2. 同一股票重複出現
+   - 依 stock_code 彙總，避免 2330 同時出現「台灣積體」與「台灣積體電路製造」。
+
+3. 張數單位錯誤
+   - 若後端給的是股數，前端會自動除以 1000 轉成張，避免顯示 +3,400,000。
+
+4. 股票名稱修正
+   - 常見代號改成較直覺名稱，例如 2330 → 台積電。
+
+5. 最多 ETF 加碼 / 減碼
+   - 改成以 ETF 檔數邏輯為主，不再用很寬鬆的 fallback 造成怪訊號。
+'''
+write(ROOT / "README_V91_SIGNAL_CLEANUP.md", readme)
+
+print("\n✅ V91 已套用。下一步：")
+print("cd frontend")
+print("[ -d node_modules ] || npm install")
+print("npm run build")

@@ -5560,3 +5560,24 @@ a:focus-visible{
   .v89-focus-name{font-size:15px}
   .v89-focus-price{font-size:20px}
 }
+
+
+
+/* ===== V91 signal cleanup ===== */
+.v89-page .v89-title { margin-top: 18px; }
+.v89-page > .v89-range-card { display: none !important; }
+.v89-focus-grid { gap: 8px; }
+.v89-focus-info b { line-height: 1.15; }
+.v89-focus-name span { margin-left: 4px; }
+.v89-signal-row .v89-name-cell b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+  display: block;
+}
+@media(max-width:390px){
+  .v89-focus-info { font-size: 12px; }
+  .v89-focus-price small { font-size: 13px; }
+  .v89-signal-row { grid-template-columns: 1.08fr .84fr .58fr .78fr; }
+}
