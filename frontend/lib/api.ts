@@ -786,21 +786,23 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
       rangeLabel: signalRangeDays === 1 ? '今日' : `${signalRangeDays}日`,
       comparisonMode: signalRangeDays === 1 ? '前一交易日' : `${signalRangeDays}個交易日前`,
       includedEtfCount: includedEtfs.length,
-      fetched_etf_count: includedEtfs.length,
+      comparable_etf_count: includedEtfs.length,
+      signal_etf_count: includedEtfs.length,
+      fetched_etf_count: todayEtfSet.size,
       total_etf_count: universeEtfs.length,
       today_etf_count: todayEtfSet.size,
       missing_today_etf_count: missingTodayEtfCodes.length,
       missing_today_etf_codes: missingTodayEtfCodes,
       no_compare_etf_count: noCompareEtfCodes.length,
+      excluded_compare_etf_count: Math.max(0, universeEtfs.length - includedEtfs.length),
+      non_today_etf_count: missingTodayEtfCodes.length,
       no_compare_etf_codes: noCompareEtfCodes,
       today_holding_rows: todayRowsAll.length,
       included_holding_rows: holdingsRows.length,
       signal_count: rows.length,
       today_change_count: rows.length,
       source: 'api_getSignals_v109_today_only_global_date',
-      data_note: missingTodayEtfCodes.length
-        ? `只納入 ${targetDate} 有持股且可比較的 ${includedEtfs.length}/${universeEtfs.length} 檔 ETF；排除 ${missingTodayEtfCodes.length} 檔非本資料日 ETF。`
-        : `只納入 ${targetDate} 有持股且可比較的 ${includedEtfs.length}/${universeEtfs.length} 檔 ETF。`,
+      data_note: `今日有資料 ${todayEtfSet.size}/${universeEtfs.length} 檔 ETF；可計算訊號 ${includedEtfs.length} 檔；未納入 ${Math.max(0, universeEtfs.length - includedEtfs.length)} 檔（${missingTodayEtfCodes.length} 檔非今日資料、${noCompareEtfCodes.length} 檔缺前日比較）。`,
     };
 
     return {

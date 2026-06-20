@@ -7498,3 +7498,14 @@ a:focus-visible{
   }
 }
 
+
+
+/* V110 今日訊號資料統計說明 */
+.signals-meta-subline {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.82em;
+  line-height: 1.35;
+  color: #8b97a8;
+  font-weight: 700;
+}

@@ -359,10 +359,14 @@ export default function SignalsClient(props: any) {
       mostReduce: maxBy(reduceLike, (r) => getSellCount(r) * 1000000 + Math.abs(getLots(r))),
     };
   }, [sourceRows]);
-
-  const dataDate = data?.data_date ?? data?.latestDataDate ?? '';
-  const fetched = data?.fetched_etf_count ?? data?.includedEtfCount ?? 0;
-  const total = data?.total_etf_count ?? data?.totalEtfCount ?? 0;
+  const dataDate = data?.data_date ?? data?.latestDataDate ?? data?.target_data_date ?? '';
+  const totalEtfCount = Number(data?.total_etf_count ?? data?.totalEtfCount ?? 27) || 27;
+  const todayEtfCount = Number(data?.today_etf_count ?? data?.todayEtfCount ?? data?.fetched_etf_count ?? 0) || 0;
+  const comparableEtfCount = Number(data?.includedEtfCount ?? data?.comparable_etf_count ?? data?.signal_etf_count ?? 0) || 0;
+  const nonTodayEtfCount = Number(data?.missing_today_etf_count ?? data?.non_today_etf_count ?? Math.max(0, totalEtfCount - todayEtfCount)) || 0;
+  const noCompareEtfCount = Number(data?.no_compare_etf_count ?? Math.max(0, todayEtfCount - comparableEtfCount)) || 0;
+  const excludedCompareCount = Math.max(0, totalEtfCount - comparableEtfCount);
+  const hasSignalMeta = totalEtfCount > 0 || todayEtfCount > 0 || comparableEtfCount > 0;
 
   function toggleStatus(s: string) {
     setSelectedStatuses((prev) => {
@@ -385,8 +389,21 @@ export default function SignalsClient(props: any) {
       <div className="signals-title-block signal106-title-block">
         <h2>今日訊號</h2>
         <div className="signals-data-status ok">
-          已抓取 {fetched || total || 0} / {total || fetched || 0} 檔 ETF
-          {dataDate ? `，資料日期 ${mmdd(dataDate)}` : ''}
+          {hasSignalMeta ? (
+            <>
+              今日有資料 {todayEtfCount} / {totalEtfCount} 檔 ETF
+              {dataDate ? `，資料日期 ${mmdd(dataDate)}` : ''}
+              <span className="signals-meta-subline">
+                可計算訊號 {comparableEtfCount} 檔；未納入 {excludedCompareCount} 檔
+                {excludedCompareCount > 0 ? `（${nonTodayEtfCount} 檔非今日資料、${noCompareEtfCount} 檔缺前日比較）` : ''}
+              </span>
+            </>
+          ) : (
+            <>
+              今日訊號資料載入中
+              {dataDate ? `，資料日期 ${mmdd(dataDate)}` : ''}
+            </>
+          )}
         </div>
       </div>
 
