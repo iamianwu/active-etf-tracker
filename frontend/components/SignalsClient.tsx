@@ -113,22 +113,70 @@ function rowStatus(row: AnyRow): string {
   return '異動';
 }
 
+
+function countChangedEtfs(row: AnyRow, positive: boolean): number {
+  const list = Array.isArray(row?.changed_etfs)
+    ? row.changed_etfs
+    : Array.isArray(row?.changedEtfs)
+      ? row.changedEtfs
+      : Array.isArray(row?.etf_changes)
+        ? row.etf_changes
+        : [];
+
+  if (!list.length) return 0;
+
+  return list.filter((x: AnyRow) => {
+    const s = String(x?.status ?? x?.type ?? '').trim();
+    const raw = firstNum(x, ['delta_shares_lots', 'delta_lots', 'delta_shares', 'shares_change', 'net_lots', 'delta_raw_shares'], NaN);
+    let lots = Number.isFinite(raw) ? raw : 0;
+    if (Math.abs(lots) >= 100000) lots = lots / 1000;
+
+    if (positive) {
+      return ['新增', '加碼', 'add', 'added', 'new', 'increase', 'inc', 'buy'].includes(s) || lots > 0;
+    }
+    return ['刪除', '減碼', 'remove', 'removed', 'delete', 'deleted', 'decrease', 'dec', 'sell'].includes(s) || lots < 0;
+  }).length;
+}
+
 function getBuyCount(row: AnyRow): number {
-  const direct = firstNum(row, ['add_etf_count', 'add_count', 'buy_count', 'buy_etf_count', 'increase_count'], NaN);
+  const direct = firstNum(row, [
+    'buy_etf_count',
+    'buy_count',
+    'add_etf_count',
+    'increase_etf_count',
+    'increase_count',
+    'add_count',
+  ], NaN);
   if (Number.isFinite(direct)) return Math.max(0, Math.round(direct));
 
-  const status = rowStatus(row);
-  const etfCount = Math.max(0, Math.round(firstNum(row, ['etf_count', 'count'], 0)));
-  return status === '新增' || status === '加碼' ? etfCount : 0;
+  const changed = countChangedEtfs(row, true);
+  if (changed > 0) return changed;
+
+  // 最後保底只回傳 1，不可用 etf_count/count，否則會把「持有 18 檔」誤判成「18 檔買/賣」。
+  const status = String(row.status ?? row.type ?? '').trim();
+  const lots = getLots(row);
+  return (['新增', '加碼'].includes(status) || lots > 0) ? 1 : 0;
 }
 
 function getSellCount(row: AnyRow): number {
-  const direct = firstNum(row, ['reduce_etf_count', 'sell_count', 'sell_etf_count', 'decrease_count'], NaN);
+  const direct = firstNum(row, [
+    'sell_etf_count',
+    'sell_count',
+    'reduce_etf_count',
+    'decrease_etf_count',
+    'decrease_count',
+    'delete_count',
+    'remove_count',
+  ], NaN);
   if (Number.isFinite(direct)) return Math.max(0, Math.round(direct));
 
-  const status = rowStatus(row);
-  const etfCount = Math.max(0, Math.round(firstNum(row, ['etf_count', 'count'], 0)));
-  return status === '刪除' || status === '減碼' ? etfCount : 0;
+  const changed = countChangedEtfs(row, false);
+  if (changed > 0) return changed;
+
+  // 最後保底只回傳 1，不可用 etf_count/count，否則會把「持有 18 檔」誤判成「18 檔買/賣」。
+  const status = String(row.status ?? row.type ?? '').trim();
+  const lots = getLots(row);
+  return (['刪除', '減碼'].includes(status) || lots < 0) ? 1 : 0;
 }
 
 function getConsensusScore(row: AnyRow): number {
