@@ -1,4 +1,10 @@
-export const revalidate = 60;
+import SignalsClient from '@/components/SignalsClient';
+import { getSignalsV112 } from '@/lib/signalsV112';
 
-import { redirect } from 'next/navigation';
-export default function Page(){ redirect('/signals'); }
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export default async function Page() {
+  const data = await getSignalsV112();
+  return <SignalsClient data={data} />;
+}
