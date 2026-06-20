@@ -1,4 +1,13 @@
-'use client';
+from pathlib import Path
+
+root = Path(".")
+comp = root / "frontend/components/SignalsClient.tsx"
+page = root / "frontend/app/signals/page.tsx"
+home = root / "frontend/app/page.tsx"
+css = root / "frontend/app/globals.css"
+readme = root / "README_V118_SIGNAL_RESET.md"
+
+comp.write_text(r''''use client';
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
@@ -669,3 +678,735 @@ export default function SignalsClient(props: { data: any; activeDays?: number })
     </main>
   );
 }
+''', encoding='utf-8')
+
+page.write_text(r'''import { apiGet } from '@/lib/api';
+import SignalsClient from '@/components/SignalsClient';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+type SearchParams = {
+  days?: string | string[];
+  rangeDays?: string | string[];
+  signalRangeDays?: string | string[];
+};
+
+function one(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+function normalizeSignalDays(searchParams?: SearchParams): number {
+  const raw = one(searchParams?.days) || one(searchParams?.rangeDays) || one(searchParams?.signalRangeDays) || '1';
+  const n = Number(raw);
+  return [1, 5, 10, 20].includes(n) ? n : 1;
+}
+
+export default async function Page({ searchParams }: { searchParams?: SearchParams }) {
+  const days = normalizeSignalDays(searchParams);
+  const data = await apiGet(`/signals?days=${days}`);
+  return <SignalsClient data={data} activeDays={days} />;
+}
+''', encoding='utf-8')
+
+# 首頁就是今日訊號，避免 app/page.tsx 又多包一組區間造成重複。
+home.write_text(page.read_text(encoding='utf-8'), encoding='utf-8')
+
+css_append = r'''
+
+/* ============================================================
+   V118 Signal Reset
+   單一乾淨版：不吃舊 v3/v7/v113/v117 signals CSS
+   ============================================================ */
+
+.v118-page,
+.v118-page * {
+  box-sizing: border-box;
+}
+
+.v118-page {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 22px 16px 88px;
+  overflow-x: hidden;
+  color: #111827;
+  background: #fff;
+}
+
+.v118-range {
+  margin: 0 0 34px;
+}
+
+.v118-range-label {
+  color: #7b8798;
+  font-size: 22px;
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+
+.v118-segment {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  width: 100%;
+  background: #edf2f8;
+  border: 1px solid #dbe3ee;
+  border-radius: 999px;
+  padding: 5px;
+  box-shadow: inset 0 2px 6px rgba(15, 23, 42, .05);
+}
+
+.v118-segment a {
+  min-width: 0;
+  text-align: center;
+  text-decoration: none;
+  color: #657386;
+  border-radius: 999px;
+  padding: 12px 0;
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.v118-segment a.active {
+  color: #2f6ecb;
+  background: #fff;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, .08);
+}
+
+.v118-hero h1 {
+  margin: 0 0 8px;
+  font-size: 46px;
+  line-height: 1;
+  letter-spacing: -.04em;
+  font-weight: 1000;
+}
+
+.v118-quality {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  align-items: center;
+  color: #7a8596;
+  font-size: 18px;
+  line-height: 1.35;
+  font-weight: 900;
+}
+
+.v118-quality b {
+  color: #111827;
+}
+
+.v118-quality button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #9a6b0b;
+  padding: 0;
+  border-bottom: 1.5px solid #9a6b0b;
+  font: inherit;
+  font-weight: 950;
+}
+
+.v118-focus-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0 32px;
+}
+
+.v118-focus-card {
+  min-width: 0;
+  min-height: 174px;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border: 1.5px solid #e5eaf2;
+  border-radius: 20px;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.v118-focus-card.red {
+  background: #fff8f9;
+  border-color: #f3c8cf;
+}
+
+.v118-focus-card.green {
+  background: #f2fffa;
+  border-color: #bee9d8;
+}
+
+.v118-focus-title {
+  font-size: 21px;
+  line-height: 1.12;
+  font-weight: 1000;
+  margin-bottom: 12px;
+}
+
+.v118-focus-card.red .v118-focus-title { color: #d95561; }
+.v118-focus-card.green .v118-focus-title { color: #27a575; }
+
+.v118-focus-name {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.v118-focus-name b {
+  min-width: 0;
+  color: #111827;
+  font-size: 23px;
+  line-height: 1.08;
+  font-weight: 1000;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.v118-focus-name span {
+  color: #8793a5;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.v118-focus-price {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.v118-focus-price strong {
+  color: #111827;
+  font-size: 36px;
+  line-height: 1;
+  letter-spacing: -.04em;
+  font-weight: 1000;
+}
+
+.v118-focus-price em {
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+
+.v118-focus-meta {
+  display: grid;
+  gap: 2px;
+  color: #7a8596;
+  font-size: 16px;
+  line-height: 1.32;
+  font-weight: 900;
+}
+
+.v118-focus-meta b {
+  font-weight: 1000;
+}
+
+.v118-detail h2 {
+  margin: 0 0 12px;
+  font-size: 34px;
+  line-height: 1.08;
+  letter-spacing: -.03em;
+  font-weight: 1000;
+}
+
+.v118-status-tabs {
+  display: flex;
+  gap: 9px;
+  overflow-x: auto;
+  padding: 0 0 10px;
+  margin-bottom: 8px;
+  scrollbar-width: none;
+}
+
+.v118-status-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.v118-status-tabs button {
+  flex: 0 0 auto;
+  min-width: 88px;
+  border: 2px solid #cbd5e1;
+  background: #fff;
+  color: #64748b;
+  border-radius: 999px;
+  padding: 9px 14px;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 950;
+}
+
+.v118-status-tabs .add,
+.v118-status-tabs .add.on {
+  color: #b59b09;
+  border-color: #bda70a;
+  background: #fffdf0;
+}
+
+.v118-status-tabs .buy,
+.v118-status-tabs .buy.on {
+  color: #d95561;
+  border-color: #d95561;
+  background: #fff8f9;
+}
+
+.v118-status-tabs .sell,
+.v118-status-tabs .sell.on {
+  color: #27a575;
+  border-color: #27a575;
+  background: #f2fffa;
+}
+
+.v118-table {
+  width: 100%;
+  overflow: hidden;
+}
+
+.v118-head,
+.v118-row {
+  display: grid;
+  grid-template-columns: minmax(82px, 1.1fr) minmax(68px, .82fr) minmax(92px, 1fr) minmax(76px, .9fr);
+  column-gap: 8px;
+  align-items: center;
+}
+
+.v118-head {
+  background: #f1f4f8;
+  border-radius: 0;
+  min-height: 48px;
+  padding: 0 9px;
+  margin-bottom: 2px;
+}
+
+.v118-head button {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  text-align: left;
+  font-size: 15px;
+  line-height: 1.15;
+  font-weight: 950;
+  padding: 0;
+}
+
+.v118-head button.active {
+  color: #2f6ecb;
+}
+
+.v118-head button span {
+  color: inherit;
+  font-size: 13px;
+}
+
+.v118-row {
+  text-decoration: none;
+  color: inherit;
+  min-height: 82px;
+  padding: 11px 9px;
+  border-bottom: 1px solid #e6edf5;
+}
+
+.v118-stock,
+.v118-price,
+.v118-flow,
+.v118-action {
+  min-width: 0;
+}
+
+.v118-stock b {
+  display: block;
+  color: #111827;
+  font-size: 21px;
+  line-height: 1.1;
+  font-weight: 1000;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.v118-stock span,
+.v118-price span,
+.v118-flow span,
+.v118-action span {
+  display: block;
+  color: #8793a5;
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 900;
+}
+
+.v118-price b {
+  display: inline-block;
+  max-width: 100%;
+  color: #111827;
+  font-size: 22px;
+  line-height: 1.05;
+  font-weight: 1000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v118-price b.limit-up,
+.v118-price b.limit-down {
+  color: #fff;
+  background: #d75a64;
+  border-radius: 8px;
+  padding: 2px 6px;
+}
+
+.v118-price b.limit-down {
+  background: #27a575;
+}
+
+.v118-flow {
+  text-align: right;
+}
+
+.v118-flow b {
+  display: block;
+  font-size: 20px;
+  line-height: 1.15;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+
+.v118-action {
+  text-align: right;
+}
+
+.v118-action .pill {
+  display: inline-block;
+  min-width: 54px;
+  text-align: center;
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 950;
+  background: #eef2f7;
+  color: #64748b;
+}
+
+.v118-action .pill.新增 {
+  color: #a99106;
+  background: #fff5c7;
+}
+
+.v118-action .pill.加碼 {
+  color: #d95561;
+  background: #ffecef;
+}
+
+.v118-action .pill.減碼 {
+  color: #27a575;
+  background: #e9fbf4;
+}
+
+.v118-action .pill.刪除 {
+  color: #64748b;
+  background: #eef2f7;
+}
+
+.limit-tag {
+  display: inline-block;
+  margin-top: 4px;
+  color: #fff;
+  background: #d75a64;
+  border-radius: 999px;
+  padding: 3px 7px;
+  font-size: 12px;
+  line-height: 1;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.limit-tag.green {
+  background: #27a575;
+}
+
+.is-red { color: #d95561 !important; }
+.is-green { color: #27a575 !important; }
+.is-muted { color: #8793a5 !important; }
+
+.v118-empty-table,
+.v118-empty {
+  color: #8793a5;
+  font-size: 16px;
+  font-weight: 900;
+  padding: 20px 0;
+}
+
+.v118-modal-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: end center;
+  background: rgba(15, 23, 42, .48);
+  padding: 18px;
+}
+
+.v118-modal {
+  width: min(100%, 520px);
+  max-height: 84vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, .24);
+}
+
+.v118-modal-head {
+  display: grid;
+  grid-template-columns: 1fr 44px;
+  gap: 12px;
+  align-items: start;
+}
+
+.v118-modal-head h3 {
+  margin: 0 0 8px;
+  font-size: 30px;
+  line-height: 1.1;
+  letter-spacing: -.03em;
+  font-weight: 1000;
+}
+
+.v118-modal-head p {
+  margin: 0;
+  color: #6b7586;
+  font-size: 16px;
+  line-height: 1.45;
+  font-weight: 850;
+}
+
+.v118-modal-head button {
+  border: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.v118-missing-summary {
+  color: #9a6b0b;
+  font-size: 18px;
+  font-weight: 950;
+  margin: 18px 0 12px;
+}
+
+.v118-missing-list {
+  display: grid;
+  gap: 8px;
+}
+
+.v118-missing-row {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 3px 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e6edf5;
+}
+
+.v118-missing-row b {
+  font-size: 18px;
+  font-weight: 1000;
+}
+
+.v118-missing-row span {
+  color: #111827;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.v118-missing-row em {
+  grid-column: 2;
+  color: #9a6b0b;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.v118-missing-note {
+  margin: 16px 0;
+  color: #64748b;
+  background: #f8fafc;
+  border: 1px solid #e6edf5;
+  border-radius: 16px;
+  padding: 14px;
+  font-size: 16px;
+  line-height: 1.55;
+  font-weight: 850;
+}
+
+.v118-ok {
+  width: 100%;
+  border: 0;
+  border-radius: 14px;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 950;
+  padding: 14px 18px;
+  margin-top: 16px;
+}
+
+@media (max-width: 430px) {
+  .v118-page {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .v118-range-label {
+    font-size: 20px;
+  }
+
+  .v118-segment a {
+    font-size: 18px;
+    padding: 11px 0;
+  }
+
+  .v118-hero h1 {
+    font-size: 38px;
+  }
+
+  .v118-quality {
+    font-size: 16px;
+  }
+
+  .v118-focus-grid {
+    gap: 10px;
+  }
+
+  .v118-focus-card {
+    min-height: 160px;
+    padding: 13px 12px;
+    border-radius: 18px;
+  }
+
+  .v118-focus-title {
+    font-size: 18px;
+  }
+
+  .v118-focus-name b {
+    font-size: 20px;
+  }
+
+  .v118-focus-name span {
+    font-size: 14px;
+  }
+
+  .v118-focus-price strong {
+    font-size: 30px;
+  }
+
+  .v118-focus-price em {
+    font-size: 16px;
+  }
+
+  .v118-focus-meta {
+    font-size: 14px;
+  }
+
+  .v118-detail h2 {
+    font-size: 30px;
+  }
+
+  .v118-head,
+  .v118-row {
+    grid-template-columns: minmax(78px, 1.05fr) minmax(62px, .72fr) minmax(86px, .98fr) minmax(68px, .82fr);
+    column-gap: 6px;
+  }
+
+  .v118-head {
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+
+  .v118-head button {
+    font-size: 13px;
+  }
+
+  .v118-row {
+    min-height: 78px;
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+
+  .v118-stock b {
+    font-size: 19px;
+  }
+
+  .v118-stock span,
+  .v118-price span,
+  .v118-flow span,
+  .v118-action span {
+    font-size: 13px;
+  }
+
+  .v118-price b {
+    font-size: 19px;
+  }
+
+  .v118-flow b {
+    font-size: 18px;
+  }
+
+  .v118-action .pill {
+    min-width: 48px;
+    font-size: 13px;
+    padding: 5px 7px;
+  }
+
+  .v118-modal {
+    padding: 22px 20px;
+    border-radius: 22px;
+  }
+
+  .v118-modal-head h3 {
+    font-size: 26px;
+  }
+}
+
+@media (max-width: 370px) {
+  .v118-focus-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .v118-head,
+  .v118-row {
+    grid-template-columns: minmax(72px, 1fr) 60px 82px 62px;
+  }
+
+  .v118-flow b {
+    font-size: 16px;
+  }
+}
+'''
+
+if "V118 Signal Reset" not in css.read_text(encoding='utf-8'):
+    css.write_text(css.read_text(encoding='utf-8') + css_append, encoding='utf-8')
+
+readme.write_text("""# V118 Signal Reset
+
+修正內容：
+- 今日訊號只保留一組訊號區間。
+- 首頁與 /signals 使用同一份 SignalsClient，避免重複區塊。
+- 有 ETF 來源明細時，重新由來源 ETF 彙總，避免國巨張數等 aggregate 舊欄位覆蓋。
+- 明細改成緊湊四欄，不再超出手機頁面。
+- 排序改回欄位標題 ▲ / ▼。
+- 點明細列可進入個股頁。
+- 未更新 ETF 不再顯示 ETF 1、ETF 2 假資料。
+""", encoding='utf-8')
+
+print("✅ V118 已完成：SignalsClient 重置、首頁/訊號頁統一、緊湊表格與排序修正")
