@@ -1,3 +1,26 @@
+from pathlib import Path
+from datetime import datetime
+
+ROOT = Path.cwd()
+FRONTEND = ROOT / 'frontend'
+if not FRONTEND.exists():
+    raise SystemExit('❌ 請在專案根目錄執行，例如：cd ~/Downloads/active-etf-tracker-fix')
+
+now = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+def backup(path: Path):
+    if path.exists():
+        bak = path.with_suffix(path.suffix + f'.bak_v113_{now}')
+        bak.write_text(path.read_text(encoding='utf-8'), encoding='utf-8')
+        print(f'備份：{path} -> {bak.name}')
+
+def write(path: Path, content: str):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    backup(path)
+    path.write_text(content.strip() + '\n', encoding='utf-8')
+    print(f'✅ 寫入 {path}')
+
+signals_client = """
 'use client';
 
 import Link from 'next/link';
@@ -11,7 +34,7 @@ const STATUSES: Status[] = ['新增', '刪除', '加碼', '減碼'];
 
 function num(v: any, fallback = 0): number {
   if (v === null || v === undefined || v === '') return fallback;
-  const x = Number(String(v).replace(/,/g, '').replace(/[^\d.-]/g, ''));
+  const x = Number(String(v).replace(/,/g, '').replace(/[^\\d.-]/g, ''));
   return Number.isFinite(x) ? x : fallback;
 }
 function firstNum(row: AnyRow, keys: string[], fallback = 0): number {
@@ -62,7 +85,7 @@ function sellOf(row: AnyRow) {
 }
 function mmdd(dateLike: any) {
   const s = String(dateLike ?? '').trim();
-  const m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  const m = s.match(/(\\d{4})-(\\d{2})-(\\d{2})/);
   if (m) return `${m[2]}-${m[3]}`;
   return s;
 }
@@ -249,3 +272,123 @@ export default function SignalsClient(props: any) {
     </main>
   );
 }
+"""
+
+css = """
+/* ===== V113 signal compact layout cleanup ===== */
+html,body{max-width:100%;overflow-x:hidden;}
+.v113-signals-page{width:100%;max-width:760px;margin:0 auto;padding:22px 16px 80px;color:#111827;overflow:hidden;}
+.v113-section{margin:0 0 26px;}
+.v113-section h1{font-size:42px;line-height:1.05;margin:0 0 10px;font-weight:1000;letter-spacing:-.04em;}
+.v113-section h2{font-size:34px;line-height:1.08;margin:0 0 14px;font-weight:1000;letter-spacing:-.04em;}
+.v113-quality{margin:0 0 16px;color:#778397;font-size:17px;font-weight:900;line-height:1.45;}
+.v113-quality b{color:#111827;}
+.v113-warn{color:#b7791f;}
+.v113-focus-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.v113-focus-card{display:block;text-decoration:none;border-radius:18px;padding:15px 15px 14px;border:1.5px solid #e5eaf2;min-height:150px;color:#111827;background:#fff;overflow:hidden;}
+.v113-focus-card.red{background:#fff8f8;border-color:#f7cbd1;}
+.v113-focus-card.green{background:#f2fffa;border-color:#bfeedd;}
+.v113-focus-title{font-size:21px;font-weight:1000;margin-bottom:8px;line-height:1.1;}
+.v113-focus-card.red .v113-focus-title{color:#df5361;}
+.v113-focus-card.green .v113-focus-title{color:#22a879;}
+.v113-focus-name{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;font-size:24px;font-weight:1000;line-height:1.08;margin-bottom:3px;}
+.v113-focus-name em{font-style:normal;font-size:17px;color:#8995a8;font-weight:900;}
+.v113-focus-price{display:flex;align-items:baseline;gap:7px;margin-bottom:6px;min-width:0;}
+.v113-focus-price span{font-size:34px;font-weight:1000;letter-spacing:-.03em;color:#111827;line-height:1;}
+.v113-focus-price b{font-size:19px;font-weight:1000;white-space:nowrap;}
+.v113-focus-meta{font-size:16px;line-height:1.38;color:#7b8798;font-weight:900;display:grid;gap:1px;}
+.v113-focus-meta b{font-size:17px;}
+.v113-empty{font-size:18px;color:#8390a2;font-weight:900;margin-top:18px;}
+.v113-status-row,.v113-sort-row{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 18px 8px 0;margin-right:-16px;}
+.v113-status-row::-webkit-scrollbar,.v113-sort-row::-webkit-scrollbar{display:none;}
+.v113-status-pill,.v113-sort-pill{border:2px solid #cbd5e1;background:#fff;border-radius:999px;padding:9px 15px;font-size:19px;font-weight:1000;color:#667386;white-space:nowrap;flex:0 0 auto;}
+.v113-status-pill.active.s-新增{border-color:#c9ab00;color:#b59b00;background:#fffdf0;}
+.v113-status-pill.active.s-刪除{border-color:#a9b2bf;color:#6b7280;background:#f8fafc;}
+.v113-status-pill.active.s-加碼{border-color:#df5361;color:#df5361;background:#fff8f8;}
+.v113-status-pill.active.s-減碼{border-color:#22a879;color:#22a879;background:#f2fffa;}
+.v113-sort-pill.active{border-color:#bfdbfe;background:#eff6ff;color:#2765bd;}
+.v113-table-head{display:grid;grid-template-columns:1.05fr .72fr 1fr .88fr;gap:8px;background:#f3f6fa;color:#667386;font-size:15px;font-weight:1000;padding:10px 12px;border-radius:14px 14px 0 0;margin-top:4px;}
+.v113-rows{border-top:1px solid #e5eaf2;}
+.v113-row{display:grid;grid-template-columns:1.05fr .72fr 1fr .88fr;gap:8px;align-items:center;text-decoration:none;color:#111827;padding:15px 12px;border-bottom:1px solid #e5eaf2;}
+.v113-r-stock,.v113-r-price,.v113-r-flow,.v113-r-state{min-width:0;}
+.v113-r-name{font-size:22px;font-weight:1000;line-height:1.08;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.v113-r-code{font-size:17px;color:#8995a8;font-weight:900;margin-top:2px;}
+.v113-r-price span{font-size:23px;font-weight:1000;line-height:1.1;white-space:nowrap;}
+.v113-r-price b{display:block;font-size:16px;font-weight:1000;margin-top:2px;white-space:nowrap;}
+.v113-r-flow b{display:block;font-size:21px;font-weight:1000;line-height:1.05;white-space:nowrap;text-align:right;}
+.v113-r-flow span{display:block;font-size:17px;font-weight:1000;margin-top:4px;white-space:nowrap;text-align:right;}
+.v113-r-state{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+.v113-status{border-radius:999px;padding:4px 9px;font-size:16px;font-weight:1000;line-height:1;white-space:nowrap;}
+.v113-status.s-新增{background:#fff5c2;color:#b59b00;}
+.v113-status.s-加碼{background:#ffe8ec;color:#df5361;}
+.v113-status.s-減碼,.v113-status.s-刪除{background:#dcfce7;color:#22a879;}
+.v113-consensus{font-size:16px;font-weight:1000;color:#64748b;white-space:nowrap;}
+.limit-up{display:inline-block;background:#df5361!important;color:#fff!important;border-radius:8px;padding:1px 6px;}.limit-down{display:inline-block;background:#22a879!important;color:#fff!important;border-radius:8px;padding:1px 6px;}
+.red{color:#df5361!important;}.green{color:#22a879!important;}.muted{color:#8995a8!important;}
+.v113-no-data{padding:24px;text-align:center;color:#8390a2;font-size:18px;font-weight:900;}
+@media (max-width:520px){
+  .v113-signals-page{padding:18px 16px 70px;}
+  .v113-section h1{font-size:40px;}
+  .v113-section h2{font-size:32px;}
+  .v113-focus-grid{gap:10px;}
+  .v113-focus-card{padding:13px 12px;min-height:156px;}
+  .v113-focus-title{font-size:20px;}
+  .v113-focus-name{font-size:22px;}
+  .v113-focus-price span{font-size:31px;}
+  .v113-focus-price b{font-size:17px;}
+  .v113-focus-meta{font-size:15px;}
+  .v113-table-head{grid-template-columns:1.05fr .66fr .94fr .74fr;font-size:14px;padding:9px 8px;gap:5px;}
+  .v113-row{grid-template-columns:1.05fr .66fr .94fr .74fr;padding:14px 8px;gap:5px;}
+  .v113-r-name{font-size:20px;}
+  .v113-r-code{font-size:16px;}
+  .v113-r-price span{font-size:21px;}
+  .v113-r-price b{font-size:15px;}
+  .v113-r-flow b{font-size:19px;}
+  .v113-r-flow span{font-size:15px;}
+  .v113-status{font-size:15px;padding:4px 8px;}
+  .v113-consensus{font-size:15px;}
+}
+@media (max-width:380px){
+  .v113-signals-page{padding-left:13px;padding-right:13px;}
+  .v113-focus-card{padding:12px 10px;}
+  .v113-focus-title{font-size:19px;}
+  .v113-focus-price span{font-size:29px;}
+  .v113-table-head{grid-template-columns:1.03fr .62fr .92fr .72fr;}
+  .v113-row{grid-template-columns:1.03fr .62fr .92fr .72fr;}
+  .v113-r-name{font-size:19px;}
+}
+/* ===== end V113 ===== */
+"""
+
+readme = """
+# V113 今日訊號排版修正
+
+修正內容：
+
+1. 移除 V112 自己新增的「訊號區間」，避免和原本頁面上的訊號區間重複。
+2. 資金交易明細改成固定四欄：標的 / 股價 / 淨額張數 / 狀態共識。
+3. 移除每列第二行雜亂資訊，避免「漲停」標籤與買賣共識擠在一起。
+4. 保留排序與篩選功能。
+5. 每列仍可點進個股頁。
+6. 限價燈號保留在股價欄，不會再跑到狀態欄。
+"""
+
+write(FRONTEND / 'components' / 'SignalsClient.tsx', signals_client)
+
+css_path = FRONTEND / 'app' / 'globals.css'
+backup(css_path)
+old = css_path.read_text(encoding='utf-8') if css_path.exists() else ''
+for start, end in [
+    ('/* ===== V112 signal logic + mobile UI cleanup ===== */', '/* ===== end V112 ===== */'),
+    ('/* ===== V113 signal compact layout cleanup ===== */', '/* ===== end V113 ===== */'),
+]:
+    while start in old and end in old:
+        before = old.split(start)[0]
+        after = old.split(end, 1)[1]
+        old = before.rstrip() + '\n' + after.lstrip()
+new = old.rstrip() + '\n' + css.strip() + '\n'
+css_path.write_text(new, encoding='utf-8')
+print(f'✅ 更新 {css_path}')
+
+write(ROOT / 'README_V113_SIGNAL_COMPACT_LAYOUT.md', readme)
+print('\n✅ V113 已完成：移除重複訊號區間，並重排交易明細為固定四欄。')
