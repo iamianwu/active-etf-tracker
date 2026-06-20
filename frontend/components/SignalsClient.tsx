@@ -233,11 +233,8 @@ function etfNameOf(row: AnyRow): string {
   return String(row?.etf_name ?? row?.etfName ?? row?.name ?? row?.title ?? '').trim();
 }
 
-function etfLatestDateOf(row: AnyRow): string {
-  if (typeof row === 'string') return '尚無日期';
-  return mmdd(row?.latest_date ?? row?.latestDate ?? row?.data_date ?? row?.string') return '尚無日期';
-  return mmdd(row?.latest_date ?? row?.latestDate ?? row?.data_date ?? row?.dataDate ?? row?.date ?? '') || '尚無日期';
-}
+
+
 
 function RangePicker({ activeDays }: { activeDays: number }) {
   return (
