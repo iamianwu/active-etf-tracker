@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type AnyRow = Record<string, any>;
 type Status = '新增' | '刪除' | '加碼' | '減碼';
@@ -252,17 +252,151 @@ function RangePicker({ activeDays }: { activeDays: number }) {
 }
 
 
+
+
+// V117_MISSING_ETF_LIST_HELPERS_START
+const ACTIVE_ETF_CODES_V117 = [
+  '00400A','00401A','00402A','00403A','00404A','00405A','00406A',
+  '00980A','00981A','00982A','00983A','00984A','00985A','00986A','00987A','00988A','00989A','00990A',
+  '00991A','00992A','00993A','00994A','00995A','00996A','00997A','00998A','00999A'
+];
+
+const ETF_NAME_HINT_V117: Record<string, string> = {
+  '00400A': '主動國泰動能高息',
+  '00401A': '主動摩根台灣鑫收',
+  '00402A': '主動群益科技創新',
+  '00403A': '主動統一升級50',
+  '00404A': '主動聯博動能50',
+  '00405A': '主動富邦台灣龍耀',
+  '00406A': '主動中信台灣收益',
+  '00980A': '主動野村臺灣優選',
+  '00981A': '主動統一台股增長',
+  '00982A': '主動群益台灣強棒',
+  '00983A': '主動中信ARK創新',
+  '00984A': '主動安聯台灣高息',
+  '00985A': '主動野村台灣50',
+  '00986A': '主動群益全球創新AI',
+  '00987A': '主動群益美國增長',
+  '00988A': '主動統一全球創新',
+  '00989A': '主動摩根全球基建',
+  '00990A': '主動元大AI新經濟',
+  '00991A': '主動復華未來50',
+  '00992A': '主動群益科技創新',
+  '00993A': '主動安聯台灣',
+  '00994A': '主動第一金台股優',
+  '00995A': '主動中信小資高息',
+  '00996A': '主動兆豐台灣豐收',
+  '00997A': '主動群益美國增長',
+  '00998A': '主動中信台灣高股息',
+  '00999A': '主動野村臺灣高息'
+};
+
+function dateKeyV117(v: any): string {
+  const s = String(v ?? '').trim();
+  const full = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (full) return `${full[1]}-${full[2]}-${full[3]}`;
+  const md = s.match(/(\d{2})-(\d{2})/);
+  if (md) return `${md[1]}-${md[2]}`;
+  return s;
+}
+
+function sameDateV117(a: any, b: any): boolean {
+  const ak = dateKeyV117(a);
+  const bk = dateKeyV117(b);
+  if (!ak || !bk) return false;
+  if (ak === bk) return true;
+  if (ak.length === 10 && bk.length === 5) return ak.slice(5) === bk;
+  if (bk.length === 10 && ak.length === 5) return bk.slice(5) === ak;
+  return false;
+}
+
+function etfLatestDateV117(row: AnyRow): string {
+  return String(row?.latest_date ?? row?.latestDate ?? row?.data_date ?? row?.dataDate ?? row?.date ?? '').trim();
+}
+
+async function loadMissingEtfsV117(targetDate: any): Promise<AnyRow[]> {
+  const target = String(targetDate ?? '').trim();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey || !target) return [];
+
+  const headers = {
+    apikey: anonKey,
+    Authorization: `Bearer ${anonKey}`,
+  };
+
+  try {
+    const codeExpr = ACTIVE_ETF_CODES_V117.join(',');
+    const holdingUrl = `${supabaseUrl}/rest/v1/holdings?select=etf_code,data_date&etf_code=in.(${codeExpr})&order=data_date.desc&limit=8000`;
+    const holdingRes = await fetch(holdingUrl, { headers, cache: 'no-store' });
+    if (!holdingRes.ok) return [];
+    const holdingRows = await holdingRes.json();
+
+    const latest = new Map<string, string>();
+    if (Array.isArray(holdingRows)) {
+      for (const r of holdingRows) {
+        const code = String(r?.etf_code ?? '').trim();
+        const dt = String(r?.data_date ?? '').trim();
+        if (code && dt && !latest.has(code)) latest.set(code, dt);
+      }
+    }
+
+    const names = new Map<string, string>();
+    try {
+      const quoteUrl = `${supabaseUrl}/rest/v1/etf_quotes?select=etf_code,etf_name&etf_code=in.(${codeExpr})&limit=200`;
+      const quoteRes = await fetch(quoteUrl, { headers, cache: 'no-store' });
+      if (quoteRes.ok) {
+        const quoteRows = await quoteRes.json();
+        if (Array.isArray(quoteRows)) {
+          for (const r of quoteRows) {
+            const c = String(r?.etf_code ?? '').trim();
+            const n = String(r?.etf_name ?? '').trim();
+            if (c && n) names.set(c, n);
+          }
+        }
+      }
+    } catch (_) {}
+
+    return ACTIVE_ETF_CODES_V117
+      .filter((code) => !sameDateV117(latest.get(code), target))
+      .map((code) => ({
+        etf_code: code,
+        etf_name: names.get(code) || ETF_NAME_HINT_V117[code] || '',
+        latest_date: latest.get(code) || '',
+      }));
+  } catch (_) {
+    return [];
+  }
+}
+// V117_MISSING_ETF_LIST_HELPERS_END
+
 function DataQuality({ data, activeDays }: { data: any; activeDays: number }) {
   const [open, setOpen] = useState(false);
+  const [loadingMissing, setLoadingMissing] = useState(false);
+  const [loadedMissing, setLoadedMissing] = useState<AnyRow[]>([]);
+  const [loadedOnce, setLoadedOnce] = useState(false);
+
   const total = getTotalEtfs(data);
   const today = getTodayEtfs(data, total);
   const missing = Math.max(0, total - today);
   const missingEtfs = missingEtfsOf(data);
   const date = data?.target_date ?? data?.data_date ?? data?.latestDataDate ?? '';
+  const shownMissingEtfs = missingEtfs.length > 0 ? missingEtfs : loadedMissing;
+
+  useEffect(() => {
+    if (!open || activeDays !== 1 || missing <= 0 || loadedOnce || missingEtfs.length > 0) return;
+    setLoadingMissing(true);
+    loadMissingEtfsV117(date)
+      .then((rows) => {
+        setLoadedMissing(rows);
+        setLoadedOnce(true);
+      })
+      .finally(() => setLoadingMissing(false));
+  }, [open, activeDays, missing, loadedOnce, missingEtfs.length, date]);
 
   if (activeDays !== 1) {
     return (
-      <div className="signals-quality-v114 signals-quality-v116">
+      <div className="signals-quality-v114 compact-v117">
         <span>資料區間：近 {activeDays} 日</span>
         <span>資料日 {mmdd(date)}</span>
       </div>
@@ -271,52 +405,53 @@ function DataQuality({ data, activeDays }: { data: any; activeDays: number }) {
 
   return (
     <>
-      <div className="signals-quality-v114 signals-quality-v116">
-        <div className="quality-line-v116">資料日 <b>{mmdd(date)}</b></div>
-        <div className="quality-line-v116">已取得今日資料 <b>{today}</b> / {total} 檔 ETF</div>
+      <div className="signals-quality-v114 compact-v117">
+        <span>資料日 <b>{mmdd(date)}</b></span>
+        <span>已取得今日資料 <b>{today}</b> / {total} 檔 ETF</span>
         {missing > 0 && (
-          <button type="button" className="signals-warning-v114 signals-warning-v116" onClick={() => setOpen(true)}>
+          <button type="button" className="signals-warning-link-v117" onClick={() => setOpen(true)}>
             未更新 {missing} 檔，查看清單
           </button>
         )}
       </div>
 
       {open && (
-        <div className="missing-modal-mask-v116" role="dialog" aria-modal="true" onClick={() => setOpen(false)}>
-          <div className="missing-modal-v116" onClick={(e) => e.stopPropagation()}>
-            <div className="missing-modal-head-v116">
+        <div className="signals-modal-mask-v117" onClick={() => setOpen(false)}>
+          <div className="signals-modal-v117" onClick={(e) => e.stopPropagation()}>
+            <div className="signals-modal-head-v117">
               <div>
-                <div className="missing-modal-title-v116">未更新 ETF 清單</div>
-                <div className="missing-modal-sub-v116">今日訊號只使用 {mmdd(date)} 當日資料，不混入前一日。</div>
+                <h3>未更新 ETF 清單</h3>
+                <p>今日訊號只使用 {mmdd(date)} 當日資料，不混入前一日。</p>
               </div>
-              <button type="button" className="missing-modal-x-v116" onClick={() => setOpen(false)} aria-label="關閉">×</button>
+              <button type="button" onClick={() => setOpen(false)} aria-label="關閉">×</button>
             </div>
 
-            {missingEtfs.length > 0 ? (
-              <div className="missing-list-v116">
-                {missingEtfs.map((row, idx) => {
-                  const code = etfCodeOf(row) || `第 ${idx + 1} 檔`;
+            {loadingMissing ? (
+              <div className="signals-modal-note-v117">正在查詢未更新 ETF 清單…</div>
+            ) : shownMissingEtfs.length > 0 ? (
+              <div className="signals-missing-list-v117">
+                {shownMissingEtfs.map((row, idx) => {
+                  const code = etfCodeOf(row) || `ETF ${idx + 1}`;
                   const name = etfNameOf(row);
-                  const latest = etfLatestDateOf(row);
+                  const latest = etfLatestDateV117(row);
                   return (
-                    <div className="missing-row-v116" key={`${code}-${idx}`}>
+                    <div className="signals-missing-row-v117" key={`${code}-${idx}`}>
                       <div>
-                        <div className="missing-code-v116">{code}</div>
-                        {name && <div className="missing-name-v116">{name}</div>}
+                        <b>{code}</b>
+                        {name && <span>{name}</span>}
                       </div>
-                      <div className="missing-date-v116">{latest && latest !== '-' ? `最新 ${latest}` : '尚無日期'}</div>
+                      <em>{latest ? `最新 ${mmdd(latest)}` : '尚無資料'}</em>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="missing-empty-v116">
-                目前資料只回傳「未更新 {missing} 檔」的數量，尚未回傳 ETF 代號清單，所以不再用 ETF 1、ETF 2 這種假資料顯示。
-                <br />下一步可在 /signals API 補回 non_today_etfs 清單。
+              <div className="signals-modal-note-v117">
+                目前 API 只回傳「未更新 {missing} 檔」的數量，尚未回傳 ETF 代號清單。若仍看不到清單，請確認 Supabase 的 holdings / etf_quotes 已開啟 public read policy。
               </div>
             )}
 
-            <button type="button" className="missing-ok-v116" onClick={() => setOpen(false)}>我知道了</button>
+            <button type="button" className="signals-modal-ok-v117" onClick={() => setOpen(false)}>我知道了</button>
           </div>
         </div>
       )}
@@ -465,10 +600,7 @@ export default function SignalsClient(props: { data: any; activeDays?: number })
   const title = activeDays === 1 ? '今日訊號' : `近${activeDays}日訊號`;
 
   return (
-    <main className="signals-page-v115">
-      <RangePicker activeDays={activeDays} />
-
-      <section className="signals-hero-v115">
+    <main className="signals-page-v115"><section className="signals-hero-v115">
         <h1>{title}</h1>
         <DataQuality data={data} activeDays={activeDays} />
       </section>
