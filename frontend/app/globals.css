@@ -9098,3 +9098,90 @@ html,body{max-width:100%;overflow-x:hidden;}
   }
 }
 /* === V118 single signal range END === */
+
+
+/* === V119 real missing ETF list START === */
+.signals-modal-mask-v119 {
+  z-index: 99999 !important;
+}
+.signals-modal-v119 {
+  max-width: 460px !important;
+}
+.signals-modal-count-v119 {
+  color: #a97719 !important;
+  font-weight: 900 !important;
+}
+.signals-missing-list-v119 {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  max-height: 44vh !important;
+  overflow-y: auto !important;
+  border: 1px solid #e5eaf2 !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+}
+.signals-missing-item-v119 {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  padding: 11px 12px !important;
+  border-bottom: 1px solid #eef2f7 !important;
+}
+.signals-missing-item-v119:last-child {
+  border-bottom: 0 !important;
+}
+.missing-left-v119 {
+  min-width: 0 !important;
+}
+.missing-left-v119 b {
+  display: block !important;
+  font-size: 18px !important;
+  line-height: 1.1 !important;
+  color: #111827 !important;
+  font-weight: 900 !important;
+}
+.missing-left-v119 span {
+  display: block !important;
+  margin-top: 3px !important;
+  max-width: 250px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  color: #6b7280 !important;
+  font-size: 14px !important;
+  font-weight: 750 !important;
+}
+.signals-missing-item-v119 em {
+  flex: 0 0 auto !important;
+  font-style: normal !important;
+  color: #a97719 !important;
+  font-size: 14px !important;
+  font-weight: 850 !important;
+  white-space: nowrap !important;
+}
+.signals-modal-note-v119 {
+  font-size: 15px !important;
+  line-height: 1.55 !important;
+}
+@media (max-width: 520px) {
+  .signals-modal-v119 {
+    width: calc(100vw - 32px) !important;
+    padding: 22px 18px 18px !important;
+    border-radius: 24px !important;
+  }
+  .signals-modal-v119 h3 {
+    font-size: 28px !important;
+    line-height: 1.15 !important;
+  }
+  .signals-modal-v119 p,
+  .signals-modal-count-v119 {
+    font-size: 16px !important;
+    line-height: 1.45 !important;
+  }
+  .signals-missing-list-v119 {
+    max-height: 42vh !important;
+  }
+}
+/* === V119 real missing ETF list END === */
