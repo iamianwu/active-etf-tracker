@@ -221,59 +221,139 @@ function RangePicker({ activeDays }: { activeDays: number }) {
   );
 }
 
+
+function missingEtfsOf(data: any): AnyRow[] {
+  const candidates = [
+    data?.non_today_etfs,
+    data?.nonTodayEtfs,
+    data?.missing_etfs,
+    data?.missingEtfs,
+    data?.outdated_etfs,
+    data?.outdatedEtfs,
+    data?.not_updated_etfs,
+    data?.notUpdatedEtfs,
+  ];
+  const arr = candidates.find((x) => Array.isArray(x));
+  if (!Array.isArray(arr)) return [];
+  return arr.map((x: any) => {
+    if (typeof x === 'string') return { etf_code: x };
+    return x || {};
+  });
+}
+
+function etfCodeOf(row: AnyRow): string {
+  return String(row.etf_code ?? row.etfCode ?? row.code ?? row.id ?? '').trim();
+}
+
+function etfNameOf(row: AnyRow): string {
+  return String(row.etf_name ?? row.etfName ?? row.name ?? row.title ?? '').trim();
+}
+
+function etfLatestDateOf(row: AnyRow): string {
+  return mmdd(row.latest_date ?? row.latestDate ?? row.data_date ?? row.dataDate ?? row.date ?? '');
+}
+
+
+function missingEtfsOf(data: any): AnyRow[] {
+  const candidates = [
+    data?.non_today_etfs,
+    data?.nonTodayEtfs,
+    data?.missing_etfs,
+    data?.missingEtfs,
+    data?.outdated_etfs,
+    data?.outdatedEtfs,
+    data?.not_updated_etfs,
+    data?.notUpdatedEtfs,
+  ];
+  const arr = candidates.find((x) => Array.isArray(x));
+  if (!Array.isArray(arr)) return [];
+  return arr.map((x: any) => {
+    if (typeof x === 'string') return { etf_code: x };
+    return x || {};
+  });
+}
+
+function etfCodeOf(row: AnyRow): string {
+  return String(row.etf_code ?? row.etfCode ?? row.code ?? row.id ?? '').trim();
+}
+
+function etfNameOf(row: AnyRow): string {
+  return String(row.etf_name ?? row.etfName ?? row.name ?? row.title ?? '').trim();
+}
+
+function etfLatestDateOf(row: AnyRow): string {
+  return mmdd(row.latest_date ?? row.latestDate ?? row.data_date ?? row.dataDate ?? row.date ?? '');
+}
+
 function DataQuality({ data, activeDays }: { data: any; activeDays: number }) {
   const [open, setOpen] = useState(false);
   const total = getTotalEtfs(data);
   const today = getTodayEtfs(data, total);
   const missing = Math.max(0, total - today);
+  const missingEtfs = missingEtfsOf(data);
   const date = data?.target_date ?? data?.data_date ?? data?.latestDataDate ?? '';
-  const missingList = missingEtfsOf(data);
 
   if (activeDays !== 1) {
     return (
-      <div className="signals-quality-v115">
-        <div><span>資料區間</span><b>近 {activeDays} 日</b></div>
-        <div><span>資料日</span><b>{mmdd(date)}</b></div>
+      <div className="signals-quality-v114 signals-quality-v116">
+        <span>資料區間：近 {activeDays} 日</span>
+        <span>資料日 {mmdd(date)}</span>
       </div>
     );
   }
 
   return (
-    <div className="signals-quality-v115">
-      <div><span>資料日</span><b>{mmdd(date)}</b></div>
-      <div><span>已取得今日資料</span><b>{today} / {total} 檔 ETF</b></div>
-      {missing > 0 && (
-        <button type="button" className="signals-warning-v115" onClick={() => setOpen(true)}>
-          未更新 {missing} 檔，本頁不混入前一日資料 〉
-        </button>
-      )}
+    <>
+      <div className="signals-quality-v114 signals-quality-v116">
+        <div className="quality-line-v116">資料日 <b>{mmdd(date)}</b></div>
+        <div className="quality-line-v116">已取得今日資料 <b>{today}</b> / {total} 檔 ETF</div>
+        {missing > 0 && (
+          <button type="button" className="signals-warning-v114 signals-warning-v116" onClick={() => setOpen(true)}>
+            未更新 {missing} 檔，查看清單
+          </button>
+        )}
+      </div>
+
       {open && (
-        <div className="signals-modal-mask-v115" onClick={() => setOpen(false)} role="presentation">
-          <div className="signals-modal-v115" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-            <div className="signals-modal-title-v115">未更新 ETF 清單</div>
-            <p className="signals-modal-desc-v115">這些 ETF 今日尚未更新，所以今日訊號不會混入它們的前一日資料。</p>
-            {missingList.length > 0 ? (
-              <div className="signals-missing-list-v115">
-                {missingList.map((e, i) => {
-                  const code = firstStr(e, ['etf_code', 'code', 'symbol'], `ETF ${i + 1}`);
-                  const name = firstStr(e, ['etf_name', 'name', 'fund_name'], '');
-                  const d = firstStr(e, ['latest_date', 'data_date', 'date'], '');
+        <div className="missing-modal-mask-v116" role="dialog" aria-modal="true" onClick={() => setOpen(false)}>
+          <div className="missing-modal-v116" onClick={(e) => e.stopPropagation()}>
+            <div className="missing-modal-head-v116">
+              <div>
+                <div className="missing-modal-title-v116">未更新 ETF 清單</div>
+                <div className="missing-modal-sub-v116">今日訊號只使用 {mmdd(date)} 當日資料，不混入前一日。</div>
+              </div>
+              <button type="button" className="missing-modal-x-v116" onClick={() => setOpen(false)} aria-label="關閉">×</button>
+            </div>
+
+            {missingEtfs.length > 0 ? (
+              <div className="missing-list-v116">
+                {missingEtfs.map((row, idx) => {
+                  const code = etfCodeOf(row) || `第 ${idx + 1} 檔`;
+                  const name = etfNameOf(row);
+                  const latest = etfLatestDateOf(row);
                   return (
-                    <div className="signals-missing-row-v115" key={`${code}-${i}`}>
-                      <div><b>{code}</b>{name && <span>{name}</span>}</div>
-                      <em>{d ? `最新 ${mmdd(d)}` : '尚無日期'}</em>
+                    <div className="missing-row-v116" key={`${code}-${idx}`}>
+                      <div>
+                        <div className="missing-code-v116">{code}</div>
+                        {name && <div className="missing-name-v116">{name}</div>}
+                      </div>
+                      <div className="missing-date-v116">{latest && latest !== '-' ? `最新 ${latest}` : '尚無日期'}</div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="signals-missing-empty-v115">目前後端尚未回傳未更新 ETF 名單，只能顯示未更新檔數。</div>
+              <div className="missing-empty-v116">
+                目前資料只回傳「未更新 {missing} 檔」的數量，尚未回傳 ETF 代號清單，所以不再用 ETF 1、ETF 2 這種假資料顯示。
+                <br />下一步可在 /signals API 補回 non_today_etfs 清單。
+              </div>
             )}
-            <button type="button" className="signals-modal-close-v115" onClick={() => setOpen(false)}>我知道了</button>
+
+            <button type="button" className="missing-ok-v116" onClick={() => setOpen(false)}>我知道了</button>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -321,7 +401,7 @@ function SortChip({ label, sortKey, currentKey, dir, onClick }: { label: string;
   const active = sortKey === currentKey;
   return (
     <button type="button" onClick={onClick} className={`sort-chip-v115 ${active ? 'active' : ''}`}>
-      {label}<span>{active ? (dir === 'desc' ? '▼' : '▲') : '↕'}</span>
+      {label}<span>{active ? (dir === 'desc' ? '▼' : '▲') : '▲▼'}</span>
     </button>
   );
 }
