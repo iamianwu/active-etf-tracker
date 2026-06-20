@@ -194,16 +194,49 @@ function missingEtfsOf(data: any): AnyRow[] {
     data?.nonTodayEtfs,
     data?.missing_etfs,
     data?.missingEtfs,
+    data?.outdated_etfs,
+    data?.outdatedEtfs,
+    data?.not_updated_etfs,
+    data?.notUpdatedEtfs,
     data?.stale_etfs,
     data?.staleEtfs,
     data?.etf_status,
     data?.etfStatus,
   ];
+
   for (const c of candidates) {
-    if (Array.isArray(c)) return c;
-    if (c && typeof c === 'object') return Object.values(c) as AnyRow[];
+    if (Array.isArray(c)) {
+      return c.map((x: any) => {
+        if (typeof x === 'string') return { etf_code: x };
+        return x || {};
+      });
+    }
+
+    if (c && typeof c === 'object') {
+      return Object.values(c).map((x: any) => {
+        if (typeof x === 'string') return { etf_code: x };
+        return x || {};
+      });
+    }
   }
+
   return [];
+}
+
+function etfCodeOf(row: AnyRow): string {
+  if (typeof row === 'string') return row.trim();
+  return String(row?.etf_code ?? row?.etfCode ?? row?.code ?? row?.id ?? '').trim();
+}
+
+function etfNameOf(row: AnyRow): string {
+  if (typeof row === 'string') return '';
+  return String(row?.etf_name ?? row?.etfName ?? row?.name ?? row?.title ?? '').trim();
+}
+
+function etfLatestDateOf(row: AnyRow): string {
+  if (typeof row === 'string') return '尚無日期';
+  return mmdd(row?.latest_date ?? row?.latestDate ?? row?.data_date ?? row?.string') return '尚無日期';
+  return mmdd(row?.latest_date ?? row?.latestDate ?? row?.data_date ?? row?.dataDate ?? row?.date ?? '') || '尚無日期';
 }
 
 function RangePicker({ activeDays }: { activeDays: number }) {
@@ -221,69 +254,6 @@ function RangePicker({ activeDays }: { activeDays: number }) {
   );
 }
 
-
-function missingEtfsOf(data: any): AnyRow[] {
-  const candidates = [
-    data?.non_today_etfs,
-    data?.nonTodayEtfs,
-    data?.missing_etfs,
-    data?.missingEtfs,
-    data?.outdated_etfs,
-    data?.outdatedEtfs,
-    data?.not_updated_etfs,
-    data?.notUpdatedEtfs,
-  ];
-  const arr = candidates.find((x) => Array.isArray(x));
-  if (!Array.isArray(arr)) return [];
-  return arr.map((x: any) => {
-    if (typeof x === 'string') return { etf_code: x };
-    return x || {};
-  });
-}
-
-function etfCodeOf(row: AnyRow): string {
-  return String(row.etf_code ?? row.etfCode ?? row.code ?? row.id ?? '').trim();
-}
-
-function etfNameOf(row: AnyRow): string {
-  return String(row.etf_name ?? row.etfName ?? row.name ?? row.title ?? '').trim();
-}
-
-function etfLatestDateOf(row: AnyRow): string {
-  return mmdd(row.latest_date ?? row.latestDate ?? row.data_date ?? row.dataDate ?? row.date ?? '');
-}
-
-
-function missingEtfsOf(data: any): AnyRow[] {
-  const candidates = [
-    data?.non_today_etfs,
-    data?.nonTodayEtfs,
-    data?.missing_etfs,
-    data?.missingEtfs,
-    data?.outdated_etfs,
-    data?.outdatedEtfs,
-    data?.not_updated_etfs,
-    data?.notUpdatedEtfs,
-  ];
-  const arr = candidates.find((x) => Array.isArray(x));
-  if (!Array.isArray(arr)) return [];
-  return arr.map((x: any) => {
-    if (typeof x === 'string') return { etf_code: x };
-    return x || {};
-  });
-}
-
-function etfCodeOf(row: AnyRow): string {
-  return String(row.etf_code ?? row.etfCode ?? row.code ?? row.id ?? '').trim();
-}
-
-function etfNameOf(row: AnyRow): string {
-  return String(row.etf_name ?? row.etfName ?? row.name ?? row.title ?? '').trim();
-}
-
-function etfLatestDateOf(row: AnyRow): string {
-  return mmdd(row.latest_date ?? row.latestDate ?? row.data_date ?? row.dataDate ?? row.date ?? '');
-}
 
 function DataQuality({ data, activeDays }: { data: any; activeDays: number }) {
   const [open, setOpen] = useState(false);
