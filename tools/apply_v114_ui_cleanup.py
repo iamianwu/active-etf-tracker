@@ -1,3 +1,93 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import re
+import shutil
+import textwrap
+
+ROOT = Path.cwd()
+if not (ROOT / 'frontend').exists():
+    # allow running from tools folder or one level deeper
+    for p in [Path.cwd().parent, Path.cwd().parent.parent]:
+        if (p / 'frontend').exists():
+            ROOT = p
+            break
+
+FRONTEND = ROOT / 'frontend'
+if not FRONTEND.exists():
+    raise SystemExit('❌ 找不到 frontend 資料夾。請先 cd 到 active-etf-tracker-fix 專案根目錄再執行。')
+
+signals_page = FRONTEND / 'app' / 'signals' / 'page.tsx'
+signals_client = FRONTEND / 'components' / 'SignalsClient.tsx'
+globals_css = FRONTEND / 'app' / 'globals.css'
+
+for path in [signals_page, signals_client, globals_css]:
+    if not path.exists():
+        raise SystemExit(f'❌ 找不到 {path.relative_to(ROOT)}')
+
+
+def backup(path: Path):
+    bak = path.with_suffix(path.suffix + '.bak_v114')
+    shutil.copy2(path, bak)
+    return bak
+
+for p in [signals_page, signals_client, globals_css]:
+    backup(p)
+
+signals_page.write_text(r"""
+export const revalidate = 60;
+
+import Link from 'next/link';
+import { apiGet } from '@/lib/api';
+import SignalsClient from '@/components/SignalsClient';
+
+const VALID_SIGNAL_DAYS = [1, 5, 10, 20] as const;
+type SignalDays = typeof VALID_SIGNAL_DAYS[number];
+
+type SearchParams = {
+  days?: string | string[];
+  rangeDays?: string | string[];
+  signalRangeDays?: string | string[];
+};
+
+function one(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+function normalizeSignalDays(searchParams?: SearchParams): SignalDays {
+  const raw = one(searchParams?.days) || one(searchParams?.rangeDays) || one(searchParams?.signalRangeDays) || '1';
+  const n = Number(raw);
+  return (VALID_SIGNAL_DAYS as readonly number[]).includes(n) ? (n as SignalDays) : 1;
+}
+
+export default async function SignalsPage({ searchParams }: { searchParams?: SearchParams }) {
+  const days = normalizeSignalDays(searchParams);
+  const data = await apiGet(`/signals?days=${days}`);
+
+  return (
+    <main className="signals-page-v114">
+      <section className="signals-range-card-v114" aria-label="訊號區間">
+        <div className="signals-range-label-v114">訊號區間</div>
+        <div className="signals-segment-v114">
+          {VALID_SIGNAL_DAYS.map((d) => (
+            <Link
+              key={d}
+              href={d === 1 ? '/signals' : `/signals?days=${d}`}
+              className={days === d ? 'active' : ''}
+              prefetch
+            >
+              {d === 1 ? '今日' : `${d}日`}
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <SignalsClient data={data} activeDays={days} />
+    </main>
+  );
+}
+""".strip() + "\n", encoding='utf-8')
+
+signals_client.write_text(r"""
 'use client';
 
 import Link from 'next/link';
@@ -12,7 +102,8 @@ const STATUSES: Status[] = ['新增', '刪除', '加碼', '減碼'];
 
 function num(v: any, fallback = 0): number {
   if (v === null || v === undefined || v === '') return fallback;
-  const x = Number(String(v).replace(/,/g, '').replace(/[^\d.-]/g, ''));
+  const x = Number(String(v).replace(/,/g, '').replace(/[^
+\d.-]/g, ''));
   return Number.isFinite(x) ? x : fallback;
 }
 
@@ -369,3 +460,312 @@ export default function SignalsClient(props: any) {
     </section>
   );
 }
+""".strip() + "\n", encoding='utf-8')
+
+css = globals_css.read_text(encoding='utf-8')
+css = re.sub(r"/\* V114_UI_CLEANUP_START \*/.*?/\* V114_UI_CLEANUP_END \*/\s*", "", css, flags=re.S)
+css += r"""
+
+/* V114_UI_CLEANUP_START */
+.signals-page-v114,
+.signals-client-v114 {
+  width: min(100%, 860px);
+  margin: 0 auto;
+  padding: 0 16px 36px;
+  box-sizing: border-box;
+}
+
+.signals-range-card-v114 {
+  margin-top: 18px;
+  margin-bottom: 32px;
+}
+
+.signals-range-label-v114 {
+  color: #748094;
+  font-weight: 900;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.signals-segment-v114 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: #edf3fa;
+  border: 1px solid #d9e2ee;
+  border-radius: 999px;
+  padding: 6px;
+  gap: 4px;
+}
+
+.signals-segment-v114 a {
+  text-decoration: none;
+  text-align: center;
+  border-radius: 999px;
+  padding: 12px 0;
+  color: #66758a;
+  font-weight: 900;
+  font-size: 18px;
+}
+
+.signals-segment-v114 a.active {
+  background: #fff;
+  color: #2f6fc6;
+  box-shadow: 0 2px 8px rgba(29, 59, 104, .12);
+}
+
+.signals-client-v114 h1 {
+  font-size: clamp(38px, 8vw, 56px);
+  line-height: 1.05;
+  margin: 0 0 10px;
+  color: #101828;
+  letter-spacing: -0.04em;
+}
+
+.signals-quality-v114 {
+  color: #758197;
+  font-weight: 900;
+  font-size: 18px;
+  line-height: 1.45;
+  margin-bottom: 18px;
+}
+
+.signals-warning-v114 {
+  color: #ad7820;
+}
+
+.focus-grid-v114 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0 28px;
+}
+
+.focus-card-v114 {
+  display: block;
+  text-decoration: none;
+  min-height: 176px;
+  border-radius: 22px;
+  padding: 18px 18px 16px;
+  border: 1.5px solid #e9edf4;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.focus-card-v114.red { background: #fff8f9; border-color: #f6cbd1; }
+.focus-card-v114.green { background: #f3fffa; border-color: #bfeedd; }
+
+.focus-title-v114 {
+  font-size: 21px;
+  font-weight: 950;
+  line-height: 1.15;
+  margin-bottom: 12px;
+}
+.focus-card-v114.red .focus-title-v114 { color: #dc5663; }
+.focus-card-v114.green .focus-title-v114 { color: #2ca678; }
+.focus-name-v114 { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.focus-name-v114 span { color: #142033; font-size: 22px; font-weight: 950; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.focus-name-v114 em { color: #8a96a8; font-size: 15px; font-style: normal; font-weight: 900; }
+.focus-price-v114 { margin-top: 6px; display: flex; align-items: baseline; gap: 8px; }
+.focus-price-v114 span { color: #dc5663; font-size: 32px; line-height: 1; font-weight: 950; letter-spacing: -0.03em; }
+.focus-price-v114 small { font-size: 17px; font-weight: 950; }
+.focus-meta-v114 { margin-top: 10px; display: grid; gap: 2px; color: #748094; font-size: 15px; line-height: 1.25; font-weight: 900; }
+.focus-empty-v114 { color: #7d8797; font-size: 16px; font-weight: 900; margin-top: 16px; }
+
+.signal-list-head-v114 h2 {
+  margin: 0 0 12px;
+  color: #101828;
+  font-size: clamp(30px, 7vw, 44px);
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+}
+
+.status-row-v114,
+.sort-row-v114 {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 0 10px;
+  scrollbar-width: none;
+}
+.status-row-v114::-webkit-scrollbar,
+.sort-row-v114::-webkit-scrollbar { display: none; }
+
+.status-pill-v114,
+.sort-pill-v114 {
+  white-space: nowrap;
+  border: 2px solid #c8d1dd;
+  color: #687589;
+  background: #fff;
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-size: 17px;
+  line-height: 1;
+  font-weight: 950;
+}
+.status-pill-v114.active.status-新增 { color: #b89b00; border-color: #c8b100; background: #fffdf0; }
+.status-pill-v114.active.status-刪除 { color: #697586; border-color: #aab4c2; background: #f8fafc; }
+.status-pill-v114.active.status-加碼 { color: #d6515d; border-color: #df6a74; background: #fff8f9; }
+.status-pill-v114.active.status-減碼 { color: #28a372; border-color: #28a372; background: #f2fff9; }
+.sort-pill-v114.active { color: #2f6fc6; border-color: #c7dcff; background: #f0f6ff; }
+
+.signal-table-v114 {
+  margin-top: 8px;
+  border-top: 1px solid #e4ebf3;
+}
+
+.signal-table-header-v114,
+.signal-row-v114 {
+  display: grid;
+  grid-template-columns: 30% 20% 28% 22%;
+  column-gap: 8px;
+  align-items: center;
+}
+
+.signal-table-header-v114 {
+  background: #f2f5f9;
+  color: #617085;
+  font-size: 15px;
+  font-weight: 950;
+  padding: 12px 14px;
+  border-radius: 12px 12px 0 0;
+}
+
+.signal-row-v114 {
+  min-height: 90px;
+  padding: 14px;
+  border-bottom: 1px solid #e4ebf3;
+  text-decoration: none;
+  color: inherit;
+  box-sizing: border-box;
+}
+.signal-row-v114:active { background: #f7fbff; }
+
+.signal-stock-v114,
+.signal-price-v114,
+.signal-flow-v114,
+.signal-action-v114 {
+  min-width: 0;
+}
+.signal-stock-v114 strong {
+  display: block;
+  color: #142033;
+  font-size: 21px;
+  line-height: 1.15;
+  font-weight: 950;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.signal-stock-v114 span,
+.signal-price-v114 span,
+.signal-flow-v114 span,
+.signal-action-v114 small {
+  display: block;
+  color: #8995a7;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+.signal-price-v114 strong,
+.signal-flow-v114 strong {
+  display: inline-block;
+  color: #142033;
+  font-size: 20px;
+  line-height: 1.15;
+  font-weight: 950;
+  letter-spacing: -0.02em;
+}
+.signal-flow-v114 { text-align: right; }
+.signal-action-v114 { text-align: right; }
+.status-badge-v114 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  min-width: 48px;
+  font-weight: 950;
+  font-size: 15px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.status-badge-v114.status-新增 { color: #b89b00; background: #fff4b8; }
+.status-badge-v114.status-刪除 { color: #697586; background: #eef2f6; }
+.status-badge-v114.status-加碼 { color: #d6515d; background: #fde9ec; }
+.status-badge-v114.status-減碼 { color: #28a372; background: #e4f8ef; }
+
+.is-red { color: #dc5663 !important; }
+.is-green { color: #28a372 !important; }
+.is-muted { color: #8995a7 !important; }
+.limit-up-v114,
+.limit-down-v114 {
+  color: #fff !important;
+  border-radius: 8px;
+  padding: 2px 7px;
+}
+.limit-up-v114 { background: #df5664; }
+.limit-down-v114 { background: #2ca678; }
+.signal-empty-v114 {
+  padding: 28px 16px;
+  text-align: center;
+  color: #7d8797;
+  font-weight: 900;
+}
+
+@media (max-width: 520px) {
+  .signals-page-v114,
+  .signals-client-v114 { padding-left: 16px; padding-right: 16px; }
+  .signals-range-card-v114 { margin-bottom: 30px; }
+  .signals-segment-v114 a { font-size: 17px; padding: 11px 0; }
+  .focus-grid-v114 { gap: 10px; }
+  .focus-card-v114 { min-height: 162px; padding: 14px 14px 12px; border-radius: 20px; }
+  .focus-title-v114 { font-size: 19px; }
+  .focus-name-v114 span { font-size: 20px; }
+  .focus-price-v114 span { font-size: 30px; }
+  .focus-meta-v114 { font-size: 14px; }
+  .signal-table-header-v114,
+  .signal-row-v114 { grid-template-columns: 29% 20% 29% 22%; column-gap: 6px; }
+  .signal-table-header-v114 { font-size: 14px; padding: 10px 10px; }
+  .signal-row-v114 { padding: 13px 10px; min-height: 86px; }
+  .signal-stock-v114 strong { font-size: 19px; }
+  .signal-price-v114 strong,
+  .signal-flow-v114 strong { font-size: 18px; }
+  .signal-stock-v114 span,
+  .signal-price-v114 span,
+  .signal-flow-v114 span,
+  .signal-action-v114 small { font-size: 14px; }
+  .status-badge-v114 { min-width: 44px; font-size: 14px; padding: 6px 8px; }
+}
+/* V114_UI_CLEANUP_END */
+""" + "\n"
+globals_css.write_text(css, encoding='utf-8')
+
+readme = ROOT / 'README_V114_UI_CLEANUP.md'
+readme.write_text("""# V114 UI Cleanup
+
+本次修改：
+
+1. 今日訊號只保留一組「訊號區間」。
+2. 今日資料完整度固定顯示 27 檔總數，避免 18/18、23/23 造成誤解。
+3. 未更新 ETF 會明確提示，而且今日訊號不混入前一日資料。
+4. 今日訊號四張重點卡改成摘要格式。
+5. 資金交易明細改成更穩定的表格列，並保留排序與狀態篩選。
+6. 排序名稱改成「淨流入 / 淨流出 / 絕對金額 / 張數 / 共識 / 股價 / 漲跌幅」。
+7. 每列可點擊進入個股頁。
+8. 漲停 / 跌停會在股價上用色塊標示。
+
+套用後請執行：
+
+```bash
+cd frontend
+npm run build
+cd ..
+git add frontend/app/signals/page.tsx frontend/components/SignalsClient.tsx frontend/app/globals.css README_V114_UI_CLEANUP.md tools/apply_v114_ui_cleanup.py
+git commit -m "Polish signals UI and sorting v114"
+git push origin main
+```
+""", encoding='utf-8')
+
+print('✅ V114 已完成：今日訊號 UI、資料完整度、排序與明細排版已重新整理')
+print('接著執行：cd frontend && npm run build')
