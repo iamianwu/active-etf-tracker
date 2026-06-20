@@ -1,3 +1,59 @@
+#!/usr/bin/env python3
+from pathlib import Path
+from datetime import datetime
+
+ROOT = Path.cwd()
+FRONTEND = ROOT / 'frontend'
+SIGNALS_PAGE = FRONTEND / 'app' / 'signals' / 'page.tsx'
+SIGNALS_CLIENT = FRONTEND / 'components' / 'SignalsClient.tsx'
+GLOBALS = FRONTEND / 'app' / 'globals.css'
+
+def backup(path: Path, tag: str = 'v115'):
+    if path.exists():
+        stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        b = path.with_name(path.name + f'.bak_{tag}_{stamp}')
+        b.write_text(path.read_text(encoding='utf-8'), encoding='utf-8')
+        return b
+    return None
+
+if not FRONTEND.exists():
+    raise SystemExit('❌ 找不到 frontend，請先 cd 到 active-etf-tracker-fix 專案根目錄再執行。')
+
+backup(SIGNALS_PAGE)
+backup(SIGNALS_CLIENT)
+backup(GLOBALS)
+
+SIGNALS_PAGE.write_text(r"""
+import { apiGet } from '@/lib/api';
+import SignalsClient from '@/components/SignalsClient';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+type SearchParams = {
+  days?: string | string[];
+  rangeDays?: string | string[];
+  signalRangeDays?: string | string[];
+};
+
+function one(v?: string | string[]) {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+function normalizeSignalDays(searchParams?: SearchParams): number {
+  const raw = one(searchParams?.days) || one(searchParams?.rangeDays) || one(searchParams?.signalRangeDays) || '1';
+  const n = Number(raw);
+  return [1, 5, 10, 20].includes(n) ? n : 1;
+}
+
+export default async function SignalsPage({ searchParams }: { searchParams?: SearchParams }) {
+  const days = normalizeSignalDays(searchParams);
+  const data = await apiGet(`/signals?days=${days}`);
+  return <SignalsClient data={data} activeDays={days} />;
+}
+""".strip() + "\n", encoding='utf-8')
+
+SIGNALS_CLIENT.write_text(r"""
 'use client';
 
 import Link from 'next/link';
@@ -471,3 +527,468 @@ export default function SignalsClient(props: { data: any; activeDays?: number })
     </main>
   );
 }
+""".strip() + "\n", encoding='utf-8')
+
+css_block = r"""
+
+/* ===== V115 signals UI final cleanup ===== */
+.signals-page-v115,
+.signals-page-v115 * {
+  box-sizing: border-box;
+}
+
+.signals-page-v115 {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 16px 48px;
+  overflow-x: hidden;
+}
+
+.signals-range-v115 {
+  margin: 22px 0 30px;
+}
+
+.signals-range-label-v115 {
+  font-size: 22px;
+  font-weight: 900;
+  color: #7c8798;
+  margin: 0 0 10px;
+}
+
+.signals-range-pill-v115 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  width: 100%;
+  height: 54px;
+  padding: 6px;
+  border-radius: 999px;
+  background: #eef3f9;
+  border: 1px solid #dce4ef;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, .05);
+}
+
+.signals-range-pill-v115 a {
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  text-decoration: none;
+  color: #66758a;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.signals-range-pill-v115 a.active {
+  background: #fff;
+  color: #2f6bc4;
+  box-shadow: 0 4px 12px rgba(30, 64, 175, .12);
+}
+
+.signals-hero-v115 h1 {
+  font-size: clamp(42px, 11vw, 64px);
+  line-height: 1;
+  font-weight: 1000;
+  color: #121827;
+  margin: 0 0 14px;
+  letter-spacing: -.04em;
+}
+
+.signals-quality-v115 {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 20px;
+  color: #778397;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.signals-quality-v115 div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.signals-quality-v115 span {
+  color: #778397;
+}
+
+.signals-quality-v115 b {
+  color: #172033;
+}
+
+.signals-warning-v115 {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #aa7624;
+  text-align: left;
+  font: inherit;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.focus-grid-v115 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 26px;
+}
+
+.focus-card-v115 {
+  min-width: 0;
+  display: block;
+  text-decoration: none;
+  border-radius: 18px;
+  padding: 18px 14px;
+  border: 1.5px solid #e6edf5;
+  background: #fff;
+  overflow: hidden;
+}
+
+.focus-card-v115.red { background: #fff8f9; border-color: #f3c8cf; }
+.focus-card-v115.green { background: #f2fffa; border-color: #bee9d8; }
+
+.focus-title-v115 {
+  color: #df5362;
+  font-size: clamp(19px, 4.9vw, 25px);
+  font-weight: 1000;
+  margin-bottom: 12px;
+  white-space: nowrap;
+}
+.focus-card-v115.green .focus-title-v115 { color: #28a77a; }
+
+.focus-name-v115 {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.focus-name-v115 span {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #111827;
+  font-size: clamp(22px, 6vw, 34px);
+  font-weight: 1000;
+}
+
+.focus-name-v115 em {
+  flex: 0 0 auto;
+  font-style: normal;
+  color: #8a96a8;
+  font-size: clamp(16px, 4.2vw, 22px);
+  font-weight: 1000;
+}
+
+.focus-price-v115 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 2px 0 8px;
+}
+
+.focus-price-v115 b {
+  font-size: clamp(32px, 8.8vw, 46px);
+  line-height: 1;
+  font-weight: 1000;
+}
+
+.focus-price-v115 span {
+  font-size: clamp(16px, 4.5vw, 24px);
+  font-weight: 1000;
+}
+
+.focus-meta-v115 {
+  display: grid;
+  gap: 3px;
+  color: #7b8798;
+  font-size: clamp(14px, 3.8vw, 18px);
+  font-weight: 1000;
+  line-height: 1.25;
+}
+
+.focus-meta-v115 b { font-weight: 1000; }
+.focus-empty-v115 { color: #7b8798; font-size: 18px; font-weight: 900; padding: 16px 0; }
+
+.signals-detail-v115 h2 {
+  font-size: clamp(34px, 8vw, 48px);
+  line-height: 1.08;
+  margin: 0 0 14px;
+  color: #121827;
+  font-weight: 1000;
+  letter-spacing: -.04em;
+}
+
+.signals-chip-row-v115,
+.signals-sort-row-v115 {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 0 10px;
+  margin: 0 0 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.signals-chip-row-v115::-webkit-scrollbar,
+.signals-sort-row-v115::-webkit-scrollbar { display: none; }
+
+.status-chip-v115,
+.sort-chip-v115 {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #fff;
+  border: 2px solid #cdd6e2;
+  color: #687589;
+  min-height: 44px;
+  padding: 0 15px;
+  font-size: 18px;
+  font-weight: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.status-chip-v115 b { font-weight: 1000; }
+.status-chip-v115.new { color: #b59b07; border-color: #c4aa0b; }
+.status-chip-v115.delete { color: #737d8b; }
+.status-chip-v115.add { color: #d95666; border-color: #d95666; }
+.status-chip-v115.reduce { color: #28a77a; border-color: #28a77a; }
+.status-chip-v115.active,
+.sort-chip-v115.active {
+  color: #2f6bc4;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.signal-table-head-v115 {
+  display: grid;
+  grid-template-columns: minmax(74px, 1fr) 82px 96px 78px;
+  gap: 8px;
+  align-items: center;
+  background: #f2f5f8;
+  color: #6e7a8c;
+  font-size: 16px;
+  font-weight: 1000;
+  padding: 11px 10px;
+  margin-top: 4px;
+}
+
+.signal-row-v115 {
+  display: grid;
+  grid-template-columns: minmax(74px, 1fr) 82px 96px 78px;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid #e5edf5;
+  padding: 16px 10px;
+}
+
+.signal-stock-v115,
+.signal-price-v115,
+.signal-money-v115,
+.signal-status-v115 {
+  min-width: 0;
+}
+
+.signal-stock-v115 b {
+  display: block;
+  color: #111827;
+  font-size: clamp(20px, 5vw, 28px);
+  font-weight: 1000;
+  line-height: 1.05;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.signal-stock-v115 span,
+.signal-price-v115 span,
+.signal-money-v115 span,
+.signal-status-v115 span {
+  display: block;
+  color: #8490a2;
+  font-size: clamp(14px, 3.6vw, 19px);
+  font-weight: 900;
+  line-height: 1.2;
+}
+.signal-price-v115 b,
+.signal-money-v115 b {
+  display: inline-block;
+  color: #111827;
+  font-size: clamp(20px, 5.2vw, 30px);
+  font-weight: 1000;
+  line-height: 1.05;
+}
+.signal-money-v115,
+.signal-status-v115 { text-align: right; }
+.signal-status-v115 { display: grid; justify-items: end; gap: 5px; }
+
+.status-badge-v115 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 15px;
+  font-weight: 1000;
+}
+.status-badge-v115.新增 { background: #fff5c7; color: #aa9400; }
+.status-badge-v115.刪除 { background: #eef2f7; color: #6b7280; }
+.status-badge-v115.加碼 { background: #ffe8ec; color: #d95666; }
+.status-badge-v115.減碼 { background: #e5fbf1; color: #28a77a; }
+
+.is-red { color: #d95666 !important; }
+.is-green { color: #28a77a !important; }
+.is-muted { color: #8490a2 !important; }
+.limit-up { background: #d95666; color: #fff !important; border-radius: 8px; padding: 0 5px; }
+.limit-down { background: #28a77a; color: #fff !important; border-radius: 8px; padding: 0 5px; }
+
+.signals-empty-v115 {
+  padding: 28px 12px;
+  color: #7c8798;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.signals-modal-mask-v115 {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(15, 23, 42, .42);
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.signals-modal-v115 {
+  width: min(520px, 100%);
+  max-height: min(78vh, 680px);
+  overflow: auto;
+  background: #fff;
+  border-radius: 22px;
+  padding: 22px;
+  box-shadow: 0 18px 60px rgba(15, 23, 42, .24);
+}
+
+.signals-modal-title-v115 {
+  color: #111827;
+  font-size: 28px;
+  font-weight: 1000;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.signals-modal-desc-v115 {
+  color: #6b7280;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.signals-missing-row-v115 {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #edf2f7;
+  padding: 12px 0;
+}
+.signals-missing-row-v115 b {
+  display: block;
+  font-size: 20px;
+  color: #111827;
+  font-weight: 1000;
+}
+.signals-missing-row-v115 span {
+  display: block;
+  color: #6f7b8e;
+  font-size: 15px;
+  font-weight: 800;
+}
+.signals-missing-row-v115 em {
+  flex: 0 0 auto;
+  font-style: normal;
+  color: #9a6a1b;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.signals-missing-empty-v115 {
+  color: #6b7280;
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.signals-modal-close-v115 {
+  width: 100%;
+  margin-top: 18px;
+  border: 0;
+  border-radius: 14px;
+  background: #3b82f6;
+  color: #fff;
+  min-height: 48px;
+  font-size: 18px;
+  font-weight: 1000;
+}
+
+@media (max-width: 420px) {
+  .signals-page-v115 { padding-left: 14px; padding-right: 14px; }
+  .focus-grid-v115 { gap: 10px; }
+  .focus-card-v115 { padding: 15px 12px; border-radius: 16px; }
+  .signal-table-head-v115,
+  .signal-row-v115 {
+    grid-template-columns: minmax(72px, 1fr) 74px 90px 70px;
+    gap: 7px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .status-chip-v115,
+  .sort-chip-v115 { min-height: 42px; padding: 0 13px; font-size: 17px; }
+}
+/* ===== end V115 signals UI final cleanup ===== */
+"""
+
+old_css = GLOBALS.read_text(encoding='utf-8') if GLOBALS.exists() else ''
+marker_start = '/* ===== V115 signals UI final cleanup ===== */'
+marker_end = '/* ===== end V115 signals UI final cleanup ===== */'
+if marker_start in old_css and marker_end in old_css:
+    before = old_css.split(marker_start)[0].rstrip()
+    after = old_css.split(marker_end, 1)[1].lstrip()
+    old_css = before + '\n' + after
+GLOBALS.write_text(old_css.rstrip() + css_block + '\n', encoding='utf-8')
+
+readme = ROOT / 'README_V115_SIGNALS_UI_FINAL.md'
+readme.write_text("""# V115 Signals UI Final
+
+修正內容：
+
+- 移除重複的「訊號區間」，只保留一組。
+- 今日訊號顯示資料完整度：已取得今日資料 x / 27 檔 ETF。
+- 未更新 ETF 可點開查看清單；若後端未回傳清單，會明確提示。
+- 資金交易明細改成手機不超版的表格列。
+- 排序改回 ▲ / ▼ 顯示，不再使用容易誤解的 emoji。
+- 排序分成「淨流入 / 淨流出 / 絕對金額 / 張數 / 共識 / 股價 / 漲跌幅」。
+- 個股列可點進 `/stock/{code}`。
+- 漲停 / 跌停股價會以色塊凸顯。
+""", encoding='utf-8')
+
+print('✅ V115 已完成：訊號區間、未更新清單、排序箭頭與手機版不超版排版已修正')
+print('接著執行：cd frontend && npm run build')
