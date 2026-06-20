@@ -1,4 +1,53 @@
-'use client';
+from pathlib import Path
+from datetime import datetime
+
+ROOT = Path.cwd()
+FRONTEND = ROOT / 'frontend'
+SIG_PAGE = FRONTEND / 'app' / 'signals' / 'page.tsx'
+SIG_CLIENT = FRONTEND / 'components' / 'SignalsClient.tsx'
+CSS = FRONTEND / 'app' / 'globals.css'
+TOOLS = ROOT / 'tools'
+README = ROOT / 'README_V117_COMPACT_SIGNALS_TABLE.md'
+
+for p in [SIG_PAGE, SIG_CLIENT, CSS]:
+    if not p.exists():
+        raise SystemExit(f'❌ 找不到必要檔案：{p}')
+
+stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+for p in [SIG_PAGE, SIG_CLIENT, CSS]:
+    bak = p.with_suffix(p.suffix + f'.bak_v117_{stamp}')
+    bak.write_text(p.read_text(encoding='utf-8'), encoding='utf-8')
+
+SIG_PAGE.write_text(r"""import { apiGet } from '@/lib/api';
+import SignalsClient from '@/components/SignalsClient';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+type SearchParams = {
+  days?: string | string[];
+  rangeDays?: string | string[];
+  signalRangeDays?: string | string[];
+};
+
+function one(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+function normalizeSignalDays(searchParams?: SearchParams): number {
+  const raw = one(searchParams?.days) || one(searchParams?.rangeDays) || one(searchParams?.signalRangeDays) || '1';
+  const n = Number(raw);
+  return [1, 5, 10, 20].includes(n) ? n : 1;
+}
+
+export default async function SignalsPage({ searchParams }: { searchParams?: SearchParams }) {
+  const days = normalizeSignalDays(searchParams);
+  const data = await apiGet(`/signals?days=${days}`);
+  return <SignalsClient data={data} activeDays={days} />;
+}
+""", encoding='utf-8')
+
+SIG_CLIENT.write_text(r"""'use client';
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
@@ -498,3 +547,380 @@ export default function SignalsClient(props: { data: any; activeDays?: number })
     </main>
   );
 }
+""", encoding='utf-8')
+
+css = CSS.read_text(encoding='utf-8')
+marker_start = '/* === V117 compact signals table START === */'
+marker_end = '/* === V117 compact signals table END === */'
+if marker_start in css and marker_end in css:
+    before = css.split(marker_start)[0]
+    after = css.split(marker_end)[1]
+    css = before + after
+
+css_block = r"""
+/* === V117 compact signals table START === */
+.signals-page-v117 {
+  --sig-blue: #2f6fc9;
+  --sig-navy: #111827;
+  --sig-muted: #7b8798;
+  --sig-line: #e7edf5;
+  --sig-red: #d95562;
+  --sig-green: #2ca678;
+  --sig-yellow: #b69200;
+  width: min(100%, 760px);
+  margin: 0 auto;
+  padding: 20px 18px 56px;
+  color: var(--sig-navy);
+  overflow-x: hidden;
+}
+.signals-page-v117 * { box-sizing: border-box; }
+.signals-page-v117 a { color: inherit; text-decoration: none; }
+.signals-section-label-v117 {
+  color: var(--sig-muted);
+  font-size: 16px;
+  font-weight: 900;
+  margin: 0 0 8px;
+}
+.signals-range-v117 { margin: 6px 0 28px; }
+.signals-range-tabs-v117 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  padding: 6px;
+  border: 1px solid #d8e1ec;
+  border-radius: 999px;
+  background: #eef3f9;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, .05);
+}
+.signals-range-tabs-v117 a {
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #617086;
+}
+.signals-range-tabs-v117 a.is-active {
+  background: #fff;
+  color: var(--sig-blue);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, .08);
+}
+.signals-title-v117 { margin: 0 0 16px; }
+.signals-title-v117 h1 {
+  margin: 0 0 8px;
+  font-size: clamp(34px, 9vw, 44px);
+  line-height: 1.05;
+  font-weight: 1000;
+  letter-spacing: -1px;
+}
+.signals-quality-v117 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--sig-muted);
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 850;
+}
+.signals-quality-v117 b { color: var(--sig-navy); }
+.signals-missing-btn-v117 {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #a87918;
+  font: inherit;
+  font-weight: 950;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.signals-focus-grid-v117 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 22px;
+}
+.signals-focus-card-v117 {
+  min-width: 0;
+  border: 1px solid #efd0d4;
+  border-radius: 18px;
+  padding: 13px 13px 12px;
+  background: #fff8f9;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.signals-focus-card-v117.green { border-color: #bee8da; background: #f2fffa; }
+.signals-focus-title-v117 {
+  font-size: 16px;
+  line-height: 1.2;
+  font-weight: 950;
+  color: var(--sig-red);
+}
+.signals-focus-card-v117.green .signals-focus-title-v117 { color: var(--sig-green); }
+.signals-focus-stock-v117 {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+.signals-focus-stock-v117 b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 19px;
+  font-weight: 1000;
+}
+.signals-focus-stock-v117 span { color: #8a96a8; font-size: 13px; font-weight: 950; flex: 0 0 auto; }
+.signals-focus-price-v117 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.signals-focus-price-v117 strong { font-size: 31px; line-height: .95; font-weight: 1000; letter-spacing: -.8px; }
+.signals-focus-price-v117 span { font-size: 15px; font-weight: 950; }
+.signals-focus-meta-v117 { display: grid; gap: 1px; color: var(--sig-muted); font-size: 13px; line-height: 1.35; font-weight: 850; }
+.signals-focus-empty-v117 { color: var(--sig-muted); font-size: 14px; font-weight: 850; padding: 14px 0; }
+.signals-detail-v117 h2 {
+  margin: 0 0 10px;
+  font-size: clamp(24px, 7vw, 34px);
+  line-height: 1.08;
+  font-weight: 1000;
+  letter-spacing: -.8px;
+}
+.signals-counts-v117,
+.signals-sortbar-v117 {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 2px 10px;
+  margin: 0 -2px;
+  scrollbar-width: none;
+}
+.signals-counts-v117::-webkit-scrollbar,
+.signals-sortbar-v117::-webkit-scrollbar { display: none; }
+.signals-counts-v117 span,
+.signals-sortbar-v117 button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 7px 13px;
+  background: white;
+  border: 1.5px solid #cfd8e5;
+  color: #657286;
+  font-size: 14px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+.signals-counts-v117 .new { color: var(--sig-yellow); border-color: #c6aa18; background: #fffdf1; }
+.signals-counts-v117 .add { color: var(--sig-red); border-color: #df6872; background: #fff8f9; }
+.signals-counts-v117 .reduce { color: var(--sig-green); border-color: #35ad83; background: #f5fffb; }
+.signals-sortbar-v117 button { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.signals-sortbar-v117 button.is-active { color: var(--sig-blue); border-color: #bcd6ff; background: #edf5ff; }
+.signals-table-v117 { width: 100%; overflow: hidden; }
+.signals-table-head-v117,
+.signals-table-row-v117 {
+  display: grid;
+  grid-template-columns: minmax(86px, 1.1fr) 66px 94px 70px;
+  column-gap: 8px;
+  align-items: center;
+}
+.signals-table-head-v117 {
+  min-height: 42px;
+  padding: 0 8px;
+  background: #f2f5f9;
+  color: #667386;
+  border-top: 1px solid var(--sig-line);
+  border-bottom: 1px solid var(--sig-line);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.signals-table-head-v117 button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 950;
+}
+.signals-table-row-v117 {
+  min-height: 76px;
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--sig-line);
+}
+.signals-cell-stock-v117,
+.signals-cell-price-v117,
+.signals-cell-flow-v117,
+.signals-cell-status-v117 { min-width: 0; }
+.signals-cell-stock-v117 b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 17px;
+  line-height: 1.15;
+  font-weight: 1000;
+}
+.signals-cell-stock-v117 span,
+.signals-cell-price-v117 span,
+.signals-cell-flow-v117 span,
+.signals-cell-status-v117 span {
+  display: block;
+  color: var(--sig-muted);
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 850;
+}
+.signals-cell-price-v117 strong {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  font-size: 17px;
+  line-height: 1.1;
+  font-weight: 1000;
+}
+.signals-cell-price-v117 strong.is-limit {
+  padding: 1px 6px 2px;
+  border-radius: 8px;
+  background: var(--sig-red);
+  color: white;
+}
+.signals-cell-price-v117 em {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 950;
+}
+.signals-cell-price-v117 em.limit-up { background: #ffe3e7; color: var(--sig-red); }
+.signals-cell-price-v117 em.limit-down { background: #dff8ee; color: var(--sig-green); }
+.signals-cell-flow-v117 { text-align: right; }
+.signals-cell-flow-v117 strong {
+  display: block;
+  font-size: 16px;
+  line-height: 1.12;
+  font-weight: 1000;
+}
+.signals-cell-status-v117 { text-align: right; }
+.signals-status-v117 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 950;
+}
+.signals-status-v117.new { background: #fff3be; color: #b19000; }
+.signals-status-v117.delete { background: #edf0f5; color: #6f7a8b; }
+.signals-status-v117.add { background: #ffe9ec; color: var(--sig-red); }
+.signals-status-v117.reduce { background: #e5faf1; color: var(--sig-green); }
+.signals-status-v117.neutral { background: #edf0f5; color: #6f7a8b; }
+.signals-empty-v117 {
+  padding: 30px 12px;
+  color: var(--sig-muted);
+  font-size: 15px;
+  font-weight: 850;
+  text-align: center;
+}
+.is-red { color: var(--sig-red) !important; }
+.is-green { color: var(--sig-green) !important; }
+.is-muted { color: var(--sig-muted) !important; }
+.signals-modal-mask-v117 {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(15, 23, 42, .45);
+  padding: 18px;
+}
+.signals-modal-v117 {
+  width: min(100%, 520px);
+  max-height: 82vh;
+  overflow: auto;
+  border-radius: 24px;
+  background: white;
+  padding: 22px 20px 18px;
+  position: relative;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, .22);
+}
+.signals-modal-close-v117 {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: #f2f5f9;
+  color: #657286;
+  font-size: 24px;
+  font-weight: 900;
+}
+.signals-modal-v117 h3 { margin: 0 42px 8px 0; font-size: 26px; line-height: 1.1; font-weight: 1000; }
+.signals-modal-v117 p { margin: 0 0 10px; color: #667386; font-size: 15px; line-height: 1.55; font-weight: 850; }
+.signals-modal-count-v117 { margin: 8px 0 12px; color: #a87918; font-size: 15px; font-weight: 950; }
+.signals-missing-list-v117 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 10px 0 16px; }
+.signals-missing-item-v117 { min-width: 0; padding: 9px 10px; border: 1px solid var(--sig-line); border-radius: 12px; background: #fbfcfe; }
+.signals-missing-item-v117 b { display: block; font-size: 15px; font-weight: 1000; }
+.signals-missing-item-v117 span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #657286; font-size: 12px; font-weight: 850; }
+.signals-missing-item-v117 em { display: block; color: #a87918; font-size: 12px; font-style: normal; font-weight: 850; }
+.signals-modal-note-v117 { padding: 12px; border-radius: 14px; background: #f5f7fb; color: #657286; font-size: 14px; line-height: 1.6; font-weight: 850; }
+.signals-modal-ok-v117 { width: 100%; margin-top: 16px; min-height: 48px; border: 0; border-radius: 14px; background: #2f7df2; color: white; font-size: 17px; font-weight: 950; }
+@media (max-width: 430px) {
+  .signals-page-v117 { padding-left: 14px; padding-right: 14px; }
+  .signals-focus-grid-v117 { gap: 9px; }
+  .signals-focus-card-v117 { padding: 12px 11px; border-radius: 16px; }
+  .signals-focus-title-v117 { font-size: 15px; }
+  .signals-focus-stock-v117 b { font-size: 18px; }
+  .signals-focus-price-v117 strong { font-size: 29px; }
+  .signals-table-head-v117,
+  .signals-table-row-v117 {
+    grid-template-columns: minmax(78px, 1.05fr) 61px 86px 62px;
+    column-gap: 6px;
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+  .signals-table-head-v117 button { font-size: 11px; }
+  .signals-cell-stock-v117 b { font-size: 16px; }
+  .signals-cell-price-v117 strong { font-size: 16px; }
+  .signals-cell-flow-v117 strong { font-size: 15px; }
+  .signals-status-v117 { min-width: 38px; padding: 4px 7px; font-size: 11px; }
+}
+/* === V117 compact signals table END === */
+"""
+CSS.write_text(css.rstrip() + "\n\n" + marker_start + css_block.split(marker_start,1)[1], encoding='utf-8')
+
+TOOLS.mkdir(exist_ok=True)
+script_dst = TOOLS / 'apply_v117_compact_signals_table.py'
+script_dst.write_text(Path(__file__).read_text(encoding='utf-8'), encoding='utf-8')
+
+README.write_text("""# V117 Compact Signals Table
+
+這版把今日訊號改成較接近資料表的高資訊密度 UI，但不完全仿照參考圖。
+
+重點：
+- 移除重複的「訊號區間」，只保留一組。
+- 明細改成精簡表格式，不再用大卡片。
+- 排序改回 ▲ / ▼ / ↕ 的欄位式操作。
+- 支援：淨流入、淨流出、絕對金額、張數、共識、股價排序。
+- 每列可點進個股頁。
+- 漲停 / 跌停只用小型提示，不讓整列過度變大。
+- 未更新 ETF modal 不再顯示 ETF 1、ETF 2 假資料；若 API 有清單就顯示清單，沒有就顯示說明。
+- 內容避免超出手機寬度。
+
+套用後建議先在 Vercel 觀看，因本機 build 需要 NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY。
+""", encoding='utf-8')
+
+print('✅ V117 已完成：今日訊號改成精簡表格式、欄位式排序、縮小字級並修正未更新清單顯示')
+print('接著可執行：git add ... && git commit && git push')
