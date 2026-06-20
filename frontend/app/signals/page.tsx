@@ -20,7 +20,7 @@ function normalizeSignalDays(searchParams?: SearchParams): number {
   return [1, 5, 10, 20].includes(n) ? n : 1;
 }
 
-export default async function SignalsPage({ searchParams }: { searchParams?: SearchParams }) {
+export default async function Page({ searchParams }: { searchParams?: SearchParams }) {
   const days = normalizeSignalDays(searchParams);
   const data = await apiGet(`/signals?days=${days}`);
   return <SignalsClient data={data} activeDays={days} />;

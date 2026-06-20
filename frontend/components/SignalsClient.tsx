@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 type AnyRow = Record<string, any>;
@@ -257,12 +258,16 @@ function pickMax(rows: AnyRow[], predicate: (r: AnyRow) => boolean, score: (r: A
 }
 
 function RangeSwitch({ activeDays }: { activeDays: number }) {
+  const pathname = usePathname() || '/';
+  const base = pathname === '/signals' ? '/signals' : '/';
+  const hrefFor = (days: number) => days === 1 ? base : `${base}?days=${days}`;
+
   return (
     <section className="signals-range-v117" aria-label="訊號區間">
       <div className="signals-section-label-v117">訊號區間</div>
       <div className="signals-range-tabs-v117">
         {RANGE_OPTIONS.map((opt) => (
-          <Link key={opt.days} className={activeDays === opt.days ? 'is-active' : ''} href={opt.days === 1 ? '/signals' : `/signals?days=${opt.days}`}>
+          <Link key={opt.days} className={activeDays === opt.days ? 'is-active' : ''} href={hrefFor(opt.days)}>
             {opt.label}
           </Link>
         ))}

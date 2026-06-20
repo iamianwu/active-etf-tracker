@@ -9079,3 +9079,22 @@ html,body{max-width:100%;overflow-x:hidden;}
   .signals-status-v117 { min-width: 38px; padding: 4px 7px; font-size: 11px; }
 }
 /* === V117 compact signals table END === */
+
+
+/* === V118 single signal range START === */
+/* 保險：首頁與 /signals 已統一只由 SignalsClient 顯示一組訊號區間。若舊版區間殘留，避免手機畫面出現兩組。 */
+.signals-page-v117 .signals-range-card-v114,
+.signals-page-v117 .signals-range-card-v115,
+.signals-page-v117 .signals-range-card-v116 {
+  display: none !important;
+}
+.signals-range-v117 + .signals-range-v117 {
+  display: none !important;
+}
+@media (max-width: 520px) {
+  .signals-range-v117 {
+    margin-top: 4px !important;
+    margin-bottom: 24px !important;
+  }
+}
+/* === V118 single signal range END === */
