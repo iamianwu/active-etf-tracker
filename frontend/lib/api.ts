@@ -833,6 +833,8 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
       signal_etf_count: includedEtfs.length,
       fetched_etf_count: todayEtfSet.size,
       total_etf_count: universeEtfs.length,
+      all_etf_codes: universeEtfs,
+      today_etf_codes: Array.from(todayEtfSet),
       today_etf_count: todayEtfSet.size,
       missing_today_etf_count: missingTodayEtfCodesForDisplay.length,
       missing_today_etf_codes: missingTodayEtfCodesForDisplay,

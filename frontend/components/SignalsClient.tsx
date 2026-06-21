@@ -398,6 +398,31 @@ function missingRowsOf(data: any): AnyRow[] {
     }
   }
 
+  for (const box of containers) {
+    const allCodes = box?.all_etf_codes || box?.allEtfCodes || box?.total_etf_codes || box?.totalEtfCodes;
+    const todayCodes = box?.today_etf_codes || box?.todayEtfCodes;
+
+    if (Array.isArray(allCodes) && allCodes.length && Array.isArray(todayCodes)) {
+      const todaySet = new Set(todayCodes.map((x: any) => String(x).trim()));
+      const missingCodes = allCodes
+        .map((x: any) => String(x).trim())
+        .filter((code: string) => code && !todaySet.has(code));
+
+      if (missingCodes.length) {
+        return missingCodes.map((code: string) => ({
+          etf_code: code,
+          etfCode: code,
+          code,
+          etf_name: '',
+          etfName: '',
+          latest_date: '',
+          latestDate: '',
+          status: '非今日資料',
+        }));
+      }
+    }
+  }
+
   return [];
 }
 
