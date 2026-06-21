@@ -11739,3 +11739,14 @@ html,body{max-width:100%;overflow-x:hidden;}
 [class*="limitBadge"] {
   display: none !important;
 }
+
+/* V124: hide empty limit badges after removing text */
+.v118-price em:empty,
+.v120-price em:empty,
+.signal-price-v114 em:empty,
+.signal-price-v117 em:empty,
+.limit-tag:empty,
+.limit-badge:empty,
+.limitBadge:empty {
+  display: none !important;
+}

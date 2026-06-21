@@ -468,7 +468,7 @@ function DetailRow({ row }: { row: AnyRow }) {
       <div className="v120-price">
         <b>{fmtPrice(p)}</b>
         <span className={tone(pct ?? 0)}>{fmtPct(pct)}</span>
-        {isLimitUp(row) && <em>漲停</em>}
+        {isLimitUp(row) && <em></em>}
       </div>
 
       <div className="v120-flow">
