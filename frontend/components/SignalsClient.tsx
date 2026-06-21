@@ -239,22 +239,35 @@ function sourcesFor(row: AnyRow, allSrc: AnyRow[]): AnyRow[] {
     });
 }
 
-function buySell(row: AnyRow, src: AnyRow[]): { buy: number; sell: number } {
+function buySell(row: AnyRow, src: AnyRow[], activeDays = 1): { buy: number; sell: number } {
   if (src.length) {
+    let rows = src;
+
+    // 今日頁只計算最新資料日，避免同一股票混入前幾日 ETF 異動
+    if (activeDays === 1) {
+      const dates = src
+        .map((s) => dateOf(s))
+        .filter((d) => d)
+        .sort();
+
+      if (dates.length) {
+        const latestDate = dates[dates.length - 1];
+        rows = src.filter((s) => dateOf(s) === latestDate);
+      }
+    }
+
     const buyEtfs = new Set<string>();
     const sellEtfs = new Set<string>();
 
-    for (const s of src) {
-      const etfCode = etfCodeOf(s);
-      if (!etfCode) continue;
+    for (const s of rows) {
+      const etf = etfCodeOf(s);
+      if (!etf) continue;
 
+      const st = statusOf(s);
       const lots = lotsOf(s);
-      const status = statusOf(s);
 
-      // 多空共識要算「不重複 ETF 檔數」，不能算資料列數。
-      // 例如同一檔 ETF 對同一股票出現多筆紀錄，也只計入一次。
-      if (lots > 0 || status === '新增' || status === '加碼') buyEtfs.add(etfCode);
-      if (lots < 0 || status === '刪除' || status === '減碼') sellEtfs.add(etfCode);
+      if (st === '新增' || st === '加碼' || lots > 0) buyEtfs.add(etf);
+      if (st === '刪除' || st === '減碼' || lots < 0) sellEtfs.add(etf);
     }
 
     return { buy: buyEtfs.size, sell: sellEtfs.size };
@@ -638,11 +651,11 @@ export default function SignalsClient(props: { data: any; activeDays?: number })
       .filter((r) => codeOf(r))
       .map((r) => {
         const src = sourcesFor(r, sourceRows);
-        return { ...r, __sources: src, __buySell: buySell(r, src) };
+        return { ...r, __sources: src, __buySell: buySell(r, src, activeDays) };
       });
 
     return base;
-  }, [data, sourceRows]);
+  }, [data, sourceRows, activeDays]);
 
   const counts = useMemo(() => {
     const out: Record<Status, number> = { 新增: 0, 刪除: 0, 加碼: 0, 減碼: 0 };
