@@ -11678,3 +11678,53 @@ html,body{max-width:100%;overflow-x:hidden;}
   }
 }
 
+
+/* V121 simple fix: focus card price layout + hide limit text */
+
+/* 上方四張卡片：股價和漲跌幅分成上下兩行 */
+.v118-focus-price,
+.v120-focus-price,
+.focus-price-line-v117 {
+  display: block !important;
+}
+
+.v118-focus-price strong,
+.v120-focus-price strong,
+.focus-price-line-v117 span {
+  display: block !important;
+  width: 100% !important;
+  font-size: 32px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+.v118-focus-price em,
+.v120-focus-price em,
+.focus-price-line-v117 b {
+  display: block !important;
+  margin-top: 6px !important;
+  font-size: 16px !important;
+  line-height: 1.1 !important;
+  white-space: nowrap !important;
+}
+
+/* 手機小螢幕再縮一點 */
+@media (max-width: 430px) {
+  .v118-focus-price strong,
+  .v120-focus-price strong,
+  .focus-price-line-v117 span {
+    font-size: 30px !important;
+  }
+
+  .v118-focus-price em,
+  .v120-focus-price em,
+  .focus-price-line-v117 b {
+    font-size: 15px !important;
+  }
+}
+
+/* 明細列：不要顯示「漲停 / 跌停」文字，只保留股價亮燈 */
+.limit-tag {
+  display: none !important;
+}
+
