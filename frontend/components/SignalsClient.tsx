@@ -245,7 +245,6 @@ function buySell(row: AnyRow, src: AnyRow[], activeDays = 1): { buy: number; sel
   if (src.length) {
     let rows = src;
 
-    // 今日頁只計算最新資料日，避免混入舊日期
     if (activeDays === 1) {
       const dates = src
         .map((s) => dateOf(s))
@@ -278,17 +277,13 @@ function buySell(row: AnyRow, src: AnyRow[], activeDays = 1): { buy: number; sel
       else if (lots < 0) decreaseEtfs.add(etf);
     }
 
-    // 新增/刪除列顯示 新增:刪除
     if (rowStatus === '新增' || rowStatus === '刪除') {
       return { buy: addEtfs.size, sell: deleteEtfs.size };
     }
 
-    // 加碼/減碼列顯示 加碼:減碼
-    // 這才是你說的多空共識，例如國巨 4:0
     return { buy: increaseEtfs.size, sell: decreaseEtfs.size };
   }
 
-  // 沒有 source rows 時，直接使用後端已經算好的加碼/減碼欄位
   if (rowStatus === '新增' || rowStatus === '刪除') {
     const add = firstNum(row, ['add_count', 'add_etf_count'], NaN);
     const del = firstNum(row, ['delete_count', 'delete_etf_count', 'remove_count'], NaN);
@@ -308,15 +303,6 @@ function buySell(row: AnyRow, src: AnyRow[], activeDays = 1): { buy: number; sel
     return {
       buy: Math.max(0, Math.round(Number.isFinite(inc) ? inc : 0)),
       sell: Math.max(0, Math.round(Number.isFinite(dec) ? dec : 0)),
-    };
-  }
-
-  const directBuy = firstNum(row, ['buy_count', 'buy_etf_count', 'add_etf_count'], NaN);
-  const directSell = firstNum(row, ['sell_count', 'sell_etf_count', 'reduce_etf_count'], NaN);
-  if (Number.isFinite(directBuy) || Number.isFinite(directSell)) {
-    return {
-      buy: Math.max(0, Math.round(Number.isFinite(directBuy) ? directBuy : 0)),
-      sell: Math.max(0, Math.round(Number.isFinite(directSell) ? directSell : 0)),
     };
   }
 
