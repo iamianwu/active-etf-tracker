@@ -224,6 +224,8 @@ function sourcesFor(row: AnyRow, allSrc: AnyRow[]): AnyRow[] {
     'operationRecords',
     'etf_changes',
     'etfChanges',
+    'changed_etfs',
+    'changedEtfs',
   ]);
 
   const global = allSrc.filter((r) => codeOf(r) === code);
@@ -239,54 +241,50 @@ function sourcesFor(row: AnyRow, allSrc: AnyRow[]): AnyRow[] {
     });
 }
 
-function buySell(row: AnyRow, src: AnyRow[], activeDays = 1): { buy: number; sell: number } {
+function buySell(row: AnyRow, src: AnyRow[]): { buy: number; sell: number } {
   const rowStatus = statusOf(row);
 
-  if (src.length) {
-    let rows = src;
-
-    if (activeDays === 1) {
-      const dates = src
-        .map((s) => dateOf(s))
-        .filter((d) => d)
-        .sort();
-
-      if (dates.length) {
-        const latestDate = dates[dates.length - 1];
-        rows = src.filter((s) => dateOf(s) === latestDate);
-      }
-    }
-
+  if (src.length && (rowStatus === '加碼' || rowStatus === '減碼')) {
     const addEtfs = new Set<string>();
-    const deleteEtfs = new Set<string>();
-    const increaseEtfs = new Set<string>();
-    const decreaseEtfs = new Set<string>();
+    const reduceEtfs = new Set<string>();
 
-    for (const s of rows) {
+    for (const s of src) {
       const etf = etfCodeOf(s);
       if (!etf) continue;
 
-      const st = statusOf(s);
-      const lots = lotsOf(s);
+      const deltaLots = firstNum(s, [
+        'delta_shares',
+        'delta_shares_lots',
+        'shares_change',
+        'change_lots',
+        'delta_lots',
+        'display_delta_lots',
+      ], NaN);
 
-      if (st === '新增') addEtfs.add(etf);
-      else if (st === '刪除') deleteEtfs.add(etf);
-      else if (st === '加碼') increaseEtfs.add(etf);
-      else if (st === '減碼') decreaseEtfs.add(etf);
-      else if (lots > 0) increaseEtfs.add(etf);
-      else if (lots < 0) decreaseEtfs.add(etf);
+      const deltaRaw = firstNum(s, [
+        'delta_raw_shares',
+        'deltaRawShares',
+        'raw_delta_shares',
+      ], NaN);
+
+      const delta = Number.isFinite(deltaLots)
+        ? deltaLots
+        : Number.isFinite(deltaRaw)
+          ? deltaRaw
+          : NaN;
+
+      if (!Number.isFinite(delta) || Math.abs(delta) < 0.001) continue;
+
+      if (delta > 0) addEtfs.add(etf);
+      if (delta < 0) reduceEtfs.add(etf);
     }
 
-    if (rowStatus === '新增' || rowStatus === '刪除') {
-      return { buy: addEtfs.size, sell: deleteEtfs.size };
-    }
-
-    return { buy: increaseEtfs.size, sell: decreaseEtfs.size };
+    return { buy: addEtfs.size, sell: reduceEtfs.size };
   }
 
   if (rowStatus === '新增' || rowStatus === '刪除') {
-    const add = firstNum(row, ['add_count', 'add_etf_count'], NaN);
-    const del = firstNum(row, ['delete_count', 'delete_etf_count', 'remove_count'], NaN);
+    const add = firstNum(row, ['add_count'], NaN);
+    const del = firstNum(row, ['delete_count', 'remove_count'], NaN);
 
     if (Number.isFinite(add) || Number.isFinite(del)) {
       return {
@@ -296,13 +294,30 @@ function buySell(row: AnyRow, src: AnyRow[], activeDays = 1): { buy: number; sel
     }
   }
 
-  const inc = firstNum(row, ['increase_count', 'increase_etf_count'], NaN);
-  const dec = firstNum(row, ['decrease_count', 'decrease_etf_count'], NaN);
+  if (src.length) {
+    const buyEtfs = new Set<string>();
+    const sellEtfs = new Set<string>();
 
-  if (Number.isFinite(inc) || Number.isFinite(dec)) {
+    for (const s of src) {
+      const etfCode = etfCodeOf(s);
+      if (!etfCode) continue;
+
+      const status = statusOf(s);
+      const lots = lotsOf(s);
+
+      if (lots > 0 || status === '新增' || status === '加碼') buyEtfs.add(etfCode);
+      if (lots < 0 || status === '刪除' || status === '減碼') sellEtfs.add(etfCode);
+    }
+
+    return { buy: buyEtfs.size, sell: sellEtfs.size };
+  }
+
+  const directBuy = firstNum(row, ['buy_count', 'buy_etf_count', 'add_etf_count', 'increase_count'], NaN);
+  const directSell = firstNum(row, ['sell_count', 'sell_etf_count', 'reduce_etf_count', 'decrease_count'], NaN);
+  if (Number.isFinite(directBuy) || Number.isFinite(directSell)) {
     return {
-      buy: Math.max(0, Math.round(Number.isFinite(inc) ? inc : 0)),
-      sell: Math.max(0, Math.round(Number.isFinite(dec) ? dec : 0)),
+      buy: Math.max(0, Math.round(Number.isFinite(directBuy) ? directBuy : 0)),
+      sell: Math.max(0, Math.round(Number.isFinite(directSell) ? directSell : 0)),
     };
   }
 
@@ -675,11 +690,11 @@ export default function SignalsClient(props: { data: any; activeDays?: number })
       .filter((r) => codeOf(r))
       .map((r) => {
         const src = sourcesFor(r, sourceRows);
-        return { ...r, __sources: src, __buySell: buySell(r, src, activeDays) };
+        return { ...r, __sources: src, __buySell: buySell(r, src) };
       });
 
     return base;
-  }, [data, sourceRows, activeDays]);
+  }, [data, sourceRows]);
 
   const counts = useMemo(() => {
     const out: Record<Status, number> = { 新增: 0, 刪除: 0, 加碼: 0, 減碼: 0 };

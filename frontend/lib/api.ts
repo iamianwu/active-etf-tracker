@@ -552,9 +552,7 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
     );
     const todayEtfSet = new Set(todayRowsAll.map((r: any) => codeKey(r.etf_code)).filter(Boolean));
 
-    const universeEtfs = totalEtfCodes.length
-      ? totalEtfCodes
-      : Array.from(todayEtfSet);
+    const universeEtfs = Array.from(new Set([...totalEtfCodes, ...Array.from(todayEtfSet)]));
 
     const missingTodayEtfCodes = universeEtfs.filter((c) => !todayEtfSet.has(c));
 
@@ -727,10 +725,10 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
         change_pct: n(q.change_pct),
         updated_at: q.updated_at || null,
         status,
-        buy_count: (s === '新增' || s === '刪除') ? g.add_count : g.increase_count,
-        sell_count: (s === '新增' || s === '刪除') ? g.delete_count : g.decrease_count,
-        add_etf_count: (s === '新增' || s === '刪除') ? g.add_count : g.increase_count,
-        reduce_etf_count: (s === '新增' || s === '刪除') ? g.delete_count : g.decrease_count,
+        buy_count: g.buy_etf_count,
+        sell_count: g.sell_etf_count,
+        add_etf_count: g.buy_etf_count,
+        reduce_etf_count: g.sell_etf_count,
         increase_etf_count: g.increase_count,
         decrease_etf_count: g.decrease_count,
         add_count: g.add_count,
@@ -750,9 +748,9 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
         delta_amount_billion: netAmountBillion,
         amount: netAmountBillion,
         abs_amount_billion: Math.abs(netAmountBillion),
-        consensus: `異動 ${(s === '新增' || s === '刪除') ? g.add_count : g.increase_count}:${(s === '新增' || s === '刪除') ? g.delete_count : g.decrease_count}`,
-        long_short_consensus: `異動 ${(s === '新增' || s === '刪除') ? g.add_count : g.increase_count}:${(s === '新增' || s === '刪除') ? g.delete_count : g.decrease_count}`,
-        buySellText: `異動 ${(s === '新增' || s === '刪除') ? g.add_count : g.increase_count}:${(s === '新增' || s === '刪除') ? g.delete_count : g.decrease_count}`,
+        consensus: `買賣檔數 ${g.buy_etf_count}:${g.sell_etf_count}`,
+        long_short_consensus: `買賣檔數 ${g.buy_etf_count}:${g.sell_etf_count}`,
+        buySellText: `買賣檔數 ${g.buy_etf_count}:${g.sell_etf_count}`,
         data_date: targetDate,
         target_data_date: targetDate,
         signal_range_days: signalRangeDays,
@@ -774,8 +772,8 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
 
     const positiveRows = rows.filter((r: any) => n(r.net_amount_billion) > 0).sort((a: any, b: any) => n(b.net_amount_billion) - n(a.net_amount_billion));
     const negativeRows = rows.filter((r: any) => n(r.net_amount_billion) < 0).sort((a: any, b: any) => n(a.net_amount_billion) - n(b.net_amount_billion));
-    const buyConsensusRows = rows.filter((r: any) => n(r.increase_count) > 0).sort((a: any, b: any) => n(b.increase_count) - n(a.increase_count) || n(b.net_amount_billion) - n(a.net_amount_billion));
-    const sellConsensusRows = rows.filter((r: any) => n(r.decrease_count) > 0).sort((a: any, b: any) => n(b.decrease_count) - n(a.decrease_count) || n(a.net_amount_billion) - n(b.net_amount_billion));
+    const buyConsensusRows = rows.filter((r: any) => n(r.buy_etf_count) > 0).sort((a: any, b: any) => n(b.buy_etf_count) - n(a.buy_etf_count) || n(b.net_amount_billion) - n(a.net_amount_billion));
+    const sellConsensusRows = rows.filter((r: any) => n(r.sell_etf_count) > 0).sort((a: any, b: any) => n(b.sell_etf_count) - n(a.sell_etf_count) || n(a.net_amount_billion) - n(b.net_amount_billion));
 
     const topInflow = positiveRows[0] || null;
     const topOutflow = negativeRows[0] || null;
