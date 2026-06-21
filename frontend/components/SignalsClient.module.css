@@ -1,0 +1,674 @@
+.page,
+.page * {
+  box-sizing: border-box;
+}
+
+.page {
+  --signal-blue: #2f6ecb;
+  --signal-red: #d95663;
+  --signal-green: #229b70;
+  --signal-text: #172033;
+  --signal-muted: #768297;
+  --signal-line: #e2e8f0;
+  width: min(100%, 900px);
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 22px 18px 88px;
+  overflow-x: clip;
+  color: var(--signal-text);
+  background: #fff;
+}
+
+.rangeSection {
+  margin-bottom: 28px;
+}
+
+.rangeSection > span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--signal-muted);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.rangeTabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: 100%;
+  padding: 5px;
+  border: 1px solid #dce4ee;
+  border-radius: 999px;
+  background: #edf2f8;
+}
+
+.rangeTabs a {
+  min-width: 0;
+  padding: 11px 4px;
+  border-radius: 999px;
+  color: #657386;
+  text-align: center;
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.rangeTabs a.activeRange {
+  color: var(--signal-blue);
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(30, 64, 120, .12);
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(32px, 5vw, 44px);
+  line-height: 1.05;
+  letter-spacing: -.035em;
+  font-weight: 950;
+}
+
+.dataQuality {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 14px;
+  margin-top: 9px;
+  color: var(--signal-muted);
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 800;
+}
+
+.dataQuality b {
+  color: var(--signal-text);
+}
+
+.dataQuality button {
+  border: 0;
+  border-bottom: 1px solid #8b671a;
+  padding: 0;
+  color: #8b671a;
+  background: transparent;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.focusGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 20px 0 32px;
+}
+
+.focusCard {
+  display: block;
+  min-width: 0;
+  min-height: 172px;
+  overflow: hidden;
+  border: 1px solid var(--signal-line);
+  border-radius: 16px;
+  padding: 13px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.focusPositive {
+  border-color: #f0cbd0;
+  background: #fff8f9;
+}
+
+.focusNegative {
+  border-color: #bee6d7;
+  background: #f3fff9;
+}
+
+.focusTitle {
+  display: block;
+  min-height: 2.3em;
+  font-size: 15px;
+  line-height: 1.15;
+  font-weight: 950;
+}
+
+.focusPositive .focusTitle { color: var(--signal-red); }
+.focusNegative .focusTitle { color: var(--signal-green); }
+
+.focusName {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 8px;
+}
+
+.focusName b {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--signal-text);
+  font-size: 18px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focusName span {
+  flex: 0 0 auto;
+  color: #8a96a8;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.focusPrice {
+  min-width: 0;
+  margin-top: 7px;
+}
+
+.focusPrice > b,
+.focusPrice > span {
+  display: block;
+  white-space: nowrap;
+}
+
+.focusPrice > b {
+  overflow: hidden;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: -.025em;
+  text-overflow: ellipsis;
+}
+
+.focusPrice > span {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.1;
+  font-weight: 900;
+}
+
+.focusMeta {
+  display: grid;
+  gap: 2px;
+  margin-top: 8px;
+  color: var(--signal-muted);
+  font-size: 12px;
+  line-height: 1.3;
+  font-weight: 800;
+}
+
+.focusMeta b {
+  font-size: inherit;
+}
+
+.noSignal {
+  display: block;
+  margin-top: 20px;
+  color: var(--signal-muted);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.detailSection {
+  min-width: 0;
+}
+
+.detailSection h2 {
+  margin: 0;
+  font-size: clamp(24px, 4vw, 32px);
+  line-height: 1.1;
+  letter-spacing: -.025em;
+  font-weight: 950;
+}
+
+.resultCount {
+  margin: 5px 0 12px;
+  color: var(--signal-muted);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.filterTabs,
+.sortTabs {
+  display: flex;
+  max-width: 100%;
+  gap: 7px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 1px 0 9px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.filterTabs::-webkit-scrollbar,
+.sortTabs::-webkit-scrollbar {
+  display: none;
+}
+
+.filterTabs button,
+.sortTabs button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 0 12px;
+  color: #64748b;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.filterTabs button.activeFilter,
+.sortTabs button.activeSort {
+  border-color: #bdd5fa;
+  color: var(--signal-blue);
+  background: #eff6ff;
+}
+
+.sortTabs button span {
+  margin-left: 2px;
+  font-size: 11px;
+}
+
+.table {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border-top: 1px solid var(--signal-line);
+}
+
+.tableHead,
+.tableRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, .8fr) minmax(0, 1.02fr) minmax(0, .98fr);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.tableHead {
+  min-height: 44px;
+  padding: 0 8px;
+  color: #657287;
+  background: #f1f4f8;
+  font-size: 13px;
+  line-height: 1.15;
+  font-weight: 900;
+}
+
+.tableHead span:nth-child(n + 3) {
+  text-align: right;
+}
+
+.tableRow {
+  min-height: 78px;
+  border-bottom: 1px solid var(--signal-line);
+  padding: 10px 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.tableRow:hover {
+  background: #f8fbff;
+}
+
+.targetCell,
+.priceCell,
+.flowCell,
+.statusCell {
+  min-width: 0;
+}
+
+.targetCell b {
+  display: block;
+  overflow: hidden;
+  font-size: 17px;
+  line-height: 1.1;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.targetCell span,
+.priceCell span,
+.flowCell span,
+.statusCell span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.15;
+  font-weight: 850;
+}
+
+.targetCell span {
+  color: #8a96a8;
+}
+
+.priceCell b {
+  display: inline-block;
+  max-width: none;
+  overflow: visible;
+  padding: 2px 0;
+  font-size: 17px;
+  line-height: 1;
+  letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.priceCell b.limitUp,
+.priceCell b.limitDown {
+  border-radius: 6px;
+  padding: 4px 6px;
+  color: #fff;
+}
+
+.priceCell b.limitUp { background: var(--signal-red); }
+.priceCell b.limitDown { background: var(--signal-green); }
+
+.flowCell,
+.statusCell {
+  text-align: right;
+}
+
+.flowCell b {
+  display: block;
+  overflow: hidden;
+  font-size: 16px;
+  line-height: 1.05;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.flowCell span {
+  white-space: nowrap;
+}
+
+.statusCell > b {
+  display: inline-flex;
+  min-width: 40px;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 7px;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.statusCell span {
+  overflow: hidden;
+  color: var(--signal-muted);
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.statusNew { color: #9e8808; background: #fff5c7; }
+.statusRemoved { color: #657080; background: #eef2f7; }
+.statusBuy { color: var(--signal-red); background: #ffecef; }
+.statusSell { color: var(--signal-green); background: #e8faf2; }
+
+.positive { color: var(--signal-red) !important; }
+.negative { color: var(--signal-green) !important; }
+.neutral { color: var(--signal-muted) !important; }
+
+.emptyState {
+  padding: 24px 8px;
+  color: var(--signal-muted);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: end center;
+  padding: 18px;
+  background: rgba(15, 23, 42, .46);
+}
+
+.modal {
+  position: relative;
+  width: min(100%, 460px);
+  max-height: 82vh;
+  overflow-y: auto;
+  border-radius: 22px;
+  padding: 22px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, .25);
+}
+
+.modalClose {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  color: #64748b;
+  background: #f1f5f9;
+  font-size: 27px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal h2 {
+  margin: 0 48px 8px 0;
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.modal p {
+  margin: 0;
+  color: #677489;
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 750;
+}
+
+.modalSummary {
+  display: block;
+  margin-top: 14px;
+  color: #8b671a;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.missingNotice {
+  margin-top: 14px;
+  border: 1px solid var(--signal-line);
+  border-radius: 14px;
+  padding: 13px;
+  color: #64748b;
+  background: #f8fafc;
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 800;
+}
+
+.missingList {
+  display: grid;
+  margin-top: 14px;
+}
+
+.missingRow {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  gap: 3px 9px;
+  border-bottom: 1px solid var(--signal-line);
+  padding: 9px 0;
+}
+
+.missingRow span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.missingRow small {
+  grid-column: 2;
+  color: #8b671a;
+}
+
+.modalConfirm {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 17px;
+  border: 0;
+  border-radius: 13px;
+  color: #fff;
+  background: var(--signal-blue);
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  .focusGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .focusTitle {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .page {
+    width: 100%;
+    padding: 16px 12px 76px;
+  }
+
+  .rangeSection {
+    margin-bottom: 22px;
+  }
+
+  .rangeTabs a {
+    padding: 10px 2px;
+    font-size: 15px;
+  }
+
+  .hero h1 {
+    font-size: 34px;
+  }
+
+  .dataQuality {
+    gap: 4px 10px;
+    font-size: 14px;
+  }
+
+  .focusGrid {
+    gap: 8px;
+    margin: 16px 0 28px;
+  }
+
+  .focusCard {
+    min-height: 170px;
+    border-radius: 14px;
+    padding: 11px;
+  }
+
+  .focusTitle {
+    font-size: 14px;
+  }
+
+  .focusName b {
+    font-size: 16px;
+  }
+
+  .focusPrice > b {
+    font-size: 22px;
+  }
+
+  .tableHead,
+  .tableRow {
+    grid-template-columns: minmax(0, 1.06fr) minmax(0, .78fr) minmax(0, 1.02fr) minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .tableHead {
+    min-height: 42px;
+    padding: 0 5px;
+    font-size: 11px;
+  }
+
+  .tableRow {
+    min-height: 74px;
+    padding: 9px 5px;
+  }
+
+  .targetCell b,
+  .priceCell b {
+    font-size: 15px;
+  }
+
+  .priceCell b.limitUp,
+  .priceCell b.limitDown {
+    padding: 4px;
+  }
+
+  .flowCell b {
+    font-size: 14px;
+  }
+
+  .targetCell span,
+  .priceCell span,
+  .flowCell span,
+  .statusCell span {
+    font-size: 10.5px;
+  }
+
+  .statusCell > b {
+    min-width: 36px;
+    padding: 0 5px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 350px) {
+  .page {
+    padding-right: 9px;
+    padding-left: 9px;
+  }
+
+  .focusCard {
+    padding: 9px;
+  }
+
+  .focusName b {
+    font-size: 15px;
+  }
+
+  .focusName span,
+  .focusMeta {
+    font-size: 10.5px;
+  }
+
+  .tableHead,
+  .tableRow {
+    gap: 4px;
+  }
+
+  .targetCell b,
+  .priceCell b {
+    font-size: 14px;
+  }
+
+  .flowCell b {
+    font-size: 13px;
+  }
+
+  .statusCell span {
+    font-size: 9.5px;
+  }
+}
