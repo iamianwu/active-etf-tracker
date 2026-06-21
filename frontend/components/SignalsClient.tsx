@@ -314,6 +314,7 @@ function buySell(row: AnyRow, src: AnyRow[]): { buy: number; sell: number } {
 
   const directBuy = firstNum(row, ['buy_count', 'buy_etf_count', 'add_etf_count', 'increase_count'], NaN);
   const directSell = firstNum(row, ['sell_count', 'sell_etf_count', 'reduce_etf_count', 'decrease_count'], NaN);
+
   if (Number.isFinite(directBuy) || Number.isFinite(directSell)) {
     return {
       buy: Math.max(0, Math.round(Number.isFinite(directBuy) ? directBuy : 0)),

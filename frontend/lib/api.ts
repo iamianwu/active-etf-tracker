@@ -576,7 +576,7 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
     const noCompareEtfCodes: string[] = [];
     const includedEtfs: string[] = [];
     for (const etf of universeEtfs) {
-      if (!todayEtfSet.has(etf)) continue;
+      if (!todayEtfSet.has(etf) && !Array.from(datesByEtf[etf] || []).includes(targetDate)) continue;
       const dates = datesByEtf[etf] || [];
       const idx = dates.indexOf(targetDate);
       const prevIdx = idx - signalRangeDays;
