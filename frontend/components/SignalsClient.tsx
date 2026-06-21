@@ -327,28 +327,48 @@ function getTodayEtfs(data: any, total: number): number {
 }
 
 function missingRowsOf(data: any): AnyRow[] {
-  const rows = arr(data, ['non_today_etfs', 'nonTodayEtfs', 'missing_etfs', 'missingEtfs', 'stale_etfs', 'staleEtfs']);
-  if (rows.length) return rows;
+  const containers = [data, data?.summary, data?.meta, data?.payload, data?.data].filter(Boolean);
 
-  const codeArrays = [
-    data?.missing_today_etf_codes,
-    data?.missingTodayEtfCodes,
-    data?.non_today_etf_codes,
-    data?.nonTodayEtfCodes,
-  ];
+  for (const box of containers) {
+    const rows = arr(box, ['non_today_etfs', 'nonTodayEtfs', 'missing_etfs', 'missingEtfs', 'stale_etfs', 'staleEtfs']);
+    if (rows.length) {
+      return rows.map((x: any) => typeof x === 'string'
+        ? {
+            etf_code: String(x),
+            etfCode: String(x),
+            code: String(x),
+            etf_name: '',
+            etfName: '',
+            latest_date: '',
+            latestDate: '',
+            status: '非今日資料',
+          }
+        : x
+      );
+    }
+  }
 
-  for (const arr of codeArrays) {
-    if (Array.isArray(arr) && arr.length) {
-      return arr.map((code: any) => ({
-        etf_code: String(code),
-        etfCode: String(code),
-        code: String(code),
-        etf_name: '',
-        etfName: '',
-        latest_date: '',
-        latestDate: '',
-        status: '非今日資料',
-      }));
+  for (const box of containers) {
+    const codeArrays = [
+      box?.missing_today_etf_codes,
+      box?.missingTodayEtfCodes,
+      box?.non_today_etf_codes,
+      box?.nonTodayEtfCodes,
+    ];
+
+    for (const codeList of codeArrays) {
+      if (Array.isArray(codeList) && codeList.length) {
+        return codeList.map((code: any) => ({
+          etf_code: String(code),
+          etfCode: String(code),
+          code: String(code),
+          etf_name: '',
+          etfName: '',
+          latest_date: '',
+          latestDate: '',
+          status: '非今日資料',
+        }));
+      }
     }
   }
 
