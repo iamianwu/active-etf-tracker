@@ -788,6 +788,19 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
       decrease: rows.filter((r: any) => r.status === '減碼').length,
     };
 
+
+    const missingTodayEtfCodesForDisplay = (
+      Array.isArray(missingTodayEtfCodes) && missingTodayEtfCodes.length
+        ? missingTodayEtfCodes
+        : universeEtfs
+            .map((x: any) => String(
+              typeof x === 'string'
+                ? x
+                : (x?.etf_code ?? x?.etfCode ?? x?.code ?? x?.fund_code ?? '')
+            ).trim())
+            .filter((code: string) => code && !todayEtfSet.has(code))
+    );
+
     const meta = {
       data_date: targetDate,
       target_data_date: targetDate,
@@ -802,12 +815,12 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
       fetched_etf_count: todayEtfSet.size,
       total_etf_count: universeEtfs.length,
       today_etf_count: todayEtfSet.size,
-      missing_today_etf_count: missingTodayEtfCodes.length,
-      missing_today_etf_codes: missingTodayEtfCodes,
+      missing_today_etf_count: missingTodayEtfCodesForDisplay.length,
+      missing_today_etf_codes: missingTodayEtfCodesForDisplay,
       no_compare_etf_count: noCompareEtfCodes.length,
       excluded_compare_etf_count: Math.max(0, universeEtfs.length - includedEtfs.length),
-      non_today_etf_count: missingTodayEtfCodes.length,
-      non_today_etfs: missingTodayEtfCodes.map((code: any) => ({
+      non_today_etf_count: missingTodayEtfCodesForDisplay.length,
+      non_today_etfs: missingTodayEtfCodesForDisplay.map((code: any) => ({
         etf_code: String(code),
         etfCode: String(code),
         code: String(code),
@@ -817,7 +830,7 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
         latestDate: '',
         status: '非今日資料',
       })),
-      missing_etfs: missingTodayEtfCodes.map((code: any) => ({
+      missing_etfs: missingTodayEtfCodesForDisplay.map((code: any) => ({
         etf_code: String(code),
         code: String(code),
         etf_name: '',
@@ -830,7 +843,7 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
       signal_count: rows.length,
       today_change_count: rows.length,
       source: 'api_getSignals_v109_today_only_global_date',
-      data_note: `今日有資料 ${todayEtfSet.size}/${universeEtfs.length} 檔 ETF；可計算訊號 ${includedEtfs.length} 檔；未納入 ${Math.max(0, universeEtfs.length - includedEtfs.length)} 檔（${missingTodayEtfCodes.length} 檔非今日資料、${noCompareEtfCodes.length} 檔缺前日比較）。`,
+      data_note: `今日有資料 ${todayEtfSet.size}/${universeEtfs.length} 檔 ETF；可計算訊號 ${includedEtfs.length} 檔；未納入 ${Math.max(0, universeEtfs.length - includedEtfs.length)} 檔（${missingTodayEtfCodesForDisplay.length} 檔非今日資料、${noCompareEtfCodes.length} 檔缺前日比較）。`,
     };
 
     return {
