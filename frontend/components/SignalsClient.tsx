@@ -240,10 +240,12 @@ function sourcesFor(row: AnyRow, allSrc: AnyRow[]): AnyRow[] {
 }
 
 function buySell(row: AnyRow, src: AnyRow[], activeDays = 1): { buy: number; sell: number } {
+  const rowStatus = statusOf(row);
+
   if (src.length) {
     let rows = src;
 
-    // 今日頁只計算最新資料日，避免同一股票混入前幾日 ETF 異動
+    // 今日頁只計算最新資料日，避免混入舊日期
     if (activeDays === 1) {
       const dates = src
         .map((s) => dateOf(s))
@@ -256,8 +258,10 @@ function buySell(row: AnyRow, src: AnyRow[], activeDays = 1): { buy: number; sel
       }
     }
 
-    const buyEtfs = new Set<string>();
-    const sellEtfs = new Set<string>();
+    const addEtfs = new Set<string>();
+    const deleteEtfs = new Set<string>();
+    const increaseEtfs = new Set<string>();
+    const decreaseEtfs = new Set<string>();
 
     for (const s of rows) {
       const etf = etfCodeOf(s);
@@ -266,15 +270,49 @@ function buySell(row: AnyRow, src: AnyRow[], activeDays = 1): { buy: number; sel
       const st = statusOf(s);
       const lots = lotsOf(s);
 
-      if (st === '新增' || st === '加碼' || lots > 0) buyEtfs.add(etf);
-      if (st === '刪除' || st === '減碼' || lots < 0) sellEtfs.add(etf);
+      if (st === '新增') addEtfs.add(etf);
+      else if (st === '刪除') deleteEtfs.add(etf);
+      else if (st === '加碼') increaseEtfs.add(etf);
+      else if (st === '減碼') decreaseEtfs.add(etf);
+      else if (lots > 0) increaseEtfs.add(etf);
+      else if (lots < 0) decreaseEtfs.add(etf);
     }
 
-    return { buy: buyEtfs.size, sell: sellEtfs.size };
+    // 新增/刪除列顯示 新增:刪除
+    if (rowStatus === '新增' || rowStatus === '刪除') {
+      return { buy: addEtfs.size, sell: deleteEtfs.size };
+    }
+
+    // 加碼/減碼列顯示 加碼:減碼
+    // 這才是你說的多空共識，例如國巨 4:0
+    return { buy: increaseEtfs.size, sell: decreaseEtfs.size };
   }
 
-  const directBuy = firstNum(row, ['buy_count', 'buy_etf_count', 'add_etf_count', 'increase_count'], NaN);
-  const directSell = firstNum(row, ['sell_count', 'sell_etf_count', 'reduce_etf_count', 'decrease_count'], NaN);
+  // 沒有 source rows 時，直接使用後端已經算好的加碼/減碼欄位
+  if (rowStatus === '新增' || rowStatus === '刪除') {
+    const add = firstNum(row, ['add_count', 'add_etf_count'], NaN);
+    const del = firstNum(row, ['delete_count', 'delete_etf_count', 'remove_count'], NaN);
+
+    if (Number.isFinite(add) || Number.isFinite(del)) {
+      return {
+        buy: Math.max(0, Math.round(Number.isFinite(add) ? add : 0)),
+        sell: Math.max(0, Math.round(Number.isFinite(del) ? del : 0)),
+      };
+    }
+  }
+
+  const inc = firstNum(row, ['increase_count', 'increase_etf_count'], NaN);
+  const dec = firstNum(row, ['decrease_count', 'decrease_etf_count'], NaN);
+
+  if (Number.isFinite(inc) || Number.isFinite(dec)) {
+    return {
+      buy: Math.max(0, Math.round(Number.isFinite(inc) ? inc : 0)),
+      sell: Math.max(0, Math.round(Number.isFinite(dec) ? dec : 0)),
+    };
+  }
+
+  const directBuy = firstNum(row, ['buy_count', 'buy_etf_count', 'add_etf_count'], NaN);
+  const directSell = firstNum(row, ['sell_count', 'sell_etf_count', 'reduce_etf_count'], NaN);
   if (Number.isFinite(directBuy) || Number.isFinite(directSell)) {
     return {
       buy: Math.max(0, Math.round(Number.isFinite(directBuy) ? directBuy : 0)),
