@@ -327,7 +327,7 @@ function getTodayEtfs(data: any, total: number): number {
 }
 
 function missingRowsOf(data: any): AnyRow[] {
-  const rows = arrayFrom(data, ['non_today_etfs', 'nonTodayEtfs', 'missing_etfs', 'missingEtfs', 'stale_etfs', 'staleEtfs']);
+  const rows = arr(data, ['non_today_etfs', 'nonTodayEtfs', 'missing_etfs', 'missingEtfs', 'stale_etfs', 'staleEtfs']);
   if (rows.length) return rows;
 
   const codeArrays = [
