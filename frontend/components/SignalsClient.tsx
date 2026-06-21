@@ -327,7 +327,32 @@ function getTodayEtfs(data: any, total: number): number {
 }
 
 function missingRowsOf(data: any): AnyRow[] {
-  return arr(data, ['non_today_etfs', 'nonTodayEtfs', 'missing_etfs', 'missingEtfs', 'stale_etfs', 'staleEtfs']);
+  const rows = arrayFrom(data, ['non_today_etfs', 'nonTodayEtfs', 'missing_etfs', 'missingEtfs', 'stale_etfs', 'staleEtfs']);
+  if (rows.length) return rows;
+
+  const codeArrays = [
+    data?.missing_today_etf_codes,
+    data?.missingTodayEtfCodes,
+    data?.non_today_etf_codes,
+    data?.nonTodayEtfCodes,
+  ];
+
+  for (const arr of codeArrays) {
+    if (Array.isArray(arr) && arr.length) {
+      return arr.map((code: any) => ({
+        etf_code: String(code),
+        etfCode: String(code),
+        code: String(code),
+        etf_name: '',
+        etfName: '',
+        latest_date: '',
+        latestDate: '',
+        status: '非今日資料',
+      }));
+    }
+  }
+
+  return [];
 }
 
 function sortRows(rows: AnyRow[], key: SortKey): AnyRow[] {
