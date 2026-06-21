@@ -241,14 +241,23 @@ function sourcesFor(row: AnyRow, allSrc: AnyRow[]): AnyRow[] {
 
 function buySell(row: AnyRow, src: AnyRow[]): { buy: number; sell: number } {
   if (src.length) {
-    let buy = 0;
-    let sell = 0;
+    const buyEtfs = new Set<string>();
+    const sellEtfs = new Set<string>();
+
     for (const s of src) {
+      const etfCode = etfCodeOf(s);
+      if (!etfCode) continue;
+
       const lots = lotsOf(s);
-      if (lots > 0) buy += 1;
-      if (lots < 0) sell += 1;
+      const status = statusOf(s);
+
+      // 多空共識要算「不重複 ETF 檔數」，不能算資料列數。
+      // 例如同一檔 ETF 對同一股票出現多筆紀錄，也只計入一次。
+      if (lots > 0 || status === '新增' || status === '加碼') buyEtfs.add(etfCode);
+      if (lots < 0 || status === '刪除' || status === '減碼') sellEtfs.add(etfCode);
     }
-    return { buy, sell };
+
+    return { buy: buyEtfs.size, sell: sellEtfs.size };
   }
 
   const directBuy = firstNum(row, ['buy_count', 'buy_etf_count', 'add_etf_count', 'increase_count'], NaN);
