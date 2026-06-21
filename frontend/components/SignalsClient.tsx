@@ -327,12 +327,26 @@ function getTodayEtfs(data: any, total: number): number {
 }
 
 function missingRowsOf(data: any): AnyRow[] {
+  const dedupeRows = (rows: AnyRow[]): AnyRow[] => {
+    const seen = new Set<string>();
+    const out: AnyRow[] = [];
+
+    for (const r of rows) {
+      const code = etfCodeOf(r) || codeOf(r);
+      if (!code || seen.has(code)) continue;
+      seen.add(code);
+      out.push(r);
+    }
+
+    return out;
+  };
+
   const containers = [data, data?.summary, data?.meta, data?.payload, data?.data].filter(Boolean);
 
   for (const box of containers) {
     const rows = arr(box, ['non_today_etfs', 'nonTodayEtfs', 'missing_etfs', 'missingEtfs', 'stale_etfs', 'staleEtfs']);
     if (rows.length) {
-      return rows.map((x: any) => typeof x === 'string'
+      return dedupeRows(rows.map((x: any) => typeof x === 'string'
         ? {
             etf_code: String(x),
             etfCode: String(x),
@@ -344,7 +358,7 @@ function missingRowsOf(data: any): AnyRow[] {
             status: '非今日資料',
           }
         : x
-      );
+      ));
     }
   }
 
@@ -358,7 +372,7 @@ function missingRowsOf(data: any): AnyRow[] {
 
     for (const codeList of codeArrays) {
       if (Array.isArray(codeList) && codeList.length) {
-        return codeList.map((code: any) => ({
+        return dedupeRows(codeList.map((code: any) => ({
           etf_code: String(code),
           etfCode: String(code),
           code: String(code),
@@ -367,7 +381,7 @@ function missingRowsOf(data: any): AnyRow[] {
           latest_date: '',
           latestDate: '',
           status: '非今日資料',
-        }));
+        })));
       }
     }
   }
@@ -381,7 +395,7 @@ function missingRowsOf(data: any): AnyRow[] {
     ].find((v: any) => typeof v === 'string' && v.trim());
 
     if (text) {
-      return String(text)
+      return dedupeRows(String(text)
         .split(/[，,\s]+/)
         .map((x) => x.trim())
         .filter(Boolean)
@@ -394,7 +408,7 @@ function missingRowsOf(data: any): AnyRow[] {
           latest_date: '',
           latestDate: '',
           status: '非今日資料',
-        }));
+        })));
     }
   }
 
@@ -525,8 +539,8 @@ function MissingModal({ data, onClose }: { data: any; onClose: () => void }) {
             {rows.map((r, i) => (
               <div className="v120-missing-row" key={`${etfCodeOf(r) || i}`}>
                 <b>{etfCodeOf(r)}</b>
-                <span>{etfNameOf(r)}</span>
-                <em>{dateOf(r) ? `最後資料 ${mmdd(dateOf(r))}` : '尚無日期'}</em>
+                {etfNameOf(r) && etfNameOf(r) !== etfCodeOf(r) ? <span>{etfNameOf(r)}</span> : null}
+                {dateOf(r) ? <em>最後資料 {mmdd(dateOf(r))}</em> : null}
               </div>
             ))}
           </div>
