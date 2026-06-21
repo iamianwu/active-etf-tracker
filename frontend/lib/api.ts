@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { ETF_CODES } from './etfData';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -500,9 +501,11 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
   };
   const isTwStockCode = (v: any) => /^[0-9]{4}$/.test(String(v ?? '').trim());
   const codeKey = (v: any) => String(v ?? '').trim();
-  const totalEtfCodes: string[] = (typeof ETF_CODES !== 'undefined' && Array.isArray(ETF_CODES))
-    ? ETF_CODES.map(String)
-    : [];
+  const totalEtfCodes: string[] = Array.from(new Set(
+    (Array.isArray(ETF_CODES) ? ETF_CODES : [])
+      .map((x: any) => codeKey(x))
+      .filter(Boolean)
+  ));
   const signalRangeDays = Math.max(1, Math.trunc(n(signalRangeDaysInput || 1)) || 1);
   const pageSize = 1000;
 
