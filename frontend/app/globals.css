@@ -11728,14 +11728,3 @@ html,body{max-width:100%;overflow-x:hidden;}
   display: none !important;
 }
 
-
-/* V122: hide limit text badges in signal rows */
-.limit-tag,
-.limit-badge,
-.limitBadge,
-.signal-limit-tag,
-.signal-limit-badge,
-[class*="limitTag"],
-[class*="limitBadge"] {
-  display: none !important;
-}
