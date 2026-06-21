@@ -439,7 +439,27 @@ function MissingModal({ data, onClose }: { data: any; onClose: () => void }) {
   const total = getTotalEtfs(data);
   const today = getTodayEtfs(data, total);
   const missing = Math.max(0, total - today);
-  const rows = missingRowsOf(data);
+  const rows0 = missingRowsOf(data);
+
+  const fallbackCodes =
+    (Array.isArray(data?.missing_today_etf_codes) && data.missing_today_etf_codes.length ? data.missing_today_etf_codes : null) ||
+    (Array.isArray(data?.missingTodayEtfCodes) && data.missingTodayEtfCodes.length ? data.missingTodayEtfCodes : null) ||
+    (Array.isArray(data?.summary?.missing_today_etf_codes) && data.summary.missing_today_etf_codes.length ? data.summary.missing_today_etf_codes : null) ||
+    (Array.isArray(data?.summary?.missingTodayEtfCodes) && data.summary.missingTodayEtfCodes.length ? data.summary.missingTodayEtfCodes : null) ||
+    [];
+
+  const rows = rows0.length
+    ? rows0
+    : fallbackCodes.map((code: any) => ({
+        etf_code: String(code),
+        etfCode: String(code),
+        code: String(code),
+        etf_name: '',
+        etfName: '',
+        latest_date: '',
+        latestDate: '',
+        status: '非今日資料',
+      }));
 
   return (
     <div className="v120-modal-mask" onClick={onClose}>
@@ -461,7 +481,7 @@ function MissingModal({ data, onClose }: { data: any; onClose: () => void }) {
           </div>
         ) : (
           <div className="v120-modal-note">
-            目前 API 只回傳「未更新數量」，尚未回傳 ETF 代號清單，所以這裡不再顯示 ETF 1、ETF 2 這種假資料。
+            目前前端仍未取得 ETF 代號清單，請稍後重新整理。
           </div>
         )}
 
