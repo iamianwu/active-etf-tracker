@@ -789,17 +789,36 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
     };
 
 
-    const missingTodayEtfCodesForDisplay = (
-      Array.isArray(missingTodayEtfCodes) && missingTodayEtfCodes.length
-        ? missingTodayEtfCodes
-        : universeEtfs
-            .map((x: any) => String(
-              typeof x === 'string'
-                ? x
-                : (x?.etf_code ?? x?.etfCode ?? x?.code ?? x?.fund_code ?? '')
-            ).trim())
-            .filter((code: string) => code && !todayEtfSet.has(code))
+    const normalizeEtfCodeForDisplay = (x: any): string => {
+      const raw = typeof x === 'string'
+        ? x
+        : (x?.etf_code ?? x?.etfCode ?? x?.code ?? x?.fund_code ?? x?.fundCode ?? x?.symbol ?? '');
+      return String(raw).trim().toUpperCase();
+    };
+
+    const universeEtfCodesForDisplay = Array.from(new Set(
+      (Array.isArray(universeEtfs) ? universeEtfs : [])
+        .map(normalizeEtfCodeForDisplay)
+        .filter(Boolean)
+    ));
+
+    const todayEtfCodesForDisplay = new Set(
+      Array.from(todayEtfSet ?? [])
+        .map(normalizeEtfCodeForDisplay)
+        .filter(Boolean)
     );
+
+    const explicitMissingCodesForDisplay = (Array.isArray(missingTodayEtfCodes) ? missingTodayEtfCodes : [])
+      .map(normalizeEtfCodeForDisplay)
+      .filter(Boolean);
+
+    const calculatedMissingCodesForDisplay = universeEtfCodesForDisplay
+      .filter((code: string) => code && !todayEtfCodesForDisplay.has(code));
+
+    const missingTodayEtfCodesForDisplay = Array.from(new Set([
+      ...explicitMissingCodesForDisplay,
+      ...calculatedMissingCodesForDisplay,
+    ]));
 
     const meta = {
       data_date: targetDate,
