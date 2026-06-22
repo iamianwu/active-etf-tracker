@@ -692,6 +692,7 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
     }
 
     const stockCodes = Object.keys(agg);
+
     const quoteRows = stockCodes.length
       ? await selectAll(
           'stock_quotes',
@@ -699,16 +700,106 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
           (q) => q.in('stock_code', stockCodes)
         )
       : [];
+
     const quoteByCode: Record<string, any> = {};
     for (const q of quoteRows) quoteByCode[codeKey(q.stock_code)] = q;
 
+    let targetPriceRows: any[] = [];
+    try {
+      targetPriceRows = stockCodes.length
+        ? await selectAll(
+            'stock_price_history',
+            'stock_code,trade_date,stock_name,close,change,change_pct,volume,amount,source,updated_at',
+            (q) => q
+              .in('stock_code', stockCodes)
+              .eq('trade_date', targetDate)
+          )
+        : [];
+    } catch (e) {
+      console.warn('[signals] stock_price_history unavailable:', e);
+      targetPriceRows = [];
+    }
+
+    const targetPriceByCode: Record<string, any> = {};
+    for (const h of targetPriceRows) {
+      const code = codeKey(h.stock_code);
+      if (code) targetPriceByCode[code] = h;
+    }
+
+    let historyQuoteRows: any[] = [];
+    try {
+      historyQuoteRows = stockCodes.length
+        ? await selectAll(
+            'stock_price_history',
+            'stock_code,trade_date,close,change_pct,volume',
+            (q) => q
+              .in('stock_code', stockCodes)
+              .lte('trade_date', targetDate)
+              .order('trade_date', { ascending: false })
+          )
+        : [];
+    } catch (e) {
+      console.warn('[signals] stock_price_history fallback failed:', e);
+      historyQuoteRows = [];
+    }
+
+    const historyQuoteByCode: Record<string, any> = {};
+    for (const h of historyQuoteRows) {
+      const code = codeKey(h.stock_code);
+      const d = toDate(h.trade_date);
+      if (!code || !d) continue;
+      const old = historyQuoteByCode[code];
+      if (!old || d > toDate(old.trade_date)) historyQuoteByCode[code] = h;
+    }
+
+    for (const code of stockCodes) {
+      const h = historyQuoteByCode[code];
+      if (!h) continue;
+      const q = quoteByCode[code] || {};
+      quoteByCode[code] = {
+        ...q,
+        price: h.close,
+        change_pct: h.change_pct,
+        volume: h.volume ?? q.volume,
+        updated_at: h.trade_date ?? q.updated_at,
+        quote_source: 'stock_price_history',
+      };
+    }
+
     let rows = Object.values(agg).map((g: any) => {
-      const q = quoteByCode[g.stock_code] || {};
-      const price = n(q.price);
+      const historyQ = targetPriceByCode[g.stock_code];
+      const rawQ = quoteByCode[g.stock_code] || {};
+
+      const quoteTradeDate = toDate(rawQ.trade_date || '');
+      const quoteDateOk = quoteTradeDate === targetDate;
+
+      const historyTradeDate = toDate(historyQ?.trade_date || '');
+      const historyDateOk = historyTradeDate === targetDate;
+
+      const q = historyDateOk
+        ? {
+            ...rawQ,
+            stock_name: historyQ.stock_name || rawQ.stock_name || g.stock_name,
+            price: historyQ.close,
+            change: historyQ.change,
+            change_pct: historyQ.change_pct,
+            volume: historyQ.volume ?? rawQ.volume,
+            amount: historyQ.amount ?? rawQ.amount,
+            trade_date: historyQ.trade_date,
+            updated_at: historyQ.updated_at || historyQ.trade_date,
+            source: historyQ.source || 'stock_price_history',
+            quote_source: 'stock_price_history',
+          }
+        : quoteDateOk
+          ? rawQ
+          : { stock_name: rawQ.stock_name || g.stock_name };
+
+      const priceDateOk = historyDateOk || quoteDateOk;
+      const price = n(q.price, NaN);
       const deltaLots = g.delta_raw_shares / 1000;
       const currLots = g.curr_raw_shares / 1000;
       const prevLots = g.prev_raw_shares / 1000;
-      const netAmountBillion = price ? (g.delta_raw_shares * price / 100000000) : 0;
+      const netAmountBillion = Number.isFinite(price) && price ? (g.delta_raw_shares * price / 100000000) : 0;
       let status = '';
       if (prevLots <= 0 && currLots > 0) status = '新增';
       else if (currLots <= 0 && prevLots > 0) status = '刪除';
@@ -721,9 +812,12 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
         stock_name: String(q.stock_name || g.stock_name || ''),
         name: String(q.stock_name || g.stock_name || ''),
         price,
-        change: n(q.change),
-        change_pct: n(q.change_pct),
-        updated_at: q.updated_at || null,
+        change: Number.isFinite(n(q.change, NaN)) ? n(q.change, NaN) : null,
+        change_pct: Number.isFinite(n(q.change_pct, NaN)) ? n(q.change_pct, NaN) : null,
+        updated_at: q.trade_date || q.updated_at || null,
+        quote_trade_date: q.trade_date || rawQ.trade_date || null,
+        quote_source: q.quote_source || q.source || rawQ.source || null,
+        quote_stale: !priceDateOk,
         status,
         buy_count: g.buy_etf_count,
         sell_count: g.sell_etf_count,
