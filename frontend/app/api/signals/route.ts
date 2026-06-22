@@ -1,11 +1,30 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { apiGet } from '@/lib/api';
-
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 function one(v: string | null): string {
   return v || '';
+}
+
+function cacheHeaders(data: any, fresh: string) {
+  const headers = new Headers();
+
+  headers.set('Content-Type', 'application/json; charset=utf-8');
+  headers.set('X-API-Route-Version', 'signals-cdn-v2');
+  headers.set('X-Signals-Cache-Hit', String(Boolean(data?.cache_hit)));
+  headers.set('X-Signals-Cache-Mode', String(data?.cache_mode || ''));
+  headers.set('X-Signals-Data-Date', String(data?.data_date || ''));
+
+  if (fresh) {
+    headers.set('Cache-Control', 'no-store');
+    headers.set('CDN-Cache-Control', 'no-store');
+    headers.set('Vercel-CDN-Cache-Control', 'no-store');
+  } else {
+    headers.set('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600');
+    headers.set('CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
+    headers.set('Vercel-CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
+  }
+
+  return headers;
 }
 
 export async function GET(req: NextRequest) {
@@ -20,17 +39,8 @@ export async function GET(req: NextRequest) {
 
   const data = await apiGet(`/signals?${qs.toString()}`);
 
-  const res = NextResponse.json(data);
-
-  if (fresh) {
-    res.headers.set('Cache-Control', 'no-store');
-  } else {
-    res.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
-  }
-
-  res.headers.set('X-Signals-Cache-Hit', String(Boolean(data?.cache_hit)));
-  res.headers.set('X-Signals-Cache-Mode', String(data?.cache_mode || ''));
-  res.headers.set('X-Signals-Data-Date', String(data?.data_date || ''));
-
-  return res;
+  return new Response(JSON.stringify(data), {
+    status: 200,
+    headers: cacheHeaders(data, fresh),
+  });
 }
