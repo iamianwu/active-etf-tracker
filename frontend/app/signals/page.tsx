@@ -1,8 +1,9 @@
+import { unstable_cache } from 'next/cache';
 import { apiGet } from '@/lib/api';
 import SignalsClient from '@/components/SignalsClient';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 300;
 
 type SearchParams = {
   days?: string | string[];
@@ -20,8 +21,19 @@ function normalizeSignalDays(searchParams?: SearchParams): number {
   return [1, 5, 10, 20].includes(n) ? n : 1;
 }
 
+const getCachedSignals = unstable_cache(
+  async (days: number) => {
+    return apiGet(`/signals?days=${days}`);
+  },
+  ['signals-page-data-v1'],
+  {
+    revalidate: 300,
+    tags: ['signals-page-data'],
+  }
+);
+
 export default async function Page({ searchParams }: { searchParams?: SearchParams }) {
   const days = normalizeSignalDays(searchParams);
-  const data = await apiGet(`/signals?days=${days}`);
+  const data = await getCachedSignals(days);
   return <SignalsClient data={data} activeDays={days} />;
 }
