@@ -1097,6 +1097,38 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
 
 
 
+
+async function readLatestSignalsCache(signalType: string | null | undefined, days: number) {
+  const type = String(signalType || '');
+
+  const { data, error } = await supabase
+    .from('signals_cache')
+    .select('cache_key,data_date,holdings_row_count,days,signal_type,payload,updated_at')
+    .eq('days', days)
+    .eq('signal_type', type)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    const msg = String(error.message || '');
+    if (msg.includes('Could not find the table') || msg.includes('does not exist')) return null;
+    console.warn('[signals_cache] latest read failed:', msg);
+    return null;
+  }
+
+  if (!data?.payload) return null;
+
+  return {
+    ...data.payload,
+    cache_hit: true,
+    cache_mode: 'latest',
+    cache_key: data.cache_key,
+    cache_updated_at: data.updated_at,
+  };
+}
+
+
 export async function apiGet(path: string) {
   const u = new URL(path, "https://local");
 
@@ -1124,6 +1156,11 @@ export async function apiGet(path: string) {
     const fresh = ["1", "true", "yes"].includes(String(u.searchParams.get("fresh") || "").toLowerCase());
 
     try {
+      if (!fresh) {
+        const latestCached = await readLatestSignalsCache(signalType, days);
+        if (latestCached) return latestCached;
+      }
+
       const scope = await getSignalsCacheScope();
 
       if (!fresh) {
