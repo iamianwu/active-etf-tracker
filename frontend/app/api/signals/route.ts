@@ -19,5 +19,18 @@ export async function GET(req: NextRequest) {
   if (fresh) qs.set('fresh', fresh);
 
   const data = await apiGet(`/signals?${qs.toString()}`);
-  return NextResponse.json(data);
+
+  const res = NextResponse.json(data);
+
+  if (fresh) {
+    res.headers.set('Cache-Control', 'no-store');
+  } else {
+    res.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
+  }
+
+  res.headers.set('X-Signals-Cache-Hit', String(Boolean(data?.cache_hit)));
+  res.headers.set('X-Signals-Cache-Mode', String(data?.cache_mode || ''));
+  res.headers.set('X-Signals-Data-Date', String(data?.data_date || ''));
+
+  return res;
 }
