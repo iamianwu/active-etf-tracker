@@ -273,7 +273,7 @@ function stockOpNum(v: any): number {
 function stockOpLotsFromAny(v: any): number {
   const n = stockOpNum(v);
   if (!Number.isFinite(n)) return NaN;
-  return Math.abs(n) >= 100000 ? n / 1000 : n;
+  return Math.abs(n) >= 10000 ? n / 1000 : n;
 }
 
 function stockOpDate(r: any): string {
@@ -331,24 +331,95 @@ function stockOpFormatPct(v: number): string {
   return `${v > 0 ? '+' : '-'}${text}%`;
 }
 
+function stockOpRawShares(r: any): number {
+  const raw = stockOpNum(stockOpPick(r, [
+    'shares',
+    'raw_shares',
+    'current_raw_shares',
+    'curr_raw_shares',
+    'position_shares',
+  ]));
+
+  if (Number.isFinite(raw)) return raw;
+
+  const lots = stockOpNum(stockOpPick(r, [
+    'shares_lots',
+    'lots',
+    'holding_lots',
+    'quantity',
+    'qty',
+    'position_lots',
+  ]));
+
+  return Number.isFinite(lots) ? lots * 1000 : NaN;
+}
+
 function buildStockRecentOperationRows(data: any, etfRows: any[]) {
   data = data?.data || data;
   etfRows = Array.isArray(etfRows) ? etfRows : (Array.isArray(etfRows?.etfRows) ? etfRows.etfRows : []);
   const etfMap: Record<string, any> = {};
   for (const e of etfRows || []) etfMap[String(e?.code || e?.etf_code || e?.fund_code || '')] = e;
 
-  const raw = ([] as any[]).concat(
-    Array.isArray(data?.operation_records) ? data.operation_records : [],
-    Array.isArray(data?.operationRecords) ? data.operationRecords : [],
-    Array.isArray(data?.recent_operations) ? data.recent_operations : [],
-    Array.isArray(data?.recentOperations) ? data.recentOperations : [],
-    Array.isArray(data?.stock_operation_records) ? data.stock_operation_records : [],
-    Array.isArray(data?.stockOperationRecords) ? data.stockOperationRecords : []
+  const hist = ([] as any[]).concat(
+    Array.isArray(data?.holding_history) ? data.holding_history : [],
+    Array.isArray(data?.holdingHistory) ? data.holdingHistory : [],
+    Array.isArray(data?.historyRows) ? data.historyRows : [],
+    Array.isArray(data?.history) ? data.history : []
   );
 
   let rows: any[] = [];
 
-  if (raw.length) {
+  // 優先用歷史持股重算：同一 ETF 相鄰日期的 raw shares 相減，再 /1000 轉成張。
+  // 不要先把每天 shares 轉成張再相減，否則 9000 股與 20000 股會被混成 9000 - 20。
+  if (hist.length) {
+    const grouped: Record<string, Record<string, any>> = {};
+
+    for (const r of hist) {
+      const code = stockOpCode(r);
+      const date = stockOpDate(r);
+      if (!code || !date) continue;
+      if (!grouped[code]) grouped[code] = {};
+      grouped[code][date] = r; // 同日重複資料取最後一筆，避免 06/22 重複造成誤判。
+    }
+
+    for (const code of Object.keys(grouped)) {
+      const list = Object.values(grouped[code]).sort((a, b) => stockOpDate(a).localeCompare(stockOpDate(b)));
+
+      for (let i = 1; i < list.length; i++) {
+        const prevRawShares = stockOpRawShares(list[i - 1]);
+        const currRawShares = stockOpRawShares(list[i]);
+
+        if (!Number.isFinite(prevRawShares) || !Number.isFinite(currRawShares)) continue;
+
+        const deltaRawShares = currRawShares - prevRawShares;
+        if (Math.abs(deltaRawShares) < 1) continue;
+
+        const deltaLots = deltaRawShares / 1000;
+        const prevLots = prevRawShares / 1000;
+
+        rows.push({
+          date: stockOpDate(list[i]),
+          code,
+          name: stockOpName(list[i], etfMap),
+          lots: deltaLots,
+          pct: prevLots ? (deltaLots / Math.abs(prevLots)) * 100 : NaN,
+          status: deltaLots >= 0 ? '加碼' : '減碼',
+        });
+      }
+    }
+  }
+
+  // 沒有 history 時才退回 operation_records。
+  if (!rows.length) {
+    const raw = ([] as any[]).concat(
+      Array.isArray(data?.operation_records) ? data.operation_records : [],
+      Array.isArray(data?.operationRecords) ? data.operationRecords : [],
+      Array.isArray(data?.recent_operations) ? data.recent_operations : [],
+      Array.isArray(data?.recentOperations) ? data.recentOperations : [],
+      Array.isArray(data?.stock_operation_records) ? data.stock_operation_records : [],
+      Array.isArray(data?.stockOperationRecords) ? data.stockOperationRecords : []
+    );
+
     rows = raw.map((r: any) => {
       const lots = stockOpLotsFromAny(stockOpPick(r, [
         'delta_lots', 'change_lots', 'deltaLots', 'changeLots',
@@ -365,43 +436,6 @@ function buildStockRecentOperationRows(data: any, etfRows: any[]) {
         status: String(stockOpPick(r, ['status', 'action']) || (lots >= 0 ? '加碼' : '減碼')),
       };
     }).filter((r) => r.code && Number.isFinite(r.lots) && r.lots !== 0);
-  }
-
-  if (!rows.length) {
-    const hist = ([] as any[]).concat(
-      Array.isArray(data?.holding_history) ? data.holding_history : [],
-      Array.isArray(data?.holdingHistory) ? data.holdingHistory : [],
-      Array.isArray(data?.historyRows) ? data.historyRows : [],
-      Array.isArray(data?.history) ? data.history : []
-    );
-
-    const grouped: Record<string, any[]> = {};
-    for (const r of hist) {
-      const code = stockOpCode(r);
-      const date = stockOpDate(r);
-      if (!code || !date) continue;
-      if (!grouped[code]) grouped[code] = [];
-      grouped[code].push(r);
-    }
-
-    for (const code of Object.keys(grouped)) {
-      const list = grouped[code].sort((a, b) => stockOpDate(a).localeCompare(stockOpDate(b)));
-      for (let i = 1; i < list.length; i++) {
-        const prevLots = stockOpHoldingLots(list[i - 1]);
-        const currLots = stockOpHoldingLots(list[i]);
-        if (!Number.isFinite(prevLots) || !Number.isFinite(currLots)) continue;
-        const delta = currLots - prevLots;
-        if (Math.abs(delta) < 0.0001) continue;
-        rows.push({
-          date: stockOpDate(list[i]),
-          code,
-          name: stockOpName(list[i], etfMap),
-          lots: delta,
-          pct: prevLots ? (delta / Math.abs(prevLots)) * 100 : NaN,
-          status: delta >= 0 ? '加碼' : '減碼',
-        });
-      }
-    }
   }
 
   const seen = new Set<string>();
