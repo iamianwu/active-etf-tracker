@@ -19,9 +19,9 @@ function cacheHeaders(data: any, fresh: string) {
     headers.set('CDN-Cache-Control', 'no-store');
     headers.set('Vercel-CDN-Cache-Control', 'no-store');
   } else {
-    headers.set('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600');
-    headers.set('CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
-    headers.set('Vercel-CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
+    headers.set('Cache-Control', 'public, max-age=60, s-maxage=1800, stale-while-revalidate=86400');
+    headers.set('CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=86400');
+    headers.set('Vercel-CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=86400');
   }
 
   return headers;
