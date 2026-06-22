@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import { apiGet, fmt0, fmt } from '@/lib/api';
+import { useEffect, useRef, useState } from 'react';
+import { fmt0, fmt } from '@/lib/api';
 
 const HOT_ITEMS = [
   { code: '00403A', name: '主動統一升級50', type: 'etf' },
@@ -14,6 +14,13 @@ const HOT_ITEMS = [
   { code: '2454', name: '聯發科', type: 'stock' },
 ];
 
+type SearchResults = {
+  etfs: any[];
+  stocks: any[];
+};
+
+const EMPTY_RESULTS: SearchResults = { etfs: [], stocks: [] };
+
 function saveHistory(item: any) {
   try {
     const old = JSON.parse(localStorage.getItem('searchHistory') || '[]');
@@ -24,57 +31,88 @@ function saveHistory(item: any) {
 
 export default function SearchPage() {
   const [q, setQ] = useState('');
-  const [etfs, setEtfs] = useState<any[]>([]);
-  const [stocks, setStocks] = useState<any[]>([]);
+  const [debouncedQ, setDebouncedQ] = useState('');
+  const [loadedQ, setLoadedQ] = useState('');
+  const [results, setResults] = useState<SearchResults>(EMPTY_RESULTS);
   const [history, setHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const cacheRef = useRef<Record<string, SearchResults>>({});
 
   useEffect(() => {
-    async function load() {
-      try {
-        const [etfData, stockData] = await Promise.all([
-          apiGet('/etfs'),
-          apiGet('/holdings'),
-        ]);
-        setEtfs(etfData || []);
-        setStocks(stockData || []);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    load();
-
     try {
       setHistory(JSON.parse(localStorage.getItem('searchHistory') || '[]'));
     } catch {}
   }, []);
 
-  const results = useMemo(() => {
-    const keyword = q.trim().toLowerCase();
-    if (!keyword) return { etfs: [], stocks: [] };
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setDebouncedQ(q.trim());
+    }, 220);
 
-    const matchedEtfs = etfs
-      .filter((x: any) =>
-        String(x.etf_code || '').toLowerCase().includes(keyword) ||
-        String(x.etf_name || '').toLowerCase().includes(keyword)
-      )
-      .slice(0, 20);
+    return () => window.clearTimeout(t);
+  }, [q]);
 
-    const matchedStocks = stocks
-      .filter((x: any) =>
-        String(x.stock_code || '').toLowerCase().includes(keyword) ||
-        String(x.stock_name || '').toLowerCase().includes(keyword)
-      )
-      .slice(0, 40);
+  useEffect(() => {
+    const keyword = debouncedQ.trim();
+    const key = keyword.toLowerCase();
 
-    return { etfs: matchedEtfs, stocks: matchedStocks };
-  }, [q, etfs, stocks]);
+    if (!keyword) {
+      setResults(EMPTY_RESULTS);
+      setLoadedQ('');
+      setLoading(false);
+      return;
+    }
+
+    if (cacheRef.current[key]) {
+      setResults(cacheRef.current[key]);
+      setLoadedQ(key);
+      setLoading(false);
+      return;
+    }
+
+    const ctrl = new AbortController();
+    setLoading(true);
+
+    fetch(`/api/search?q=${encodeURIComponent(keyword)}`, {
+      signal: ctrl.signal,
+      cache: 'no-store',
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`Search failed: ${r.status}`);
+        return r.json();
+      })
+      .then((data) => {
+        const next = {
+          etfs: Array.isArray(data?.etfs) ? data.etfs : [],
+          stocks: Array.isArray(data?.stocks) ? data.stocks : [],
+        };
+        cacheRef.current[key] = next;
+        setResults(next);
+        setLoadedQ(key);
+      })
+      .catch((e) => {
+        if (e?.name !== 'AbortError') {
+          console.error(e);
+          setResults(EMPTY_RESULTS);
+          setLoadedQ(key);
+        }
+      })
+      .finally(() => {
+        if (!ctrl.signal.aborted) setLoading(false);
+      });
+
+    return () => ctrl.abort();
+  }, [debouncedQ]);
 
   function clearHistory() {
     localStorage.removeItem('searchHistory');
     setHistory([]);
   }
+
+  const queryKey = q.trim().toLowerCase();
+  const hasQuery = !!queryKey;
+  const stillSearching = hasQuery && loadedQ !== queryKey;
+  const displayResults = hasQuery && !stillSearching ? results : EMPTY_RESULTS;
 
   return (
     <main className="page search-page">
@@ -94,9 +132,9 @@ export default function SearchPage() {
         />
       </div>
 
-      {loading && <p className="muted">資料載入中...</p>}
+      {hasQuery && (loading || stillSearching) && <p className="muted">資料載入中...</p>}
 
-      {!q.trim() && (
+      {!hasQuery && (
         <>
           <section className="search-section">
             <h3>熱門搜尋</h3>
@@ -147,15 +185,15 @@ export default function SearchPage() {
         </>
       )}
 
-      {q.trim() && (
+      {hasQuery && !stillSearching && (
         <>
           <section className="search-section">
             <h3>ETF 搜尋結果</h3>
-            {results.etfs.length === 0 ? (
+            {displayResults.etfs.length === 0 ? (
               <p className="muted">沒有符合的 ETF</p>
             ) : (
               <div className="result-list">
-                {results.etfs.map((x: any) => (
+                {displayResults.etfs.map((x: any) => (
                   <Link
                     key={x.etf_code}
                     href={`/etf/${x.etf_code}`}
@@ -178,11 +216,11 @@ export default function SearchPage() {
 
           <section className="search-section">
             <h3>個股搜尋結果</h3>
-            {results.stocks.length === 0 ? (
+            {displayResults.stocks.length === 0 ? (
               <p className="muted">沒有符合的個股</p>
             ) : (
               <div className="result-list">
-                {results.stocks.map((x: any) => (
+                {displayResults.stocks.map((x: any) => (
                   <Link
                     key={x.stock_code}
                     href={`/stock/${x.stock_code}`}

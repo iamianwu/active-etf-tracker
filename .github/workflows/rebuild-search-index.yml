@@ -1,0 +1,35 @@
+name: Rebuild Search Index
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "45 10 * * 1-5"
+
+concurrency:
+  group: search-index-writes
+  cancel-in-progress: false
+
+jobs:
+  rebuild-search-index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Rebuild stock search index
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python -m app.jobs.rebuild_search_index
