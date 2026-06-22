@@ -493,6 +493,95 @@ async function loadSignalRowsByRange(signalRangeDays: number) {
 
 
 
+
+async function getSignalsCacheScope() {
+  const toDate = (v: any) => String(v ?? '').slice(0, 10);
+
+  const { data: latestRow, error: latestErr } = await supabase
+    .from('holdings')
+    .select('data_date')
+    .order('data_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (latestErr) throw latestErr;
+
+  const dataDate = toDate(latestRow?.data_date);
+  if (!dataDate) return { dataDate: '', holdingsRowCount: 0 };
+
+  const { count, error: countErr } = await supabase
+    .from('holdings')
+    .select('*', { count: 'exact', head: true })
+    .eq('data_date', dataDate);
+
+  if (countErr) {
+    console.warn('[signals_cache] count failed:', countErr.message);
+    return { dataDate, holdingsRowCount: 0 };
+  }
+
+  return { dataDate, holdingsRowCount: count || 0 };
+}
+
+function makeSignalsCacheKey(signalType: string | null | undefined, days: number, scope: { dataDate: string; holdingsRowCount: number }) {
+  const type = String(signalType || 'all');
+  return `signals:${scope.dataDate}:${scope.holdingsRowCount}:days=${days}:type=${type}`;
+}
+
+async function readSignalsCache(signalType: string | null | undefined, days: number, scope: { dataDate: string; holdingsRowCount: number }) {
+  if (!scope.dataDate) return null;
+
+  const cacheKey = makeSignalsCacheKey(signalType, days, scope);
+
+  const { data, error } = await supabase
+    .from('signals_cache')
+    .select('cache_key,data_date,holdings_row_count,days,signal_type,payload,updated_at')
+    .eq('cache_key', cacheKey)
+    .maybeSingle();
+
+  if (error) {
+    const msg = String(error.message || '');
+    if (msg.includes('Could not find the table') || msg.includes('does not exist')) return null;
+    console.warn('[signals_cache] read failed:', msg);
+    return null;
+  }
+
+  if (!data?.payload) return null;
+
+  return {
+    ...data.payload,
+    cache_hit: true,
+    cache_key: data.cache_key,
+    cache_updated_at: data.updated_at,
+  };
+}
+
+async function writeSignalsCache(signalType: string | null | undefined, days: number, scope: { dataDate: string; holdingsRowCount: number }, payload: any) {
+  if (!scope.dataDate || !payload) return;
+
+  const cacheKey = makeSignalsCacheKey(signalType, days, scope);
+
+  const row = {
+    cache_key: cacheKey,
+    data_date: scope.dataDate,
+    holdings_row_count: scope.holdingsRowCount,
+    days,
+    signal_type: String(signalType || ''),
+    payload,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase
+    .from('signals_cache')
+    .upsert(row, { onConflict: 'cache_key' });
+
+  if (error) {
+    const msg = String(error.message || '');
+    if (msg.includes('Could not find the table') || msg.includes('does not exist')) return;
+    console.warn('[signals_cache] write failed:', msg);
+  }
+}
+
+
 async function getSignals(signalType?: string | null, signalRangeDaysInput: any = 1) {
   const toDate = (v: any) => String(v ?? '').slice(0, 10);
   const n = (v: any) => {
@@ -1030,7 +1119,25 @@ export async function apiGet(path: string) {
       u.searchParams.get("signalRangeDays") ||
       "1"
     );
-    return getSignals(u.searchParams.get("type"), days);
+
+    const signalType = u.searchParams.get("type");
+    const fresh = ["1", "true", "yes"].includes(String(u.searchParams.get("fresh") || "").toLowerCase());
+
+    try {
+      const scope = await getSignalsCacheScope();
+
+      if (!fresh) {
+        const cached = await readSignalsCache(signalType, days, scope);
+        if (cached) return cached;
+      }
+
+      const data = await getSignals(signalType, days);
+      await writeSignalsCache(signalType, days, scope, data);
+      return data;
+    } catch (e) {
+      console.warn("[signals_cache] fallback to live calculation:", e);
+      return getSignals(signalType, days);
+    }
   }
 
   throw new Error(`Unknown API path: ${path}`);
