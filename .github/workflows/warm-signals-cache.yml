@@ -34,11 +34,16 @@ jobs:
           cd backend
           python -m app.jobs.init_signals_cache
 
-      - name: Warm signals cache
+      - name: Warm signals cache and CDN
         env:
           SITE_URL: https://active-etf-tracker.vercel.app
         run: |
           for d in 1 5 10 20; do
-            echo "warming days=$d"
-            curl -fsS "$SITE_URL/api/signals?days=$d" > /dev/null
+            echo "rebuilding days=$d"
+            curl -fsS "$SITE_URL/api/signals?days=$d&fresh=1" > /dev/null
+
+            VERSION=$(curl -fsS "$SITE_URL/api/signals-version?days=$d" | python -c "import sys,json; print(json.load(sys.stdin).get('version','none'))")
+            echo "warming cdn days=$d version=$VERSION"
+            curl -fsS "$SITE_URL/api/signals?days=$d&cv=$VERSION" > /dev/null
+            curl -fsS "$SITE_URL/api/signals?days=$d&cv=$VERSION" > /dev/null
           done

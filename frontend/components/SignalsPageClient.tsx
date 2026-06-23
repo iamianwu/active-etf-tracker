@@ -15,29 +15,39 @@ export default function SignalsPageClient({ activeDays }: Props) {
   useEffect(() => {
     const ctrl = new AbortController();
 
-    setLoading(true);
-    setErr('');
+    async function load() {
+      setLoading(true);
+      setErr('');
 
-    fetch(`/api/signals?days=${activeDays}`, {
-      signal: ctrl.signal,
-      cache: 'force-cache',
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`signals api failed: ${r.status}`);
-        return r.json();
-      })
-      .then((json) => {
+      try {
+        const versionRes = await fetch(`/api/signals-version?days=${activeDays}`, {
+          signal: ctrl.signal,
+          cache: 'no-store',
+        });
+
+        const versionJson = versionRes.ok ? await versionRes.json() : {};
+        const version = String(versionJson?.version || Date.now());
+
+        const res = await fetch(`/api/signals?days=${activeDays}&cv=${encodeURIComponent(version)}`, {
+          signal: ctrl.signal,
+          cache: 'force-cache',
+        });
+
+        if (!res.ok) throw new Error(`signals api failed: ${res.status}`);
+
+        const json = await res.json();
         setData(json);
-      })
-      .catch((e) => {
+      } catch (e: any) {
         if (e?.name !== 'AbortError') {
           console.error(e);
           setErr(String(e?.message || e));
         }
-      })
-      .finally(() => {
+      } finally {
         if (!ctrl.signal.aborted) setLoading(false);
-      });
+      }
+    }
+
+    load();
 
     return () => ctrl.abort();
   }, [activeDays]);
