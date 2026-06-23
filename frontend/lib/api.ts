@@ -801,7 +801,8 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
             'stock_code,trade_date,stock_name,close,change,change_pct,volume,amount,source,updated_at',
             (q) => q
               .in('stock_code', stockCodes)
-              .eq('trade_date', targetDate)
+              .lte('trade_date', targetDate)
+              .order('trade_date', { ascending: false })
           )
         : [];
     } catch (e) {
@@ -812,7 +813,13 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
     const targetPriceByCode: Record<string, any> = {};
     for (const h of targetPriceRows) {
       const code = codeKey(h.stock_code);
-      if (code) targetPriceByCode[code] = h;
+      const d = toDate(h.trade_date);
+      if (!code || !d || d > targetDate) continue;
+
+      const old = targetPriceByCode[code];
+      if (!old || d > toDate(old.trade_date)) {
+        targetPriceByCode[code] = h;
+      }
     }
 
     let historyQuoteRows: any[] = [];
@@ -863,7 +870,7 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
       const quoteDateOk = quoteTradeDate === targetDate;
 
       const historyTradeDate = toDate(historyQ?.trade_date || '');
-      const historyDateOk = historyTradeDate === targetDate;
+      const historyDateOk = Boolean(historyQ && historyTradeDate && historyTradeDate <= targetDate);
 
       const q = historyDateOk
         ? {
@@ -884,6 +891,7 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
           : { stock_name: rawQ.stock_name || g.stock_name };
 
       const priceDateOk = historyDateOk || quoteDateOk;
+      const priceExactDate = (historyDateOk && historyTradeDate === targetDate) || quoteDateOk;
       const price = n(q.price, NaN);
       const deltaLots = g.delta_raw_shares / 1000;
       const currLots = g.curr_raw_shares / 1000;
@@ -906,7 +914,7 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
         updated_at: q.trade_date || q.updated_at || null,
         quote_trade_date: q.trade_date || rawQ.trade_date || null,
         quote_source: q.quote_source || q.source || rawQ.source || null,
-        quote_stale: !priceDateOk,
+        quote_stale: !priceExactDate,
         status,
         buy_count: g.buy_etf_count,
         sell_count: g.sell_etf_count,
