@@ -287,6 +287,32 @@ def get_latest_holding_scope() -> tuple[str, set[str]]:
     codes = {str(r["stock_code"]).strip() for r in rows if re.fullmatch(r"\d{4}", str(r["stock_code"]).strip())}
     return latest_date, codes
 
+def get_latest_holding_names(target_date: str) -> dict[str, str]:
+    ensure_tables()
+
+    if not target_date:
+        return {}
+
+    with get_conn() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT h.stock_code, MAX(h.stock_name) AS stock_name
+            FROM holdings h
+            WHERE h.data_date = ? AND {normal_stock_condition('h')}
+            GROUP BY h.stock_code
+            """,
+            (target_date,),
+        ).fetchall()
+
+    out: dict[str, str] = {}
+    for r in rows:
+        code = str(r["stock_code"] or "").strip()
+        name = str(r["stock_name"] or "").strip()
+        if re.fullmatch(r"\d{4}", code) and name:
+            out[code] = name
+
+    return out
+
 
 def fetch_array(url: str) -> list[dict[str, Any]]:
     r = requests.get(url, headers=HEADERS, timeout=45)
@@ -586,6 +612,7 @@ def update_official_close_quotes() -> dict[str, Any]:
     ensure_tables()
 
     holding_date, holding_codes = get_latest_holding_scope()
+    holding_names = get_latest_holding_names(holding_date)
 
     print(f"Latest holding date={holding_date}", flush=True)
     print(f"Latest holding stock codes={len(holding_codes)}", flush=True)
@@ -601,6 +628,10 @@ def update_official_close_quotes() -> dict[str, Any]:
 
     missing_exact = holding_codes - official_exact_codes
     yahoo_quotes = fetch_yahoo_missing_exact_quotes(missing_exact, holding_date)
+
+    for code, q in yahoo_quotes.items():
+        if holding_names.get(code):
+            q["stock_name"] = holding_names[code]
 
     quotes = dict(official_quotes)
     quotes.update(yahoo_quotes)
