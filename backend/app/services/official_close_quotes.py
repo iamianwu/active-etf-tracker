@@ -53,17 +53,28 @@ def find_code(row: dict[str, Any]) -> str | None:
         if re.fullmatch(r"\d{4}", s): return s
     return None
 
-def trade_date(row: dict[str, Any]) -> str:
+def date_only(v: Any) -> str:
+    s = str(v or "").strip()
+    m = re.search(r"(20\d{2})[-/](\d{2})[-/](\d{2})", s)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+    m = re.search(r"(20\d{2})(\d{2})(\d{2})", s)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+    return s[:10]
+
+def trade_date(row: dict[str, Any], fallback_date: str | None = None) -> str:
     v = pick(row, ["Date", "TradeDate", "資料日期", "日期", "交易日期"])
-    if not v: return today()
+    if not v:
+        return fallback_date or today()
     s = str(v)
     m = re.search(r"(20\d{2})[-/]?(\d{2})[-/]?(\d{2})", s)
     if m: return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
     m = re.search(r"(\d{3})[-/]?(\d{2})[-/]?(\d{2})", s)
     if m: return f"{int(m.group(1))+1911:04d}-{m.group(2)}-{m.group(3)}"
-    return today()
+    return fallback_date or today()
 
-def row_to_quote(row: dict[str, Any], market: str) -> dict[str, Any] | None:
+def row_to_quote(row: dict[str, Any], market: str, fallback_trade_date: str | None = None) -> dict[str, Any] | None:
     code = find_code(row)
     if not code or not re.fullmatch(r"\d{4}", code): return None
     name = str(pick(row, ["Name", "證券名稱", "有價證券名稱", "股票名稱", "名稱", "CompanyName", "SecuritiesCompanyName", "stock_name"]) or code).strip()
@@ -77,7 +88,7 @@ def row_to_quote(row: dict[str, Any], market: str) -> dict[str, Any] | None:
     volume = to_float(pick(row, ["TradeVolume", "成交股數", "成交股數(股)", "成交量", "Volume", "volume"]))
     amount = to_float(pick(row, ["TradeValue", "成交金額", "成交金額(元)", "成交值", "Amount", "amount"]))
     if amount is None and volume is not None: amount = close * volume
-    return {"stock_code": code, "stock_name": name, "price": close, "change": change, "change_pct": pct, "volume": volume, "amount": amount, "open": to_float(pick(row, ["Open", "開盤價", "開盤"])), "high": to_float(pick(row, ["High", "最高價", "最高"])), "low": to_float(pick(row, ["Low", "最低價", "最低"])), "market": market, "source": "twse_openapi" if market == "TWSE" else "tpex_openapi", "trade_date": trade_date(row)}
+    return {"stock_code": code, "stock_name": name, "price": close, "change": change, "change_pct": pct, "volume": volume, "amount": amount, "open": to_float(pick(row, ["Open", "開盤價", "開盤"])), "high": to_float(pick(row, ["High", "最高價", "最高"])), "low": to_float(pick(row, ["Low", "最低價", "最低"])), "market": market, "source": "twse_openapi" if market == "TWSE" else "tpex_openapi", "trade_date": trade_date(row, fallback_trade_date)}
 
 def ensure_tables() -> None:
     init_db()
@@ -97,11 +108,25 @@ def ensure_tables() -> None:
             for col, typ in {"stock_name":"TEXT", "open":"REAL", "high":"REAL", "low":"REAL", "close":"REAL", "change":"REAL", "change_pct":"REAL", "volume":"REAL", "amount":"REAL", "market":"TEXT", "source":"TEXT", "updated_at":"TEXT"}.items():
                 if col not in cols: conn.execute(f"ALTER TABLE stock_price_history ADD COLUMN {col} {typ}")
 
-def get_holding_codes() -> set[str]:
+def get_latest_holding_scope() -> tuple[str, set[str]]:
     ensure_tables()
     with get_conn() as conn:
-        rows = conn.execute(f"SELECT DISTINCT h.stock_code FROM holdings h WHERE {normal_stock_condition('h')}").fetchall()
-    return {str(r["stock_code"]).strip() for r in rows if re.fullmatch(r"\d{4}", str(r["stock_code"]).strip())}
+        row = conn.execute("SELECT MAX(data_date) AS data_date FROM holdings").fetchone()
+        latest_date = date_only(row["data_date"] if row else "")
+        if not latest_date:
+            return "", set()
+
+        rows = conn.execute(
+            f"SELECT DISTINCT h.stock_code FROM holdings h WHERE h.data_date = ? AND {normal_stock_condition('h')}",
+            (latest_date,),
+        ).fetchall()
+
+    codes = {str(r["stock_code"]).strip() for r in rows if re.fullmatch(r"\d{4}", str(r["stock_code"]).strip())}
+    return latest_date, codes
+
+def get_holding_codes() -> set[str]:
+    _, codes = get_latest_holding_scope()
+    return codes
 
 def fetch_array(url: str) -> list[dict[str, Any]]:
     r = requests.get(url, headers=HEADERS, timeout=45); r.raise_for_status(); data = r.json()
@@ -111,7 +136,7 @@ def fetch_array(url: str) -> list[dict[str, Any]]:
             if isinstance(data.get(k), list): return [x for x in data[k] if isinstance(x, dict)]
     return []
 
-def fetch_official_quotes(only_codes: set[str] | None = None) -> dict[str, dict[str, Any]]:
+def fetch_official_quotes(only_codes: set[str] | None = None, fallback_trade_date: str | None = None) -> dict[str, dict[str, Any]]:
     out = {}
     for market, url in [("TWSE", TWSE_URL), ("TPEX", TPEX_URL)]:
         print(f"Fetch {market}: {url}", flush=True)
@@ -121,7 +146,7 @@ def fetch_official_quotes(only_codes: set[str] | None = None) -> dict[str, dict[
             print(f"{market} fetch error: {e}", flush=True); continue
         parsed = kept = 0
         for row in rows:
-            q = row_to_quote(row, market)
+            q = row_to_quote(row, market, fallback_trade_date=fallback_trade_date)
             if not q: continue
             parsed += 1
             code = q["stock_code"]
@@ -158,15 +183,30 @@ def save_quotes(quotes: dict[str, dict[str, Any]]) -> int:
 
 def update_official_close_quotes() -> dict[str, Any]:
     ensure_tables()
-    holding_codes = get_holding_codes()
-    print(f"Holding stock codes={len(holding_codes)}", flush=True)
-    quotes = fetch_official_quotes(only_codes=holding_codes)
-    print(f"Official quotes kept for holdings={len(quotes)}", flush=True)
+    holding_date, holding_codes = get_latest_holding_scope()
+    print(f"Latest holding date={holding_date}", flush=True)
+    print(f"Latest holding stock codes={len(holding_codes)}", flush=True)
+
+    quotes = fetch_official_quotes(only_codes=holding_codes, fallback_trade_date=holding_date or None)
+    print(f"Official quotes kept for latest holdings={len(quotes)}", flush=True)
+
     saved = save_quotes(quotes)
     missing = sorted(holding_codes - set(quotes.keys()))
-    print(f"Official close quotes saved={saved}, missing_holdings={len(missing)}", flush=True)
-    if missing: print("Missing examples: " + ", ".join(missing[:80]), flush=True)
-    return {"updated_at": now_iso(), "holding_codes": len(holding_codes), "quotes_fetched_for_holdings": len(quotes), "quotes_saved": saved, "missing_holdings": len(missing), "missing_examples": missing[:80], "source": "official_openapi_close"}
+
+    print(f"Official close quotes saved={saved}, missing_latest_holdings={len(missing)}", flush=True)
+    if missing:
+        print("Missing examples: " + ", ".join(missing[:80]), flush=True)
+
+    return {
+        "updated_at": now_iso(),
+        "holding_date": holding_date,
+        "holding_codes": len(holding_codes),
+        "quotes_fetched_for_holdings": len(quotes),
+        "quotes_saved": saved,
+        "missing_holdings": len(missing),
+        "missing_examples": missing[:80],
+        "source": "official_openapi_close",
+    }
 
 if __name__ == "__main__":
     print(update_official_close_quotes())
