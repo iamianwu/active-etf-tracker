@@ -1,0 +1,161 @@
+name: Run Daily Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_update_etf:
+        description: "Run Update ETF Data"
+        required: true
+        type: boolean
+        default: true
+      run_official_quotes:
+        description: "Run Update Official Close Quotes"
+        required: true
+        type: boolean
+        default: true
+      run_search_index:
+        description: "Run Rebuild Search Index"
+        required: true
+        type: boolean
+        default: true
+      run_signals_cache:
+        description: "Run Warm Signals Cache"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: run-daily-pipeline
+  cancel-in-progress: false
+
+jobs:
+  run-daily-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Run workflows in order
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const ref = context.ref.replace('refs/heads/', '');
+            const inputs = context.payload.inputs || {};
+
+            function isEnabled(name) {
+              return String(inputs[name] ?? 'true') === 'true';
+            }
+
+            const workflows = [
+              {
+                name: 'Update ETF Data',
+                file: 'update-etf.yml',
+                enabled: isEnabled('run_update_etf'),
+                timeoutMinutes: 50,
+              },
+              {
+                name: 'Update Official Close Quotes',
+                file: 'update-official-close-quotes.yml',
+                enabled: isEnabled('run_official_quotes'),
+                timeoutMinutes: 35,
+              },
+              {
+                name: 'Rebuild Search Index',
+                file: 'rebuild-search-index.yml',
+                enabled: isEnabled('run_search_index'),
+                timeoutMinutes: 25,
+              },
+              {
+                name: 'Warm Signals Cache',
+                file: 'warm-signals-cache.yml',
+                enabled: isEnabled('run_signals_cache'),
+                timeoutMinutes: 35,
+              },
+            ].filter(w => w.enabled);
+
+            if (workflows.length === 0) {
+              throw new Error('No workflows selected.');
+            }
+
+            function sleep(ms) {
+              return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            async function findDispatchedRun(workflowFile, startedAt) {
+              for (let i = 0; i < 30; i++) {
+                const runs = await github.rest.actions.listWorkflowRuns({
+                  owner,
+                  repo,
+                  workflow_id: workflowFile,
+                  branch: ref,
+                  event: 'workflow_dispatch',
+                  per_page: 20,
+                });
+
+                const matched = runs.data.workflow_runs
+                  .filter(run => new Date(run.created_at).getTime() >= startedAt.getTime() - 30000)
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+                if (matched) return matched;
+
+                await sleep(10000);
+              }
+
+              throw new Error(`Could not find dispatched run for ${workflowFile}`);
+            }
+
+            async function waitForRun(workflow) {
+              core.info(`Dispatching ${workflow.name} (${workflow.file}) on ${ref}`);
+
+              const startedAt = new Date();
+
+              await github.rest.actions.createWorkflowDispatch({
+                owner,
+                repo,
+                workflow_id: workflow.file,
+                ref,
+              });
+
+              const run = await findDispatchedRun(workflow.file, startedAt);
+              core.info(`${workflow.name} run id: ${run.id}`);
+              core.info(`${workflow.name} url: ${run.html_url}`);
+
+              const deadline = Date.now() + workflow.timeoutMinutes * 60 * 1000;
+
+              while (Date.now() < deadline) {
+                const current = await github.rest.actions.getWorkflowRun({
+                  owner,
+                  repo,
+                  run_id: run.id,
+                });
+
+                const status = current.data.status;
+                const conclusion = current.data.conclusion;
+
+                core.info(`${workflow.name}: status=${status}, conclusion=${conclusion || 'none'}`);
+
+                if (status === 'completed') {
+                  if (conclusion !== 'success') {
+                    throw new Error(`${workflow.name} failed with conclusion=${conclusion}. ${current.data.html_url}`);
+                  }
+
+                  core.info(`${workflow.name} completed successfully.`);
+                  return;
+                }
+
+                await sleep(30000);
+              }
+
+              throw new Error(`${workflow.name} timed out after ${workflow.timeoutMinutes} minutes. ${run.html_url}`);
+            }
+
+            for (const workflow of workflows) {
+              await waitForRun(workflow);
+            }
+
+            core.info('Daily pipeline completed successfully.');
