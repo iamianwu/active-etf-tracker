@@ -403,7 +403,7 @@ function buildStockRecentOperationRows(data: any, etfRows: any[]) {
           name: stockOpName(list[i], etfMap),
           lots: deltaLots,
           pct: prevLots ? (deltaLots / Math.abs(prevLots)) * 100 : NaN,
-          status: deltaLots >= 0 ? '加碼' : '減碼',
+          status: String(stockOpPick(list[i], ['operation_status', 'status', 'action']) || (currRawShares <= 0 && prevRawShares > 0 ? '刪除' : (deltaLots >= 0 ? '加碼' : '減碼'))),
         });
       }
     }

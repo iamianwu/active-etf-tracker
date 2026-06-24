@@ -372,8 +372,83 @@ async function getStockDetail(stockCode: string) {
     })
     .sort((a, b) => Number(b.weight || 0) - Number(a.weight || 0));
 
-  const history = holdings
-    .filter((h) => h.stock_code === stockCode)
+  const stockHistoryRows = holdings.filter((h) => h.stock_code === stockCode);
+
+  const datesByEtf: Record<string, Set<string>> = {};
+  const stockRowByEtfDate: Record<string, Record<string, any>> = {};
+
+  for (const h of holdings) {
+    const etf = String(h.etf_code || "");
+    const date = String(h.data_date || "");
+    if (!etf || !date) continue;
+
+    if (!datesByEtf[etf]) datesByEtf[etf] = new Set();
+    datesByEtf[etf].add(date);
+
+    if (h.stock_code === stockCode) {
+      if (!stockRowByEtfDate[etf]) stockRowByEtfDate[etf] = {};
+      stockRowByEtfDate[etf][date] = h;
+    }
+  }
+
+  const augmentedHistory = [...stockHistoryRows];
+  const seenHistoryKeys = new Set(
+    augmentedHistory.map((h) => [h.etf_code, h.data_date, h.stock_code].join("|"))
+  );
+
+  function addSyntheticHistoryRow(row: any) {
+    const key = [row.etf_code, row.data_date, row.stock_code].join("|");
+    if (seenHistoryKeys.has(key)) return;
+    seenHistoryKeys.add(key);
+    augmentedHistory.push(row);
+  }
+
+  for (const etf of Object.keys(datesByEtf)) {
+    const dates = Array.from(datesByEtf[etf]).sort();
+    const byDate = stockRowByEtfDate[etf] || {};
+
+    for (let i = 1; i < dates.length; i++) {
+      const prevDate = dates[i - 1];
+      const currDate = dates[i];
+      const prev = byDate[prevDate];
+      const curr = byDate[currDate];
+
+      if (prev && !curr) {
+        const prevShares = Number(prev.shares || 0);
+        addSyntheticHistoryRow({
+          ...prev,
+          data_date: currDate,
+          shares: 0,
+          weight: 0,
+          status: "刪除",
+          operation_status: "刪除",
+          prev_date: prevDate,
+          delta_raw_shares: -prevShares,
+          delta_shares: -prevShares / 1000,
+          curr_weight: 0,
+          prev_weight: Number(prev.weight || 0),
+        });
+      }
+
+      if (!prev && curr) {
+        addSyntheticHistoryRow({
+          ...curr,
+          data_date: prevDate,
+          shares: 0,
+          weight: 0,
+          status: "新增基準",
+          operation_status: "新增基準",
+          prev_date: prevDate,
+          delta_raw_shares: 0,
+          delta_shares: 0,
+          curr_weight: 0,
+          prev_weight: 0,
+        });
+      }
+    }
+  }
+
+  const history = augmentedHistory
     .sort((a, b) => String(b.data_date).localeCompare(String(a.data_date)) || String(a.etf_code).localeCompare(String(b.etf_code)))
     .slice(0, 300);
 
