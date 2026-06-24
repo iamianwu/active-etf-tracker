@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     data_date: data?.data_date || null,
     updated_at: data?.updated_at || null,
     cache_key: data?.cache_key || null,
-    version: data?.cache_key || data?.updated_at || 'none',
+    version: data?.cache_key && data?.updated_at ? `${data.cache_key}:${data.updated_at}` : data?.cache_key || data?.updated_at || 'none',
     error: error?.message || null,
   };
 
