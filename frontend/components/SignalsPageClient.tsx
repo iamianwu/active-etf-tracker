@@ -30,7 +30,7 @@ export default function SignalsPageClient({ activeDays }: Props) {
 
         const res = await fetch(`/api/signals?days=${activeDays}&cv=${encodeURIComponent(version)}`, {
           signal: ctrl.signal,
-          cache: 'force-cache',
+          cache: 'no-store',
         });
 
         if (!res.ok) throw new Error(`signals api failed: ${res.status}`);
