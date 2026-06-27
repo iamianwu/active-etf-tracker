@@ -28,7 +28,7 @@ export default function SignalsPageClient({ activeDays }: Props) {
         const versionJson = versionRes.ok ? await versionRes.json() : {};
         const version = String(versionJson?.version || Date.now());
 
-        const res = await fetch(`/api/signals?days=${activeDays}&cv=${encodeURIComponent(version)}`, {
+        const res = await fetch(`/api/signals?days=${activeDays}&fresh=1&cv=${encodeURIComponent(version)}`, {
           signal: ctrl.signal,
           cache: 'no-store',
         });
