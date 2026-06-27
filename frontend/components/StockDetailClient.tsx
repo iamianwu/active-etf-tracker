@@ -494,7 +494,7 @@ function StockRecentOperationPanel({ data, etfRows }: { data: any; etfRows: any[
   return (
     <section className="v96-op-panel">
       <div className="v96-op-title-row">
-        <h2>近30日操作記錄</h2>
+        <h2>近期操作記錄</h2>
         <button type="button" className="v96-op-info-btn" onClick={() => setOpenInfo(true)} aria-label="變動資料說明">i</button>
       </div>
 
