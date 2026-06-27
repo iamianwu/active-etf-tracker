@@ -626,6 +626,21 @@ function etfMissingMetaFallback(code: any, row?: any) {
 }
 
 
+function missingDateOf(r: any) {
+  const v =
+    r?.latest_date ??
+    r?.latestDate ??
+    r?.data_date ??
+    r?.dataDate ??
+    r?.date ??
+    r?.trade_date ??
+    r?.tradeDate ??
+    r?.dt ??
+    '';
+  return String(v || '');
+}
+
+
 function MissingModal({ data, onClose }: { data: any; onClose: () => void }) {
   const total = getTotalEtfs(data);
   const today = getTodayEtfs(data, total);
@@ -671,28 +686,37 @@ function MissingModal({ data, onClose }: { data: any; onClose: () => void }) {
         <h3>未更新 ETF</h3>
         <p>今日訊號只使用{targetDate ? ` ${mmdd(targetDate)} 當日` : '當日'}資料，不混入前一日資料。</p>
         <p>未更新 ETF 不納入今日訊號計算。</p>
-        <p>右側標示主要投資市場；美國／全球市場 ETF 可能因海外收盤與持股揭露時間較晚而延後更新。</p>
+        <p>市場標籤：台灣／美國／全球；美國與全球型 ETF 可能因海外收盤與持股揭露時間較晚而延後。</p>
         <div className="v120-modal-count">已取得 {today} / {total} 檔，未更新 {missing} 檔</div>
 
         {rows.length ? (
-          <div className="v120-missing-list">
-            {rows.map((r, i) => {
-              const code = etfCodeOf(r);
-              const name = etfDisplayNameFallback(code, r);
-              const meta = etfMissingMetaFallback(code, r);
-              return (
-                <div className="v120-missing-row" key={`${code || i}`}>
-                  <div className="v120-missing-main">
-                    <b>{code}</b>
-                    {name && name !== code ? <span>{name}</span> : null}
-                  </div>
-                  <div className="v120-missing-detail">
-                    {dateOf(r) ? <em>最新：{mmdd(dateOf(r))}</em> : null}
-                    <strong className="v120-missing-meta">市場：{meta.market}</strong>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="v120-missing-table-wrap">
+            <table className="v120-missing-table">
+              <thead>
+                <tr>
+                  <th>代號</th>
+                  <th>ETF 名稱</th>
+                  <th>最後更新</th>
+                  <th>市場</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => {
+                  const code = etfCodeOf(r);
+                  const name = etfDisplayNameFallback(code, r);
+                  const meta = etfMissingMetaFallback(code, r);
+                  const latestDate = missingDateOf(r);
+                  return (
+                    <tr key={`${code || i}`}>
+                      <td><b>{code}</b></td>
+                      <td>{name && name !== code ? name : '-'}</td>
+                      <td>{latestDate ? mmdd(latestDate) : '-'}</td>
+                      <td><strong className="v120-missing-meta">{meta.market}</strong></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         ) : (
           <div className="v120-modal-note">

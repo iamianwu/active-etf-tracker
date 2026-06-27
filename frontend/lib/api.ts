@@ -610,7 +610,7 @@ async function getSignalsCacheScope() {
 
 function makeSignalsCacheKey(signalType: string | null | undefined, days: number, scope: { dataDate: string; holdingsRowCount: number }) {
   const type = String(signalType || 'all');
-  return `signals:${scope.dataDate}:${scope.holdingsRowCount}:days=${days}:type=${type}`;
+  return `signals:${scope.dataDate}:${scope.holdingsRowCount}:days=${days}:type=${type}:v=missing-date-table`;
 }
 
 async function readSignalsCache(signalType: string | null | undefined, days: number, scope: { dataDate: string; holdingsRowCount: number }) {
@@ -1098,6 +1098,32 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
       ...calculatedMissingCodesForDisplay,
     ]));
 
+    const latestDateByEtfForDisplay: Record<string, string> = {};
+    for (const code of universeEtfCodesForDisplay) {
+      const dates = Array.from(datesByEtf[code] || [])
+        .map((d: any) => toDate(d))
+        .filter(Boolean)
+        .sort();
+      latestDateByEtfForDisplay[code] = dates.length ? String(dates[dates.length - 1]) : '';
+    }
+
+    const makeMissingEtfDisplayRow = (code0: any) => {
+      const code = normalizeEtfCodeForDisplay(code0);
+      const latestDate = latestDateByEtfForDisplay[code] || '';
+      const name = ETF_NAMES[code] || '';
+      return {
+        etf_code: code,
+        etfCode: code,
+        code,
+        etf_name: name,
+        etfName: name,
+        latest_date: latestDate,
+        latestDate,
+        data_date: latestDate,
+        status: '非今日資料',
+      };
+    };
+
     const meta = {
       data_date: targetDate,
       target_data_date: targetDate,
@@ -1121,23 +1147,8 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
       no_compare_etf_count: noCompareEtfCodes.length,
       excluded_compare_etf_count: Math.max(0, universeEtfs.length - includedEtfs.length),
       non_today_etf_count: missingTodayEtfCodesForDisplay.length,
-      non_today_etfs: missingTodayEtfCodesForDisplay.map((code: any) => ({
-        etf_code: String(code),
-        etfCode: String(code),
-        code: String(code),
-        etf_name: '',
-        etfName: '',
-        latest_date: '',
-        latestDate: '',
-        status: '非今日資料',
-      })),
-      missing_etfs: missingTodayEtfCodesForDisplay.map((code: any) => ({
-        etf_code: String(code),
-        code: String(code),
-        etf_name: '',
-        latest_date: '',
-        status: '非今日資料',
-      })),
+      non_today_etfs: missingTodayEtfCodesForDisplay.map(makeMissingEtfDisplayRow),
+      missing_etfs: missingTodayEtfCodesForDisplay.map(makeMissingEtfDisplayRow),
       no_compare_etf_codes: noCompareEtfCodes,
       today_holding_rows: todayRowsAll.length,
       included_holding_rows: holdingsRows.length,
