@@ -562,10 +562,75 @@ function FocusCard({ title, row, kind }: { title: string; row: AnyRow | null; ki
   );
 }
 
+const ETF_NAME_FALLBACK_V121: Record<string, string> = {
+  "00400A": "主動國泰動能高息",
+  "00401A": "主動摩根台灣鑫收",
+  "00402A": "主動安聯美國科技",
+  "00403A": "主動統一升級50",
+  "00404A": "主動聯博動能50",
+  "00405A": "主動富邦台灣龍耀",
+  "00406A": "主動中信台灣收益",
+  "00980A": "主動野村臺灣優選",
+  "00981A": "主動統一台股增長",
+  "00982A": "主動群益台灣強棒",
+  "00983A": "主動中信ARK創新",
+  "00984A": "主動安聯台灣高息",
+  "00985A": "主動野村台灣50",
+  "00986A": "主動台新龍頭成長",
+  "00987A": "主動台新優勢成長",
+  "00988A": "主動統一全球創新",
+  "00989A": "主動摩根美國科技",
+  "00990A": "主動元大AI新經濟",
+  "00991A": "主動復華未來50",
+  "00992A": "主動群益科技創新",
+  "00993A": "主動安聯台灣",
+  "00994A": "主動第一金台股優",
+  "00995A": "主動中信台灣卓越",
+  "00996A": "主動兆豐台灣豐收",
+  "00997A": "主動群益美國增長",
+  "00998A": "主動復華金融股息",
+  "00999A": "主動野村臺灣高息",
+};
+
+const ETF_MISSING_META_FALLBACK_V121: Record<string, { market: string; reason: string }> = {
+  "00402A": { market: "美國", reason: "時差延後" },
+  "00983A": { market: "美國", reason: "時差延後" },
+  "00986A": { market: "台灣", reason: "資料待補" },
+  "00988A": { market: "世界", reason: "時差延後" },
+  "00989A": { market: "美國", reason: "時差延後" },
+  "00990A": { market: "世界", reason: "時差延後" },
+  "00997A": { market: "美國", reason: "時差延後" },
+  "00998A": { market: "台灣", reason: "資料待補" },
+};
+
+function etfDisplayNameFallback(code: any, row?: any) {
+  const c = String(code || '').trim().toUpperCase();
+  return String(
+    row?.etf_name ||
+    row?.etfName ||
+    row?.name ||
+    ETF_NAME_FALLBACK_V121[c] ||
+    ''
+  );
+}
+
+function etfMissingMetaFallback(code: any, row?: any) {
+  const c = String(code || '').trim().toUpperCase();
+  const fallback = ETF_MISSING_META_FALLBACK_V121[c] || { market: "未判定", reason: "資料待補" };
+  const market = String(row?.market || row?.investment_market || row?.investmentMarket || '').trim();
+  const reason = String(row?.missing_reason || row?.missingReason || row?.reason || '').trim();
+  return {
+    market: market || fallback.market,
+    reason: reason || fallback.reason,
+  };
+}
+
+
 function MissingModal({ data, onClose }: { data: any; onClose: () => void }) {
   const total = getTotalEtfs(data);
   const today = getTodayEtfs(data, total);
   const missing = Math.max(0, total - today);
+  const targetDate = data?.target_date ?? data?.data_date ?? data?.latestDataDate ?? '';
   const rows0 = missingRowsOf(data);
 
   const fallbackCodes =
@@ -593,18 +658,26 @@ function MissingModal({ data, onClose }: { data: any; onClose: () => void }) {
       <div className="v120-modal" onClick={(e) => e.stopPropagation()}>
         <button className="v120-modal-x" type="button" onClick={onClose}>×</button>
         <h3>未更新 ETF</h3>
-        <p>今日訊號只使用當日資料，不混入前一日資料。</p>
+        <p>今日訊號只使用{targetDate ? ` ${mmdd(targetDate)} 當日` : '當日'}資料，不混入前一日資料。</p>
+        <p>未更新 ETF 不納入今日訊號計算。</p>
+        <p>右側標示主要投資市場與未更新原因；美國、世界市場 ETF 通常會因海外市場收盤與資料揭露時間較晚而延後更新。</p>
         <div className="v120-modal-count">已取得 {today} / {total} 檔，未更新 {missing} 檔</div>
 
         {rows.length ? (
           <div className="v120-missing-list">
-            {rows.map((r, i) => (
-              <div className="v120-missing-row" key={`${etfCodeOf(r) || i}`}>
-                <b>{etfCodeOf(r)}</b>
-                {etfNameOf(r) && etfNameOf(r) !== etfCodeOf(r) ? <span>{etfNameOf(r)}</span> : null}
-                {dateOf(r) ? <em>最後資料 {mmdd(dateOf(r))}</em> : null}
-              </div>
-            ))}
+            {rows.map((r, i) => {
+              const code = etfCodeOf(r);
+              const name = etfDisplayNameFallback(code, r);
+              const meta = etfMissingMetaFallback(code, r);
+              return (
+                <div className="v120-missing-row" key={`${code || i}`}>
+                  <b>{code}</b>
+                  {name && name !== code ? <span>{name}</span> : null}
+                  {dateOf(r) ? <em>最新 {mmdd(dateOf(r))}</em> : null}
+                  <strong className="v120-missing-meta">{meta.market}｜{meta.reason}</strong>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="v120-modal-note">
