@@ -7,6 +7,16 @@ import { rowsOf, quoteOf, etfCode, etfName, stockCode, stockName, fmtFree, fmtPc
 
 type Tab = 'overview' | 'live' | 'operation' | 'holdings' | 'basic';
 type SortKey = 'weight' | 'value' | 'shares' | 'price' | 'pct' | 'code';
+function holdingDateOfRows(rows: any[]) {
+  if (!Array.isArray(rows) || rows.length === 0) return '';
+  let best = '';
+  for (const r of rows) {
+    const d = String(r?.data_date ?? r?.trade_date ?? r?.date ?? r?.latest_date ?? r?.latestDate ?? r?.updated_date ?? r?.dt ?? '');
+    if (d && (!best || d > best)) best = d;
+  }
+  return best;
+}
+
 function useBack() { return () => { if (typeof window !== 'undefined' && window.history.length > 1) window.history.back(); else window.location.href = '/etfs'; }; }
 function SortButton({ label, k, sortKey, sortDir, onClick }: any) { const active = sortKey === k; return <button className={active ? 'active' : ''} onClick={onClick}>{label}<span>{active ? (sortDir === 'desc' ? '↓' : '↑') : '↕'}</span></button>; }
 
@@ -120,6 +130,7 @@ export default function EtfDetailClient(props: any) {
   const [sortKey, setSortKey] = useState<SortKey>('weight');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const holdings = rowsOf(data);
+  const holdingDate = holdingDateOfRows(holdings);
   const changes = data?.changes || data?.operationRows || data?.operation_rows || data?.changeRows || [];
   const chartRows = trendRowsFromAny(data);
   const sortedHoldings = useMemo(() => sortRows(holdings, (r: any) => {
@@ -136,11 +147,11 @@ export default function EtfDetailClient(props: any) {
     <main className="v89-detail-page">
       <header className="v89-detail-header"><button onClick={back} className="back">‹</button><div><b>{code}</b><span>{name}</span></div><button className="star" onClick={() => setFav(toggleFavorite({ code, name, type: 'etf' }))}>{fav || favoriteExists(code, 'etf') ? '★' : '☆'}</button></header>
       <nav className="v89-detail-tabs five">{([['overview','總覽'],['live','即時'],['operation','操作日報'],['holdings','成分股'],['basic','基本']] as any).map(([k,l]: any) => <button key={k} className={tab===k?'active':''} onClick={() => setTab(k)}>{l}</button>)}</nav>
-      {tab === 'overview' && <section className="v89-section"><div className="v89-kpi-grid four"><div><span>股價</span><b className={toneClass(changePctOf(quote))}>{fmtFree(priceOf(quote), 2)}</b><small>{fmtPct(changePctOf(quote), 2)}</small></div><div><span>成交金額</span><b>{fmtFree(amountBillionOf(quote), 1)}</b><small>億</small></div><div><span>持股異動</span><b>{Array.isArray(changes) ? changes.length : 0}</b><small>檔</small></div><div><span>資料狀態</span><b className={holdings.length ? 'v89-green' : 'v89-red'}>{holdings.length ? '完整' : '待補'}</b><small>股價 / 成分股 / 歷史</small></div></div><h2>淨值 / 股價走勢</h2><Chart rows={chartRows} color={changePctOf(quote) >= 0 ? 'red' : 'green'} /><h2>前五大持股</h2><HoldingRows rows={sortedHoldings.slice(0, 5)} /></section>}
+      {tab === 'overview' && <section className="v89-section"><div className="v89-kpi-grid four"><div><span>股價</span><b className={toneClass(changePctOf(quote))}>{fmtFree(priceOf(quote), 2)}</b><small>{fmtPct(changePctOf(quote), 2)}</small></div><div><span>成交金額</span><b>{fmtFree(amountBillionOf(quote), 1)}</b><small>億</small></div><div><span>持股異動</span><b>{Array.isArray(changes) ? changes.length : 0}</b><small>檔</small></div><div><span>資料狀態</span><b className={holdings.length ? 'v89-green' : 'v89-red'}>{holdings.length ? '完整' : '待補'}</b><small>報價 / 成分股</small></div></div><h2>淨值 / 股價走勢</h2><Chart rows={chartRows} color={changePctOf(quote) >= 0 ? 'red' : 'green'} /><h2>前五大持股</h2><HoldingRows rows={sortedHoldings.slice(0, 5)} /></section>}
       {tab === 'live' && <section className="v89-section"><div className="v89-stock-quote"><div><span>股價</span><b className={toneClass(changePctOf(quote))}>{fmtFree(priceOf(quote), 2)}</b><small>{fmtPct(changePctOf(quote), 2)}</small></div><div><span>成交量</span><b>{fmtFree(volumeOf(quote), 0)}</b><small>{fmtFree(amountBillionOf(quote), 1)} 億</small></div></div></section>}
       {tab === 'operation' && <section className="v89-section"><h1>操作日報</h1><OperationRows changes={Array.isArray(changes) ? changes : []} /></section>}
       {tab === 'holdings' && <section className="v89-section"><div className="v89-sort-row sticky"><SortButton label="權重" k="weight" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('weight')} /><SortButton label="市值" k="value" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('value')} /><SortButton label="張數" k="shares" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('shares')} /><SortButton label="漲跌幅" k="pct" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('pct')} /></div><HoldingRows rows={sortedHoldings} /></section>}
-      {tab === 'basic' && <section className="v89-section"><div className="v89-info-card"><p><span>資產規模</span><b>{fmtFree(quote?.aum_billion ?? quote?.fund_size_billion, 1)} 億</b></p><p><span>內扣費用</span><b>{Number.isFinite(num(quote?.expense_ratio)) ? fmtFree(quote?.expense_ratio, 2) + '%' : '-'}</b></p><p><span>成立日</span><b>{quote?.inception_date || quote?.listing_date || '-'}</b></p><p><span>報價更新</span><b>{shortDate(latestDateOf(quote))}</b></p></div></section>}
+      {tab === 'basic' && <section className="v89-section"><div className="v89-info-card"><p><span>資產規模</span><b>{fmtFree(quote?.aum_billion ?? quote?.fund_size_billion, 1)} 億</b></p><p><span>內扣費用</span><b>{Number.isFinite(num(quote?.expense_ratio)) ? fmtFree(quote?.expense_ratio, 2) + '%' : '-'}</b></p><p><span>成立日</span><b>{quote?.inception_date || quote?.listing_date || '-'}</b></p><p><span>持股日</span><b>{shortDate(holdingDate)}</b></p><p><span>報價更新</span><b>{shortDate(latestDateOf(quote))}</b></p></div></section>}
     </main>
   );
 }
