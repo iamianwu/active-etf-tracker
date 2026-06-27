@@ -593,13 +593,13 @@ const ETF_NAME_FALLBACK_V121: Record<string, string> = {
 };
 
 const ETF_MISSING_META_FALLBACK_V121: Record<string, { market: string; reason: string }> = {
-  "00402A": { market: "美國", reason: "時差延後" },
-  "00983A": { market: "美國", reason: "時差延後" },
-  "00986A": { market: "台灣", reason: "資料待補" },
-  "00988A": { market: "世界", reason: "時差延後" },
-  "00989A": { market: "美國", reason: "時差延後" },
-  "00990A": { market: "世界", reason: "時差延後" },
-  "00997A": { market: "美國", reason: "時差延後" },
+  "00402A": { market: "美國", reason: "揭露延後" },
+  "00983A": { market: "美國", reason: "揭露延後" },
+  "00986A": { market: "全球", reason: "揭露延後" },
+  "00988A": { market: "全球", reason: "揭露延後" },
+  "00989A": { market: "美國", reason: "揭露延後" },
+  "00990A": { market: "全球", reason: "揭露延後" },
+  "00997A": { market: "美國", reason: "揭露延後" },
   "00998A": { market: "台灣", reason: "資料待補" },
 };
 
@@ -640,18 +640,29 @@ function MissingModal({ data, onClose }: { data: any; onClose: () => void }) {
     (Array.isArray(data?.summary?.missingTodayEtfCodes) && data.summary.missingTodayEtfCodes.length ? data.summary.missingTodayEtfCodes : null) ||
     [];
 
-  const rows = rows0.length
-    ? rows0
-    : fallbackCodes.map((code: any) => ({
-        etf_code: String(code),
-        etfCode: String(code),
-        code: String(code),
-        etf_name: '',
-        etfName: '',
-        latest_date: '',
-        latestDate: '',
-        status: '非今日資料',
-      }));
+  const rowMap = new Map<string, any>();
+
+  for (const r of rows0) {
+    const code = etfCodeOf(r);
+    if (code) rowMap.set(code, r);
+  }
+
+  for (const code0 of fallbackCodes) {
+    const code = String(code0 || '').trim().toUpperCase();
+    if (!code || rowMap.has(code)) continue;
+    rowMap.set(code, {
+      etf_code: code,
+      etfCode: code,
+      code,
+      etf_name: '',
+      etfName: '',
+      latest_date: '',
+      latestDate: '',
+      status: '非今日資料',
+    });
+  }
+
+  const rows = Array.from(rowMap.values());
 
   return (
     <div className="v120-modal-mask" onClick={onClose}>
@@ -660,7 +671,7 @@ function MissingModal({ data, onClose }: { data: any; onClose: () => void }) {
         <h3>未更新 ETF</h3>
         <p>今日訊號只使用{targetDate ? ` ${mmdd(targetDate)} 當日` : '當日'}資料，不混入前一日資料。</p>
         <p>未更新 ETF 不納入今日訊號計算。</p>
-        <p>右側標示主要投資市場與未更新原因；美國、世界市場 ETF 通常會因海外市場收盤與資料揭露時間較晚而延後更新。</p>
+        <p>右側標示主要投資市場；美國／全球市場 ETF 可能因海外收盤與持股揭露時間較晚而延後更新。</p>
         <div className="v120-modal-count">已取得 {today} / {total} 檔，未更新 {missing} 檔</div>
 
         {rows.length ? (
@@ -671,10 +682,14 @@ function MissingModal({ data, onClose }: { data: any; onClose: () => void }) {
               const meta = etfMissingMetaFallback(code, r);
               return (
                 <div className="v120-missing-row" key={`${code || i}`}>
-                  <b>{code}</b>
-                  {name && name !== code ? <span>{name}</span> : null}
-                  {dateOf(r) ? <em>最新 {mmdd(dateOf(r))}</em> : null}
-                  <strong className="v120-missing-meta">{meta.market}｜{meta.reason}</strong>
+                  <div className="v120-missing-main">
+                    <b>{code}</b>
+                    {name && name !== code ? <span>{name}</span> : null}
+                  </div>
+                  <div className="v120-missing-detail">
+                    {dateOf(r) ? <em>最新：{mmdd(dateOf(r))}</em> : null}
+                    <strong className="v120-missing-meta">市場：{meta.market}</strong>
+                  </div>
                 </div>
               );
             })}
