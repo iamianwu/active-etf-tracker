@@ -75,6 +75,14 @@ export function isNormalStockCode(code: string) {
   return /^[0-9]{4}$/.test(String(code || ''));
 }
 
+export function isHoldingSecurityCode(code: string) {
+  const c = String(code || '').trim().toUpperCase();
+  if (!c) return false;
+  if (/^[0-9]{5}A$/.test(c)) return false;
+  if (['CASH', '現金', '合計', '總計'].includes(c)) return false;
+  return true;
+}
+
 export function fmt(n: any, digits = 2, empty = '-') {
   const x = num(n);
   if (x === null) return empty;
@@ -171,7 +179,7 @@ function holdingDateStats(rows: any[]) {
     if (!map[d]) map[d] = { date: d, row_count: 0, stock_count: 0, stock_weight: 0 };
     map[d].row_count += 1;
 
-    if (isNormalStockCode(String(r.stock_code))) {
+    if (isHoldingSecurityCode(String(r.stock_code))) {
       map[d].stock_count += 1;
       map[d].stock_weight += num(r.weight) || 0;
     }
@@ -356,7 +364,7 @@ export async function getEtfDetailData(code: string) {
   for (const s of stockQuotes || []) sq[String(s.stock_code)] = s;
 
   const currentRows = holdingsRows
-    .filter((r: any) => String(r.data_date) === latestDate && isNormalStockCode(String(r.stock_code)))
+    .filter((r: any) => String(r.data_date) === latestDate && isHoldingSecurityCode(String(r.stock_code)))
     .map((r: any) => {
       const stockQuote = sq[String(r.stock_code)] || {};
       const price = num(stockQuote.price);
@@ -420,7 +428,7 @@ export async function getEtfDetailData(code: string) {
     }
 
     for (const [stockCode, prev] of Object.entries(prevMap)) {
-      if (!isNormalStockCode(stockCode) || currMap[stockCode]) continue;
+      if (!isHoldingSecurityCode(stockCode) || currMap[stockCode]) continue;
 
       const stockQuote = sq[stockCode] || {};
       const price = num(stockQuote.price);
