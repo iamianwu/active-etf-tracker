@@ -449,6 +449,13 @@ async function getStockDetail(stockCode: string) {
   }
 
   const history = augmentedHistory
+    .map((r) => {
+      const etf = String(r.etf_code || "");
+      return {
+        ...r,
+        etf_name: r.etf_name || etfQuoteMap[etf]?.etf_name || ETF_NAMES[etf] || etf,
+      };
+    })
     .sort((a, b) => String(b.data_date).localeCompare(String(a.data_date)) || String(a.etf_code).localeCompare(String(b.etf_code)))
     .slice(0, 300);
 
