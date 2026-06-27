@@ -686,7 +686,7 @@ function MissingModal({ data, onClose }: { data: any; onClose: () => void }) {
         <h3>未更新 ETF</h3>
         <p>今日訊號只使用{targetDate ? ` ${mmdd(targetDate)} 當日` : '當日'}資料，不混入前一日資料。</p>
         <p>未更新 ETF 不納入今日訊號計算。</p>
-        <p>市場標籤：台灣／美國／全球；美國與全球型 ETF 可能因海外收盤與持股揭露時間較晚而延後。</p>
+        <p>下表列出未納入今日訊號的 ETF、持股資料日與主要市場。</p>
         <div className="v120-modal-count">已取得 {today} / {total} 檔，未更新 {missing} 檔</div>
 
         {rows.length ? (
@@ -696,7 +696,7 @@ function MissingModal({ data, onClose }: { data: any; onClose: () => void }) {
                 <tr>
                   <th>代號</th>
                   <th>ETF 名稱</th>
-                  <th>最後更新</th>
+                  <th>持股日</th>
                   <th>市場</th>
                 </tr>
               </thead>

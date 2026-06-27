@@ -79,7 +79,7 @@ export default function EtfListClient(props: any) {
                   <div><b>{code}</b><span>{etfName(r)}</span></div>
                   <div><strong>{fmtFree(priceOf(r), 2)}</strong><em className={toneClass(changePctOf(r))}>{fmtPct(changePctOf(r), 2)}</em></div>
                 </div>
-                {tab === 'live' && <div className="v89-etf-meta three"><span>成交量<b>{fmtFree(volumeOf(r), 0)}</b></span><span>成交金額<b>{fmtFree(amountBillionOf(r), 1)} 億</b></span><span>更新<b>{shortDate(latestDateOf(r))}</b></span></div>}
+                {tab === 'live' && <div className="v89-etf-meta three"><span>成交量<b>{fmtFree(volumeOf(r), 0)}</b></span><span>成交金額<b>{fmtFree(amountBillionOf(r), 1)} 億</b></span><span>報價更新<b>{shortDate(latestDateOf(r))}</b></span></div>}
                 {tab === 'return' && <div className="v89-etf-meta three"><span>報酬<b className={toneClass(returnOf(r))}>{fmtPct(returnOf(r), 1)}</b></span><span>成交額<b>{fmtFree(amountBillionOf(r), 1)} 億</b></span><span>區域<b>{etfRegion(r)}</b></span></div>}
                 {tab === 'basic' && <div className="v89-etf-meta three"><span>資產規模<b>{fmtFree(aumOf(r), 0)} 億</b></span><span>內扣費用<b>{Number.isFinite(feeOf(r)) ? fmtFree(feeOf(r), 2) + '%' : '-'}</b></span><span>投資區域<b>{etfRegion(r)}</b></span></div>}
                 <div className="v89-data-badges"><span className={Number.isFinite(priceOf(r)) ? 'ok' : 'miss'}>股價 {Number.isFinite(priceOf(r)) ? '✓' : '-'}</span><span className="ok">成分股 ✓</span><span className="miss">歷史 -</span></div>
