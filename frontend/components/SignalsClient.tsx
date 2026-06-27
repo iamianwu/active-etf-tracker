@@ -600,7 +600,7 @@ const ETF_MISSING_META_FALLBACK_V121: Record<string, { market: string; reason: s
   "00989A": { market: "美國", reason: "揭露延後" },
   "00990A": { market: "全球", reason: "揭露延後" },
   "00997A": { market: "美國", reason: "揭露延後" },
-  "00998A": { market: "台灣", reason: "資料待補" },
+  "00998A": { market: "全球", reason: "資料待補" },
 };
 
 function etfDisplayNameFallback(code: any, row?: any) {
