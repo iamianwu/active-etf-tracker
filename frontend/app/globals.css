@@ -11818,3 +11818,219 @@ html,body{max-width:100%;overflow-x:hidden;}
     padding: 9px 6px;
   }
 }
+
+.admin-etf-status-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 18px 60px;
+  color: #172033;
+}
+
+.admin-etf-status-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.admin-etf-back {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: #4c78c7;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.admin-etf-status-head h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 950;
+}
+
+.admin-etf-status-head p {
+  margin: 8px 0 0;
+  color: #6f7a89;
+  font-weight: 800;
+}
+
+.admin-etf-refresh {
+  border: 0;
+  border-radius: 14px;
+  background: #4c78c7;
+  color: white;
+  padding: 12px 18px;
+  font-size: 15px;
+  font-weight: 950;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.admin-etf-refresh:disabled {
+  opacity: .65;
+  cursor: default;
+}
+
+.admin-etf-error {
+  border: 1px solid #f2b8bd;
+  background: #fff7f7;
+  color: #c6343e;
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-weight: 900;
+}
+
+.admin-etf-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 18px 0 12px;
+}
+
+.admin-etf-summary > div {
+  border: 1px solid #e3e9f2;
+  border-radius: 16px;
+  background: #fff;
+  padding: 16px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+}
+
+.admin-etf-summary span {
+  display: block;
+  color: #6f7a89;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.admin-etf-summary b {
+  display: block;
+  margin-top: 8px;
+  font-size: 26px;
+  font-weight: 950;
+}
+
+.admin-etf-meta {
+  color: #6f7a89;
+  font-size: 14px;
+  font-weight: 850;
+  margin-bottom: 12px;
+}
+
+.admin-etf-toolbar {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.admin-etf-toolbar input,
+.admin-etf-toolbar select {
+  height: 44px;
+  border: 1px solid #d8e0eb;
+  border-radius: 12px;
+  background: #fff;
+  padding: 0 12px;
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.admin-etf-toolbar input {
+  flex: 1;
+}
+
+.admin-etf-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e3e9f2;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.admin-etf-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+
+.admin-etf-table th {
+  background: #f4f7fb;
+  color: #526071;
+  text-align: left;
+  padding: 12px 10px;
+  font-size: 13px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.admin-etf-table td {
+  border-top: 1px solid #edf1f6;
+  padding: 12px 10px;
+  font-size: 14px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.admin-etf-table td:nth-child(2) {
+  white-space: normal;
+  min-width: 180px;
+}
+
+.admin-etf-table td a {
+  color: #315fa8;
+  font-weight: 950;
+  text-decoration: none;
+}
+
+.admin-etf-row-warn {
+  background: #fffaf1;
+}
+
+.admin-etf-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.admin-etf-pill.ok {
+  color: #15805f;
+  background: #eaf8f2;
+}
+
+.admin-etf-pill.warn {
+  color: #a66a00;
+  background: #fff3d8;
+}
+
+.admin-etf-pill.bad {
+  color: #c6343e;
+  background: #ffe9eb;
+}
+
+.admin-etf-empty {
+  text-align: center;
+  color: #7d8796;
+  padding: 32px !important;
+}
+
+@media (max-width: 720px) {
+  .admin-etf-status-head {
+    display: block;
+  }
+
+  .admin-etf-refresh {
+    width: 100%;
+    margin-top: 14px;
+  }
+
+  .admin-etf-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .admin-etf-toolbar {
+    display: grid;
+  }
+}
