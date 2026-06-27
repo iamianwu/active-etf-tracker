@@ -61,7 +61,7 @@ function opAmountBillion(r: any, lots: number): number {
 
 function OperationRows({ changes }: { changes: any[] }) {
   if (!Array.isArray(changes) || changes.length === 0) {
-    return <div className="v89-empty-box">目前沒有操作日報資料</div>;
+    return <div className="v89-empty-box">本日無變動標的</div>;
   }
 
   return (
