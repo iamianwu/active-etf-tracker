@@ -685,8 +685,7 @@ function MissingModal({ data, onClose }: { data: any; onClose: () => void }) {
         <button className="v120-modal-x" type="button" onClick={onClose}>×</button>
         <h3>未更新 ETF</h3>
         <p>今日訊號只使用{targetDate ? ` ${mmdd(targetDate)} 當日` : '當日'}資料，不混入前一日資料。</p>
-        <p>未更新 ETF 不納入今日訊號計算。</p>
-        <p>下表列出未納入今日訊號的 ETF、持股資料日與主要市場。</p>
+        <p>下方列出未納入今日訊號的 ETF、持股日與主要市場。</p>
         <div className="v120-modal-count">已取得 {today} / {total} 檔，未更新 {missing} 檔</div>
 
         {rows.length ? (
