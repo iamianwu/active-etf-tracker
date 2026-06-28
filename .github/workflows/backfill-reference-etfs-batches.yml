@@ -1,0 +1,84 @@
+name: Backfill Reference ETF Batches
+
+on:
+  workflow_dispatch:
+    inputs:
+      dt_range:
+        description: "Pocket DTRange for reference ETF backfill. Use 45 or 60."
+        required: false
+        default: "60"
+      sleep_sec:
+        description: "Sleep seconds after each ETF"
+        required: false
+        default: "0.2"
+
+concurrency:
+  group: backfill-reference-etfs
+  cancel-in-progress: false
+
+jobs:
+  backfill-reference-etf:
+    name: ref-${{ matrix.batch_index }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        batch_index: [
+          0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+          10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+          20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+          30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+          40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+          50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
+          60, 61, 62, 63, 64
+        ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Backfill one reference ETF
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DT_RANGE: ${{ github.event.inputs.dt_range || '60' }}
+          SLEEP_SEC: ${{ github.event.inputs.sleep_sec || '0.2' }}
+          BATCH_INDEX: ${{ matrix.batch_index }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python - <<'PY'
+          import os
+          import time
+          from app.config import REFERENCE_ETF_CODES, REFERENCE_ETF_NAMES
+          from app.services.fetcher import update_one_etf
+
+          idx = int(os.environ.get("BATCH_INDEX", "0"))
+          dt_range = int(os.environ.get("DT_RANGE", "60"))
+          sleep_sec = float(os.environ.get("SLEEP_SEC", "0.2"))
+
+          if idx >= len(REFERENCE_ETF_CODES):
+              print(f"skip idx={idx}, total={len(REFERENCE_ETF_CODES)}")
+              raise SystemExit(0)
+
+          code = REFERENCE_ETF_CODES[idx]
+          name = REFERENCE_ETF_NAMES.get(code, code)
+
+          print(f"Backfill reference ETF idx={idx + 1}/{len(REFERENCE_ETF_CODES)} code={code} name={name} dt_range={dt_range}", flush=True)
+          result = update_one_etf(code, dt_range=dt_range)
+          result["etf_name"] = name
+          result["etf_group"] = "reference"
+          print(result, flush=True)
+
+          time.sleep(sleep_sec)
+          PY
