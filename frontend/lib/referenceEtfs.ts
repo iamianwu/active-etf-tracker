@@ -69,6 +69,9 @@ export const REFERENCE_ETFS: ReferenceEtf[] = [
   { code: '009803', name: '玉山市值動能50', market: '台灣', role: '市值動能50對照', include_in_today_signal: false },
   { code: '009804', name: '聯邦台精彩50', market: '台灣', role: '台股50對照', include_in_today_signal: false },
   { code: '009808', name: '華南永昌優選50', market: '台灣', role: '優選50對照', include_in_today_signal: false },
+  { code: '00735', name: '國泰臺韓科技', market: '台灣', role: '跨市場科技對照', include_in_today_signal: false },
+  { code: '009809', name: '富邦淨零ESG50', market: '台灣', role: 'ESG低碳對照', include_in_today_signal: false },
+  { code: '009816', name: '凱基台灣TOP 50', market: '台灣', role: '大盤權值股對照', include_in_today_signal: false },
 ];
 
 export const REFERENCE_ETF_CODES = REFERENCE_ETFS.map((x) => x.code);
