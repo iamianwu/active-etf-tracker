@@ -23,7 +23,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 2
       matrix:
         batch_index: [
           0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -61,7 +61,9 @@ jobs:
           import os
           import time
           from app.config import REFERENCE_ETF_CODES, REFERENCE_ETF_NAMES
-          from app.services.fetcher import update_one_etf
+          import app.services.fetcher as fetcher
+
+          fetcher.init_db = lambda: None
 
           idx = int(os.environ.get("BATCH_INDEX", "0"))
           dt_range = int(os.environ.get("DT_RANGE", "60"))
@@ -75,7 +77,7 @@ jobs:
           name = REFERENCE_ETF_NAMES.get(code, code)
 
           print(f"Backfill reference ETF idx={idx + 1}/{len(REFERENCE_ETF_CODES)} code={code} name={name} dt_range={dt_range}", flush=True)
-          result = update_one_etf(code, dt_range=dt_range)
+          result = fetcher.update_one_etf(code, dt_range=dt_range)
           result["etf_name"] = name
           result["etf_group"] = "reference"
           print(result, flush=True)
