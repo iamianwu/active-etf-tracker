@@ -375,7 +375,7 @@ function isLimitUp(row: AnyRow): boolean {
 
 function getTotalEtfs(data: any): number {
   const v = firstNum(data, ['total_etf_count', 'totalEtfCount', 'total_etfs', 'totalEtfs'], NaN);
-  return Number.isFinite(v) && v > 0 ? Math.max(TOTAL_ACTIVE_ETFS, Math.round(v)) : TOTAL_ACTIVE_ETFS;
+  return Number.isFinite(v) && v > 0 ? Math.round(v) : TOTAL_ACTIVE_ETFS;
 }
 
 function getTodayEtfs(data: any, total: number): number {
