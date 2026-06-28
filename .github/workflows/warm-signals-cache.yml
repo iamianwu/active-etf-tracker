@@ -12,7 +12,7 @@ concurrency:
 jobs:
   warm-signals-cache:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -38,12 +38,14 @@ jobs:
         env:
           SITE_URL: https://active-etf-tracker.vercel.app
         run: |
-          for d in 1 5 10 20; do
-            echo "rebuilding days=$d"
-            curl -fsS "$SITE_URL/api/signals?days=$d&fresh=1" > /dev/null
+          for u in active reference all; do
+            for d in 1 5 10 20; do
+              echo "rebuilding universe=$u days=$d"
+              curl -fsS "$SITE_URL/api/signals?days=$d&universe=$u&fresh=1" > /dev/null
 
-            VERSION=$(curl -fsS "$SITE_URL/api/signals-version?days=$d" | python -c "import sys,json; print(json.load(sys.stdin).get('version','none'))")
-            echo "warming cdn days=$d version=$VERSION"
-            curl -fsS "$SITE_URL/api/signals?days=$d&cv=$VERSION" > /dev/null
-            curl -fsS "$SITE_URL/api/signals?days=$d&cv=$VERSION" > /dev/null
+              VERSION=$(curl -fsS "$SITE_URL/api/signals-version?days=$d&universe=$u" | python -c "import sys,json; print(json.load(sys.stdin).get('version','none'))")
+              echo "warming cdn universe=$u days=$d version=$VERSION"
+              curl -fsS "$SITE_URL/api/signals?days=$d&universe=$u&cv=$VERSION" > /dev/null
+              curl -fsS "$SITE_URL/api/signals?days=$d&universe=$u&cv=$VERSION" > /dev/null
+            done
           done

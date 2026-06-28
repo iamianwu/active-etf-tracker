@@ -581,6 +581,17 @@ async function loadSignalRowsByRange(signalRangeDays: number) {
 
 
 
+function normalizeSignalUniverse(input: any): 'active' | 'reference' | 'all' {
+  const raw = String(input || 'active').toLowerCase();
+  if (raw === 'reference' || raw === 'passive' || raw === 'general') return 'reference';
+  if (raw === 'all') return 'all';
+  return 'active';
+}
+
+function makeSignalsCacheSignalType(signalType: string | null | undefined, universe: 'active' | 'reference' | 'all') {
+  return `${universe}::${String(signalType || '')}`;
+}
+
 async function getSignalsCacheScope() {
   const toDate = (v: any) => String(v ?? '').slice(0, 10);
 
@@ -609,26 +620,29 @@ async function getSignalsCacheScope() {
   return { dataDate, holdingsRowCount: count || 0 };
 }
 
-function makeSignalsCacheKey(signalType: string | null | undefined, days: number, scope: { dataDate: string; holdingsRowCount: number }) {
-  const type = String(signalType || 'all');
-  return `signals:${scope.dataDate}:${scope.holdingsRowCount}:days=${days}:type=${type}:v=missing-date-table`;
+function makeSignalsCacheKey(signalType: string | null | undefined, days: number, scope: { dataDate: string; holdingsRowCount: number }, universe: 'active' | 'reference' | 'all' = 'active') {
+  const t = String(signalType || 'all');
+  return `signals:v2:${universe}:${t}:days=${days}:date=${scope.dataDate}:rows=${scope.holdingsRowCount}`;
 }
 
-async function readSignalsCache(signalType: string | null | undefined, days: number, scope: { dataDate: string; holdingsRowCount: number }) {
+async function readSignalsCache(signalType: string | null | undefined, days: number, scope: { dataDate: string; holdingsRowCount: number }, universe: 'active' | 'reference' | 'all' = 'active') {
+  if (!hasSupabaseEnv) return null;
   if (!scope.dataDate) return null;
 
-  const cacheKey = makeSignalsCacheKey(signalType, days, scope);
+  const cacheKey = makeSignalsCacheKey(signalType, days, scope, universe);
+  const cacheSignalType = makeSignalsCacheSignalType(signalType, universe);
 
   const { data, error } = await supabase
     .from('signals_cache')
-    .select('cache_key,data_date,holdings_row_count,days,signal_type,payload,updated_at')
+    .select('payload,cache_key,updated_at,data_date')
     .eq('cache_key', cacheKey)
+    .eq('days', days)
+    .eq('signal_type', cacheSignalType)
     .maybeSingle();
 
   if (error) {
     const msg = String(error.message || '');
-    if (msg.includes('Could not find the table') || msg.includes('does not exist')) return null;
-    console.warn('[signals_cache] read failed:', msg);
+    if (!msg.includes('does not exist')) console.warn('[signals_cache] read failed:', msg);
     return null;
   }
 
@@ -637,22 +651,25 @@ async function readSignalsCache(signalType: string | null | undefined, days: num
   return {
     ...data.payload,
     cache_hit: true,
+    cache_mode: 'exact',
     cache_key: data.cache_key,
     cache_updated_at: data.updated_at,
   };
 }
 
-async function writeSignalsCache(signalType: string | null | undefined, days: number, scope: { dataDate: string; holdingsRowCount: number }, payload: any) {
-  if (!scope.dataDate || !payload) return;
+async function writeSignalsCache(signalType: string | null | undefined, days: number, scope: { dataDate: string; holdingsRowCount: number }, payload: any, universe: 'active' | 'reference' | 'all' = 'active') {
+  if (!hasSupabaseEnv) return;
+  if (!scope.dataDate) return;
 
-  const cacheKey = makeSignalsCacheKey(signalType, days, scope);
+  const cacheKey = makeSignalsCacheKey(signalType, days, scope, universe);
+  const cacheSignalType = makeSignalsCacheSignalType(signalType, universe);
 
   const row = {
     cache_key: cacheKey,
     data_date: scope.dataDate,
     holdings_row_count: scope.holdingsRowCount,
     days,
-    signal_type: String(signalType || ''),
+    signal_type: cacheSignalType,
     payload,
     updated_at: new Date().toISOString(),
   };
@@ -663,11 +680,9 @@ async function writeSignalsCache(signalType: string | null | undefined, days: nu
 
   if (error) {
     const msg = String(error.message || '');
-    if (msg.includes('Could not find the table') || msg.includes('does not exist')) return;
-    console.warn('[signals_cache] write failed:', msg);
+    if (!msg.includes('does not exist')) console.warn('[signals_cache] write failed:', msg);
   }
 }
-
 
 async function getSignals(signalType?: string | null, signalRangeDaysInput: any = 1, universeInput: any = 'active') {
   const toDate = (v: any) => String(v ?? '').slice(0, 10);
@@ -1224,22 +1239,23 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
 
 
 
-async function readLatestSignalsCache(signalType: string | null | undefined, days: number) {
-  const type = String(signalType || '');
+async function readLatestSignalsCache(signalType: string | null | undefined, days: number, universe: 'active' | 'reference' | 'all' = 'active') {
+  if (!hasSupabaseEnv) return null;
+
+  const cacheSignalType = makeSignalsCacheSignalType(signalType, universe);
 
   const { data, error } = await supabase
     .from('signals_cache')
-    .select('cache_key,data_date,holdings_row_count,days,signal_type,payload,updated_at')
+    .select('payload,cache_key,updated_at,data_date')
     .eq('days', days)
-    .eq('signal_type', type)
+    .eq('signal_type', cacheSignalType)
     .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (error) {
     const msg = String(error.message || '');
-    if (msg.includes('Could not find the table') || msg.includes('does not exist')) return null;
-    console.warn('[signals_cache] latest read failed:', msg);
+    if (!msg.includes('does not exist')) console.warn('[signals_cache] latest read failed:', msg);
     return null;
   }
 
@@ -1279,34 +1295,28 @@ export async function apiGet(path: string) {
     );
 
     const signalType = u.searchParams.get("type");
-    const rawUniverse = String(
+    const universe = normalizeSignalUniverse(
       u.searchParams.get("universe") ||
       u.searchParams.get("etfUniverse") ||
       "active"
-    ).toLowerCase();
-    const universe = rawUniverse === "reference" || rawUniverse === "passive" || rawUniverse === "general"
-      ? "reference"
-      : rawUniverse === "all"
-        ? "all"
-        : "active";
+    );
     const fresh = ["1", "true", "yes"].includes(String(u.searchParams.get("fresh") || "").toLowerCase());
-    const cacheable = universe === "active";
 
     try {
-      if (!fresh && cacheable) {
-        const latestCached = await readLatestSignalsCache(signalType, days);
+      if (!fresh) {
+        const latestCached = await readLatestSignalsCache(signalType, days, universe);
         if (latestCached) return latestCached;
       }
 
       const scope = await getSignalsCacheScope();
 
-      if (!fresh && cacheable) {
-        const cached = await readSignalsCache(signalType, days, scope);
+      if (!fresh) {
+        const cached = await readSignalsCache(signalType, days, scope, universe);
         if (cached) return cached;
       }
 
       const data = await getSignals(signalType, days, universe);
-      if (cacheable) await writeSignalsCache(signalType, days, scope, data);
+      await writeSignalsCache(signalType, days, scope, data, universe);
       return data;
     } catch (e) {
       console.warn("[signals_cache] fallback to live calculation:", e);

@@ -9,15 +9,28 @@ function one(v: string | null): string {
   return v || '';
 }
 
+function normalizeUniverse(input: string): 'active' | 'reference' | 'all' {
+  const raw = String(input || 'active').toLowerCase();
+  if (raw === 'reference' || raw === 'passive' || raw === 'general') return 'reference';
+  if (raw === 'all') return 'all';
+  return 'active';
+}
+
+function cacheSignalType(type: string, universe: 'active' | 'reference' | 'all') {
+  return `${universe}::${String(type || '')}`;
+}
+
 export async function GET(req: NextRequest) {
   const days = Number(one(req.nextUrl.searchParams.get('days')) || '1') || 1;
   const type = one(req.nextUrl.searchParams.get('type'));
+  const universe = normalizeUniverse(one(req.nextUrl.searchParams.get('universe')) || 'active');
+  const signalType = cacheSignalType(type, universe);
 
   const { data, error } = await supabase
     .from('signals_cache')
     .select('cache_key,data_date,updated_at,days,signal_type')
     .eq('days', days)
-    .eq('signal_type', type)
+    .eq('signal_type', signalType)
     .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -26,6 +39,8 @@ export async function GET(req: NextRequest) {
     ok: !error,
     days,
     type,
+    universe,
+    signal_type: signalType,
     data_date: data?.data_date || null,
     updated_at: data?.updated_at || null,
     cache_key: data?.cache_key || null,
