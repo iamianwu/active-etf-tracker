@@ -12,7 +12,8 @@ concurrency:
 jobs:
   warm-signals-cache:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
+
     steps:
       - uses: actions/checkout@v4
 
@@ -26,26 +27,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Init signals cache table
+      - name: Warm signals cache from API
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SITE_URL: https://active-etf-tracker.vercel.app
+          SIGNAL_UNIVERSES: active,reference,all
+          SIGNAL_DAYS: 1,5,10,20
+          SIGNALS_CACHE_SLEEP_SEC: "0.5"
           PYTHONUNBUFFERED: "1"
         run: |
           cd backend
-          python -m app.jobs.init_signals_cache
-
-      - name: Warm signals cache and CDN
-        env:
-          SITE_URL: https://active-etf-tracker.vercel.app
-        run: |
-          for u in active reference all; do
-            for d in 1 5 10 20; do
-              echo "rebuilding universe=$u days=$d"
-              curl -fsS "$SITE_URL/api/signals?days=$d&universe=$u&fresh=1" > /dev/null
-
-              VERSION=$(curl -fsS "$SITE_URL/api/signals-version?days=$d&universe=$u" | python -c "import sys,json; print(json.load(sys.stdin).get('version','none'))")
-              echo "warming cdn universe=$u days=$d version=$VERSION"
-              curl -fsS "$SITE_URL/api/signals?days=$d&universe=$u&cv=$VERSION" > /dev/null
-              curl -fsS "$SITE_URL/api/signals?days=$d&universe=$u&cv=$VERSION" > /dev/null
-            done
-          done
+          python -m app.jobs.warm_signals_cache_from_api
