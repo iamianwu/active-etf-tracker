@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { ETF_CODES } from './etfData';
+import { REFERENCE_ETF_CODES } from './referenceEtfs';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -668,7 +669,7 @@ async function writeSignalsCache(signalType: string | null | undefined, days: nu
 }
 
 
-async function getSignals(signalType?: string | null, signalRangeDaysInput: any = 1) {
+async function getSignals(signalType?: string | null, signalRangeDaysInput: any = 1, universeInput: any = 'active') {
   const toDate = (v: any) => String(v ?? '').slice(0, 10);
   const n = (v: any) => {
     const x = Number(v);
@@ -676,11 +677,27 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
   };
   const isTwStockCode = (v: any) => /^[0-9]{4}$/.test(String(v ?? '').trim());
   const codeKey = (v: any) => String(v ?? '').trim();
-  const totalEtfCodes: string[] = Array.from(new Set(
+  const activeEtfCodes: string[] = Array.from(new Set(
     (Array.isArray(ETF_CODES) ? ETF_CODES : [])
       .map((x: any) => codeKey(x))
       .filter(Boolean)
   ));
+  const referenceEtfCodes: string[] = Array.from(new Set(
+    (Array.isArray(REFERENCE_ETF_CODES) ? REFERENCE_ETF_CODES : [])
+      .map((x: any) => codeKey(x))
+      .filter(Boolean)
+  ));
+  const rawUniverse = String(universeInput || 'active').toLowerCase();
+  const universe = rawUniverse === 'reference' || rawUniverse === 'passive' || rawUniverse === 'general'
+    ? 'reference'
+    : rawUniverse === 'all'
+      ? 'all'
+      : 'active';
+  const totalEtfCodes: string[] = universe === 'reference'
+    ? referenceEtfCodes
+    : universe === 'all'
+      ? Array.from(new Set([...activeEtfCodes, ...referenceEtfCodes]))
+      : activeEtfCodes;
   const signalRangeDays = Math.max(1, Math.trunc(n(signalRangeDaysInput || 1)) || 1);
   const pageSize = 1000;
 
@@ -704,6 +721,7 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
     const { data: latestRow, error: latestErr } = await supabase
       .from('holdings')
       .select('data_date')
+      .in('etf_code', totalEtfCodes)
       .order('data_date', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -716,6 +734,7 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
         fetched_etf_count: 0, total_etf_count: totalEtfCodes.length,
         signal_count: 0, today_change_count: 0,
         source: 'api_getSignals_v109_today_only_empty',
+        universe, etf_universe: universe,
       };
     }
 
@@ -723,11 +742,11 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
     const todayRowsAll = await selectAll(
       'holdings',
       'etf_code,data_date,stock_code,stock_name,weight,shares',
-      (q) => q.eq('data_date', targetDate)
+      (q) => q.in('etf_code', totalEtfCodes).eq('data_date', targetDate)
     );
     const todayEtfSet = new Set(todayRowsAll.map((r: any) => codeKey(r.etf_code)).filter(Boolean));
 
-    const universeEtfs = Array.from(new Set([...totalEtfCodes, ...Array.from(todayEtfSet)]));
+    const universeEtfs = totalEtfCodes;
 
     const missingTodayEtfCodes = universeEtfs.filter((c) => !todayEtfSet.has(c));
 
@@ -1155,6 +1174,7 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
       signal_count: rows.length,
       today_change_count: rows.length,
       source: 'api_getSignals_v109_today_only_global_date',
+      universe, etf_universe: universe,
       data_note: `今日有資料 ${todayEtfSet.size}/${universeEtfs.length} 檔 ETF；可計算訊號 ${includedEtfs.length} 檔；未納入 ${Math.max(0, universeEtfs.length - includedEtfs.length)} 檔（${missingTodayEtfCodesForDisplay.length} 檔非今日資料、${noCompareEtfCodes.length} 檔缺前日比較）。`,
     };
 
@@ -1195,6 +1215,7 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
       fetched_etf_count: 0, total_etf_count: totalEtfCodes.length,
       signal_count: 0, today_change_count: 0,
       source: 'api_getSignals_v109_today_only_error_fallback',
+        universe, etf_universe: universe,
       error: String((err as any)?.message || err),
     };
   }
@@ -1258,27 +1279,38 @@ export async function apiGet(path: string) {
     );
 
     const signalType = u.searchParams.get("type");
+    const rawUniverse = String(
+      u.searchParams.get("universe") ||
+      u.searchParams.get("etfUniverse") ||
+      "active"
+    ).toLowerCase();
+    const universe = rawUniverse === "reference" || rawUniverse === "passive" || rawUniverse === "general"
+      ? "reference"
+      : rawUniverse === "all"
+        ? "all"
+        : "active";
     const fresh = ["1", "true", "yes"].includes(String(u.searchParams.get("fresh") || "").toLowerCase());
+    const cacheable = universe === "active";
 
     try {
-      if (!fresh) {
+      if (!fresh && cacheable) {
         const latestCached = await readLatestSignalsCache(signalType, days);
         if (latestCached) return latestCached;
       }
 
       const scope = await getSignalsCacheScope();
 
-      if (!fresh) {
+      if (!fresh && cacheable) {
         const cached = await readSignalsCache(signalType, days, scope);
         if (cached) return cached;
       }
 
-      const data = await getSignals(signalType, days);
-      await writeSignalsCache(signalType, days, scope, data);
+      const data = await getSignals(signalType, days, universe);
+      if (cacheable) await writeSignalsCache(signalType, days, scope, data);
       return data;
     } catch (e) {
       console.warn("[signals_cache] fallback to live calculation:", e);
-      return getSignals(signalType, days);
+      return getSignals(signalType, days, universe);
     }
   }
 

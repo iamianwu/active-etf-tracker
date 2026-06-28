@@ -5,7 +5,7 @@ from typing import Any
 
 import requests
 
-from ..config import API_URL, ETF_CODES, ETF_NAMES
+from ..config import API_URL, ETF_CODES, ETF_NAMES, REFERENCE_ETF_CODES, REFERENCE_ETF_NAMES
 from ..database import get_conn, init_db, upsert_holding, upsert_etf_quote, upsert_stock_quote
 
 HEADERS_BASE = {
@@ -99,6 +99,32 @@ def update_all_etfs(dt_range: int = 1, sleep_sec: float = 0.5) -> dict[str, Any]
         time.sleep(sleep_sec)
 
     print("All ETF update finished.", flush=True)
+    return {"updated_at": datetime.now().isoformat(timespec="seconds"), "results": out}
+
+
+def update_reference_etfs(dt_range: int = 2, sleep_sec: float = 0.5) -> dict[str, Any]:
+    out = []
+    print(f"Start update_reference_etfs: dt_range={dt_range}, total={len(REFERENCE_ETF_CODES)}", flush=True)
+
+    for i, code in enumerate(REFERENCE_ETF_CODES, start=1):
+        print(f"[reference {i}/{len(REFERENCE_ETF_CODES)}] Fetching {code}...", flush=True)
+
+        try:
+            result = update_one_etf(code, dt_range=dt_range)
+            result["etf_name"] = REFERENCE_ETF_NAMES.get(code, code)
+            result["etf_group"] = "reference"
+            out.append(result)
+            print(
+                f"[reference {i}/{len(REFERENCE_ETF_CODES)}] Done {code}: rows={result.get('rows')}, dates={result.get('dates')}",
+                flush=True
+            )
+        except Exception as e:
+            out.append({"etf_code": code, "etf_group": "reference", "error": str(e)})
+            print(f"[reference {i}/{len(REFERENCE_ETF_CODES)}] Error {code}: {e}", flush=True)
+
+        time.sleep(sleep_sec)
+
+    print("Reference ETF update finished.", flush=True)
     return {"updated_at": datetime.now().isoformat(timespec="seconds"), "results": out}
 
 def seed_demo_data():

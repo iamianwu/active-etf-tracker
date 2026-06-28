@@ -9,10 +9,11 @@ function cacheHeaders(data: any, fresh: string) {
   const headers = new Headers();
 
   headers.set('Content-Type', 'application/json; charset=utf-8');
-  headers.set('X-API-Route-Version', 'signals-cdn-v2');
+  headers.set('X-API-Route-Version', 'signals-cdn-v3-universe');
   headers.set('X-Signals-Cache-Hit', String(Boolean(data?.cache_hit)));
   headers.set('X-Signals-Cache-Mode', String(data?.cache_mode || ''));
   headers.set('X-Signals-Data-Date', String(data?.data_date || ''));
+  headers.set('X-Signals-Universe', String(data?.universe || data?.etf_universe || ''));
 
   if (fresh) {
     headers.set('Cache-Control', 'no-store');
@@ -31,9 +32,11 @@ export async function GET(req: NextRequest) {
   const days = one(req.nextUrl.searchParams.get('days')) || '1';
   const type = one(req.nextUrl.searchParams.get('type'));
   const fresh = one(req.nextUrl.searchParams.get('fresh'));
+  const universe = one(req.nextUrl.searchParams.get('universe')) || 'active';
 
   const qs = new URLSearchParams();
   qs.set('days', days);
+  qs.set('universe', universe);
   if (type) qs.set('type', type);
   if (fresh) qs.set('fresh', fresh);
 

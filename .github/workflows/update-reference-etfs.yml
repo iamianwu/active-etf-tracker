@@ -1,0 +1,56 @@
+name: Update Reference ETF Data
+
+on:
+  workflow_dispatch:
+    inputs:
+      dt_range:
+        description: "Pocket DTRange for reference ETFs. Use 2 for recent operation comparison."
+        required: false
+        default: "2"
+      sleep_sec:
+        description: "Sleep seconds between ETFs"
+        required: false
+        default: "0.5"
+  schedule:
+    - cron: "25 10 * * 1-5"
+
+concurrency:
+  group: update-reference-etfs
+  cancel-in-progress: false
+
+jobs:
+  update-reference-etfs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Update reference ETF holdings
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DT_RANGE: ${{ github.event.inputs.dt_range || '2' }}
+          SLEEP_SEC: ${{ github.event.inputs.sleep_sec || '0.5' }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python - <<'PY'
+          import os
+          from app.services.fetcher import update_reference_etfs
+
+          dt_range = int(os.environ.get("DT_RANGE", "2"))
+          sleep_sec = float(os.environ.get("SLEEP_SEC", "0.5"))
+
+          result = update_reference_etfs(dt_range=dt_range, sleep_sec=sleep_sec)
+          print(result)
+          PY

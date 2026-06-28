@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from .config import ADMIN_PASSWORD, CORS_ORIGINS
 from .database import init_db, is_postgres
-from .services.fetcher import update_one_etf, update_all_etfs, seed_demo_data
+from .services.fetcher import update_one_etf, update_all_etfs, update_reference_etfs, seed_demo_data
 from .services.query_service import get_etf_list, get_etf_detail, get_constituent_summary, get_stock_detail, get_signals
 
 app = FastAPI(title="Pocket ETF Tracker API", version="0.2.0-cloud")
@@ -52,6 +52,12 @@ def update_etf(etf_code: str, dt_range: int = 1, x_admin_password: str | None = 
 def update_all(dt_range: int = 1, x_admin_password: str | None = Header(default=None)):
     require_admin(x_admin_password)
     return update_all_etfs(dt_range=dt_range)
+
+
+@app.post("/admin/update-reference-etfs")
+def update_reference(dt_range: int = 2, x_admin_password: str | None = Header(default=None)):
+    check_admin(x_admin_password)
+    return update_reference_etfs(dt_range=dt_range)
 
 
 @app.get("/etfs")
