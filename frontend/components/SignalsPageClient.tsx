@@ -15,6 +15,8 @@ const UNIVERSE_OPTIONS: { key: SignalUniverse; label: string; hint: string }[] =
   { key: 'all', label: '全部 ETF', hint: '主動式 ETF + 一般 ETF' },
 ];
 
+const PAGE_TABS_V121 = ['訊號總覽', '資金流向', '持股變化', '法人共振', '明細列表'] as const;
+
 export default function SignalsPageClient({ activeDays }: Props) {
   const [universe, setUniverse] = useState<SignalUniverse>('active');
   const [data, setData] = useState<any>(null);
@@ -126,9 +128,39 @@ export default function SignalsPageClient({ activeDays }: Props) {
           ))}
         </div>
 
-        <p className="muted" style={{ marginTop: 0 }}>
+        <div className="signals-top-tabs-v121" aria-label="訊號頁功能分頁">
+          {PAGE_TABS_V121.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={tab === '訊號總覽' ? 'active' : ''}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        <section className="signals-summary-v121">
+          <div>
+            <span>目前範圍</span>
+            <strong>{currentOption.label}</strong>
+          </div>
+          <div>
+            <span>資料日</span>
+            <strong>{data?.data_date ? String(data.data_date).slice(5).replace('-', '/') : '-'}</strong>
+          </div>
+          <div>
+            <span>ETF</span>
+            <strong>{data?.total_etf_count ? `${data.fetched_etf_count ?? data.today_etf_count ?? 0}/${data.total_etf_count}` : '-'}</strong>
+          </div>
+          <div>
+            <span>訊號</span>
+            <strong>{data?.signal_count ?? data?.rows?.length ?? 0} 筆</strong>
+          </div>
+        </section>
+
+        <p className="signals-summary-hint-v121">
           {currentOption.hint}
-          {data?.total_etf_count ? `｜ETF ${data.fetched_etf_count ?? data.today_etf_count ?? 0}/${data.total_etf_count} 檔｜訊號 ${data.signal_count ?? data.rows?.length ?? 0} 筆` : ''}
         </p>
       </main>
 
