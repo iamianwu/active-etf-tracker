@@ -1,6 +1,7 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import SignalsPageClient from '@/components/SignalsPageClient';
 
-export const revalidate = 300;
 
 type SearchParams = {
   days?: string | string[];

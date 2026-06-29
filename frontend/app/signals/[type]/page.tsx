@@ -1,5 +1,5 @@
-export const revalidate = 60;
-
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { apiGet } from '@/lib/api';
 import SignalsClient from '@/components/SignalsClient';
 
