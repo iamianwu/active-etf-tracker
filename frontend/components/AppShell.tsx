@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import BottomTaskBar from '@/components/BottomTaskBar';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || '';
@@ -26,6 +27,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </header>
       )}
       {children}
+      <BottomTaskBar />
     </div>
   );
 }
