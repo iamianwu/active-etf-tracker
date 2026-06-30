@@ -7,6 +7,52 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+async function readAppCache(cacheKey: string) {
+  try {
+    const { data, error } = await supabase
+      .from("app_cache")
+      .select("payload,data_date,updated_at")
+      .eq("cache_key", cacheKey)
+      .maybeSingle();
+
+    if (error || !data?.payload) return null;
+
+    return {
+      ...data.payload,
+      cache_hit: true,
+      cache_key: cacheKey,
+      cache_updated_at: data.updated_at,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function writeAppCache(cacheKey: string, dataDate: string | null, payload: any) {
+  try {
+    await supabase
+      .from("app_cache")
+      .upsert({
+        cache_key: cacheKey,
+        data_date: dataDate || null,
+        payload,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "cache_key" });
+  } catch {}
+}
+
+async function getLatestHoldingsDataDate() {
+  const { data } = await supabase
+    .from("holdings")
+    .select("data_date")
+    .order("data_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return String(data?.data_date || "").slice(0, 10);
+}
+
+
 const ETF_NAMES: Record<string, string> = {
   "00400A": "主動國泰動能高息",
   "00401A": "主動摩根台灣鑫收",
@@ -384,6 +430,11 @@ async function getConstituentSummary() {
 
 async function getStockDetail(stockCode: string) {
   const code = String(stockCode || "").trim();
+  const appCacheDate = await getLatestHoldingsDataDate();
+  const appCacheKey = `stock_detail:v1:${code}:date=${appCacheDate || "latest"}`;
+
+  const cached = await readAppCache(appCacheKey);
+  if (cached) return cached;
 
   const [stockHistoryRows, stockQuoteRows, priceHistoryRes, institutionalRes] = await Promise.all([
     selectPaged(
@@ -569,7 +620,7 @@ async function getStockDetail(stockCode: string) {
 
   const name = rows[0]?.stock_name || quote.stock_name || code;
 
-  return {
+  const result = {
     stock_code: code,
     stock_name: name,
     quote,
@@ -584,6 +635,10 @@ async function getStockDetail(stockCode: string) {
     price_history: priceHistory,
     institutional,
   };
+
+  await writeAppCache(appCacheKey, appCacheDate, result);
+
+  return result;
 }
 
 
