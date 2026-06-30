@@ -311,25 +311,47 @@ async function getEtfDetail(etfCode: string) {
 }
 
 async function getConstituentSummary() {
-  const { holdings, stockQuoteMap } = await loadBaseData();
-  const rows = latestHoldings(holdings).filter((h) => isNormalStockCode(h.stock_code));
-  const stockCodes = Array.from(new Set(rows.map((r) => r.stock_code)));
-  const fallbackPriceMap = await loadLatestPriceHistoryMap(stockCodes);
+  const { data: latestRow, error: latestErr } = await supabase
+    .from("holdings")
+    .select("data_date")
+    .order("data_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
+  if (latestErr) throw latestErr;
+
+  const targetDate = String(latestRow?.data_date || "").slice(0, 10);
+  if (!targetDate) return [];
+
+  const [latestRows, stockQuotes] = await Promise.all([
+    selectPaged(
+      "holdings",
+      "etf_code,data_date,stock_code,stock_name,weight,shares",
+      (q) => q.eq("data_date", targetDate)
+    ),
+    selectAll("stock_quotes"),
+  ]);
+
+  const stockQuoteMap: Record<string, any> = {};
+  for (const q of stockQuotes || []) {
+    stockQuoteMap[String(q.stock_code || "")] = q;
+  }
+
+  const rows = (latestRows || []).filter((h) => isNormalStockCode(String(h.stock_code || "")));
   const grouped: Record<string, any> = {};
 
   for (const r of rows) {
-    const code = r.stock_code;
+    const code = String(r.stock_code || "");
     const sq = stockQuoteMap[code] || {};
-    const fallback = fallbackPriceMap[code] || {};
-    const price = sq.price ?? fallback.price ?? null;
-    const changePct = sq.change_pct ?? fallback.change_pct ?? null;
-    const quoteDate = sq.updated_at ?? fallback.trade_date ?? null;
+    const price = sq.price ?? null;
+    const changePct = sq.change_pct ?? null;
+    const quoteDate = sq.updated_at ?? null;
 
     if (!grouped[code]) {
       grouped[code] = {
         stock_code: code,
         stock_name: r.stock_name,
+        data_date: targetDate,
         etf_count: 0,
         total_weight: 0,
         total_shares: 0,
@@ -358,6 +380,7 @@ async function getConstituentSummary() {
     Number(b.total_weight || 0) - Number(a.total_weight || 0)
   );
 }
+
 
 async function getStockDetail(stockCode: string) {
   const { holdings, etfQuoteMap, stockQuoteMap } = await loadBaseData();

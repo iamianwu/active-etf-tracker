@@ -261,16 +261,9 @@ async function selectMaybePagedV80(table: string, build: (q: any) => any, pageSi
 }
 
 export async function getEtfListRows() {
-  const [quotes, holdingCodes] = await Promise.all([
-    selectMaybe('etf_quotes', (q) => q),
-    selectMaybePagedV80(
-      'holdings',
-      (q) => q.select('etf_code,data_date').order('data_date', { ascending: false })
-    ),
-  ]);
+  const quotes = await selectMaybe('etf_quotes', (q) => q);
 
   const quoteMap: Record<string, any> = {};
-  const latestHoldingDateMap: Record<string, string> = {};
   const codeSet = new Set<string>();
 
   for (const code of ETF_CODES || []) {
@@ -285,47 +278,57 @@ export async function getEtfListRows() {
     codeSet.add(c);
   }
 
-  for (const r of holdingCodes || []) {
-    const c = normalizeEtfCodeV80(r.etf_code);
-    const d = String(r.data_date || '');
-    if (!isActiveEtfCodeV80(c)) continue;
-    codeSet.add(c);
-    if (d && (!latestHoldingDateMap[c] || d > latestHoldingDateMap[c])) {
-      latestHoldingDateMap[c] = d;
-    }
+  const codes = Array.from(codeSet).sort();
+
+  const latestPairs = await Promise.all(
+    codes.map(async (code) => {
+      const rows = await selectMaybe('holdings', (q) =>
+        q
+          .select('data_date')
+          .eq('etf_code', code)
+          .order('data_date', { ascending: false })
+          .limit(1)
+      );
+
+      return [code, String(rows?.[0]?.data_date || '')] as const;
+    })
+  );
+
+  const latestHoldingDateMap: Record<string, string> = {};
+  for (const [code, date] of latestPairs) {
+    if (date) latestHoldingDateMap[code] = date;
   }
 
-  return Array.from(codeSet)
-    .sort()
-    .map((code) => {
-      const q = quoteMap[code] || {};
-      const fallbackName = ETF_NAME_FALLBACK_V80[code] || q.etf_name || q.name || q.stock_name || code;
-      const normalized = normalizeQuote(code, {
-        ...q,
-        etf_code: code,
-        code,
-        stock_code: code,
-        etf_name: q.etf_name || q.name || q.stock_name || fallbackName,
-        name: q.name || q.etf_name || q.stock_name || fallbackName,
-        stock_name: q.stock_name || q.etf_name || q.name || fallbackName,
-      });
-
-      return {
-        ...normalized,
-        ...q,
-        etf_code: code,
-        code,
-        stock_code: code,
-        etf_name: normalized.etf_name || normalized.name || fallbackName,
-        name: normalized.name || normalized.etf_name || fallbackName,
-        stock_name: normalized.stock_name || normalized.etf_name || normalized.name || fallbackName,
-        latest_holding_date: latestHoldingDateMap[code] || null,
-        latestHoldingDate: latestHoldingDateMap[code] || null,
-        has_holding_data: !!latestHoldingDateMap[code],
-        has_quote: !!quoteMap[code],
-      };
+  return codes.map((code) => {
+    const q = quoteMap[code] || {};
+    const fallbackName = ETF_NAME_FALLBACK_V80[code] || q.etf_name || q.name || q.stock_name || code;
+    const normalized = normalizeQuote(code, {
+      ...q,
+      etf_code: code,
+      code,
+      stock_code: code,
+      etf_name: q.etf_name || q.name || q.stock_name || fallbackName,
+      name: q.name || q.etf_name || q.stock_name || fallbackName,
+      stock_name: q.stock_name || q.etf_name || q.name || fallbackName,
     });
+
+    return {
+      ...normalized,
+      ...q,
+      etf_code: code,
+      code,
+      stock_code: code,
+      etf_name: normalized.etf_name || normalized.name || fallbackName,
+      name: normalized.name || normalized.etf_name || fallbackName,
+      stock_name: normalized.stock_name || normalized.etf_name || normalized.name || fallbackName,
+      latest_holding_date: latestHoldingDateMap[code] || null,
+      latestHoldingDate: latestHoldingDateMap[code] || null,
+      has_holding_data: !!latestHoldingDateMap[code],
+      has_quote: !!quoteMap[code],
+    };
+  });
 }
+
 
 export async function getEtfDetailData(code: string) {
   const normalizedCode = decodeURIComponent(code);
