@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-const CORE_ROUTES = ['/signals', '/holdings', '/etfs', '/search'];
+const CORE_ROUTES = ['/signals', '/search'];
 
 export default function RoutePrefetcherV84() {
   const router = useRouter();
