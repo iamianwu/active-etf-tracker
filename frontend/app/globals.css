@@ -12621,3 +12621,102 @@ body {
     font-size: 12px;
   }
 }
+
+.v120-price b {
+  background: transparent !important;
+  color: #0f172a !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+.v120-price b.red {
+  color: #e0525b !important;
+}
+
+.v120-price b.green {
+  color: #2fa876 !important;
+}
+
+.v120-price b.muted {
+  color: #64748b !important;
+}
+
+.v120-price b.v123-limit-up-price {
+  display: inline-block;
+  background: #e15b62 !important;
+  color: #ffffff !important;
+  padding: 2px 5px !important;
+  border-radius: 0 !important;
+}
+
+.v120-price b.v123-limit-down-price {
+  display: inline-block;
+  background: #2fa876 !important;
+  color: #ffffff !important;
+  padding: 2px 5px !important;
+  border-radius: 0 !important;
+}
+
+.v120-head .v124-dual-sort {
+  display: grid;
+  gap: 1px;
+  justify-items: end;
+}
+
+.v120-head .v124-dual-sort button {
+  width: auto;
+  justify-content: flex-end;
+  gap: 4px;
+  font-size: inherit;
+}
+
+.v120-head .v124-dual-sort button + button {
+  color: #8a93a3;
+}
+
+.v120-head .v124-dual-sort button.active {
+  color: #2563eb;
+}
+
+.v120-head .v124-dual-sort button.active i em:last-child {
+  color: #2563eb;
+}
+
+.v120-head button.active i em {
+  color: #9aa3af;
+}
+
+.v120-head button.active.asc i em:first-child {
+  color: #2563eb;
+}
+
+.v120-head button.active.desc i em:last-child {
+  color: #2563eb;
+}
+
+.v120-head .v124-dual-sort button.active i em {
+  color: #9aa3af;
+}
+
+.v120-head .v124-dual-sort button.active.asc i em:first-child {
+  color: #2563eb;
+}
+
+.v120-head .v124-dual-sort button.active.desc i em:last-child {
+  color: #2563eb;
+}
+
+.v120-head button.active i em,
+.v120-head .v124-dual-sort button.active i em {
+  color: #9aa3af !important;
+}
+
+.v120-head button.active.asc i em:first-child,
+.v120-head .v124-dual-sort button.active.asc i em:first-child {
+  color: #2563eb !important;
+}
+
+.v120-head button.active.desc i em:last-child,
+.v120-head .v124-dual-sort button.active.desc i em:last-child {
+  color: #2563eb !important;
+}

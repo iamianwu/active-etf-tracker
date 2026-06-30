@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react';
 type AnyRow = Record<string, any>;
 type Status = '新增' | '刪除' | '加碼' | '減碼';
 type SortKey = 'code' | 'inflow' | 'outflow' | 'absAmount' | 'lots' | 'price' | 'pct' | 'etfCount';
+type SortDir = 'asc' | 'desc';
 type FilterKey = '全部' | Status;
 
 const TOTAL_ACTIVE_ETFS = 27;
@@ -507,7 +508,7 @@ function missingRowsOf(data: any): AnyRow[] {
   return [];
 }
 
-function sortRows(rows: AnyRow[], key: SortKey): AnyRow[] {
+function sortRows(rows: AnyRow[], key: SortKey, dir: SortDir): AnyRow[] {
   const copy = [...rows];
 
   copy.sort((a, b) => {
@@ -525,6 +526,8 @@ function sortRows(rows: AnyRow[], key: SortKey): AnyRow[] {
     }
     return 0;
   });
+
+  if (dir === 'asc') copy.reverse();
 
   return copy;
 }
@@ -780,7 +783,7 @@ function DetailRow({ row }: { row: AnyRow }) {
       </div>
 
       <div className="v120-price">
-        <b>{fmtPrice(p)}</b>
+        <b className={isLimitUp(row) ? 'v123-limit-up-price' : isLimitDown(row) ? 'v123-limit-down-price' : tone(pct ?? 0)}>{fmtPrice(p)}</b>
         <span className={tone(pct ?? 0)}>{fmtPct(pct)}</span>
         {isLimitUp(row) && <em className="limit-up">漲停</em>}
         {isLimitDown(row) && <em className="limit-down">跌停</em>}
@@ -805,6 +808,7 @@ export default function SignalsClient(props: { data: any; activeDays?: number })
 
   const [filter, setFilter] = useState<FilterKey>('全部');
   const [sortKey, setSortKey] = useState<SortKey>(activeDays === 1 ? 'inflow' : 'absAmount');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [showMissing, setShowMissing] = useState(false);
 
   const sourceRows = useMemo(() => sourceRowsOf(data), [data]);
@@ -831,8 +835,8 @@ export default function SignalsClient(props: { data: any; activeDays?: number })
 
   const filteredRows = useMemo(() => {
     const f = filter === '全部' ? rows : rows.filter((r) => statusOf(r) === filter);
-    return sortRows(f, sortKey);
-  }, [rows, filter, sortKey]);
+    return sortRows(f, sortKey, sortDir);
+  }, [rows, filter, sortKey, sortDir]);
 
   const focus = useMemo(() => getFocusRows(rows), [rows]);
 
@@ -840,6 +844,25 @@ export default function SignalsClient(props: { data: any; activeDays?: number })
   const today = getTodayEtfs(data, total);
   const missing = Math.max(0, total - today);
   const date = data?.target_date ?? data?.data_date ?? data?.latestDataDate ?? '';
+
+  function setSort(nextKey: SortKey, defaultDir: SortDir = 'desc') {
+    if (sortKey === nextKey) {
+      setSortDir((prev) => prev === 'desc' ? 'asc' : 'desc');
+      return;
+    }
+
+    setSortKey(nextKey);
+    setSortDir(defaultDir);
+  }
+
+  function sortArrow(key: SortKey) {
+    if (sortKey !== key) return '↕';
+    return sortDir === 'asc' ? '▲' : '▼';
+  }
+
+  function sortClass(key: SortKey) {
+    return sortKey === key ? `active ${sortDir}` : '';
+  }
 
   return (
     <main className="signals-v120">
@@ -896,19 +919,25 @@ export default function SignalsClient(props: { data: any; activeDays?: number })
 
         <div className="v120-table">
           <div className="v120-head">
-            <button type="button" className={sortKey === 'code' ? 'active' : ''} onClick={() => setSortKey('code')}>
+            <button type="button" className={sortClass('code')} onClick={() => setSort('code', 'asc')}>
               <span>標的</span>
               <i aria-hidden="true"><em>▲</em><em>▼</em></i>
             </button>
-            <button type="button" className={sortKey === 'price' ? 'active' : ''} onClick={() => setSortKey('price')}>
-              <span>股價</span>
-              <i aria-hidden="true"><em>▲</em><em>▼</em></i>
-            </button>
-            <button type="button" className={sortKey === 'inflow' || sortKey === 'outflow' || sortKey === 'absAmount' || sortKey === 'lots' ? 'active' : ''} onClick={() => setSortKey('inflow')}>
+            <div className="v124-dual-sort">
+              <button type="button" className={sortClass('price')} onClick={() => setSort('price', 'desc')}>
+                <span>股價</span>
+                <i aria-hidden="true"><em>▲</em><em>▼</em></i>
+              </button>
+              <button type="button" className={sortClass('pct')} onClick={() => setSort('pct', 'desc')}>
+                <span>漲跌幅</span>
+                <i aria-hidden="true"><em>▲</em><em>▼</em></i>
+              </button>
+            </div>
+            <button type="button" className={sortKey === 'inflow' || sortKey === 'outflow' || sortKey === 'absAmount' || sortKey === 'lots' ? `active ${sortDir}` : ''} onClick={() => setSort('inflow', 'desc')}>
               <span>淨額/張數</span>
               <i aria-hidden="true"><em>▲</em><em>▼</em></i>
             </button>
-            <button type="button" className={sortKey === 'etfCount' ? 'active' : ''} onClick={() => setSortKey('etfCount')}>
+            <button type="button" className={sortClass('etfCount')} onClick={() => setSort('etfCount', 'desc')}>
               <span>狀態/異動</span>
               <i aria-hidden="true"><em>▲</em><em>▼</em></i>
             </button>
