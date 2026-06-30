@@ -113,18 +113,29 @@ def write_cache(conn, universe: str, days: int, payload: dict) -> dict:
 
 
 def warm_cdn(site_url: str, universe: str, days: int) -> None:
-    url = f"{site_url.rstrip('/')}/api/signals?{urlencode({'days': str(days), 'universe': universe})}"
-    for i in range(2):
-        res = requests.get(url, timeout=120)
-        res.raise_for_status()
-        data = res.json()
-        print(
-            f"cdn warm {i + 1}/2 universe={universe} days={days} "
-            f"cache_hit={data.get('cache_hit')} cache_mode={data.get('cache_mode')} "
-            f"signals={data.get('signal_count')}",
-            flush=True,
-        )
+    url = f"{site_url.rstrip()}/api/signals?days={days}&universe={universe}"
 
+    for i in range(2):
+        try:
+            res = requests.get(url, timeout=120)
+            res.raise_for_status()
+            data = res.json()
+            print(
+                f"cdn warm {i + 1}/2 universe={universe} days={days} "
+                f"cache_hit={data.get('cache_hit')} "
+                f"cache_mode={data.get('cache_mode')} "
+                f"signals={data.get('signal_count')}"
+            )
+        except requests.exceptions.RequestException as e:
+            print({
+                "ok": False,
+                "stage": "cdn_warm",
+                "universe": universe,
+                "days": days,
+                "url": url,
+                "error": str(e),
+            })
+            return
 
 def main() -> None:
     database_url = getenv("DATABASE_URL")
