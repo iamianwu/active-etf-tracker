@@ -383,46 +383,122 @@ async function getConstituentSummary() {
 
 
 async function getStockDetail(stockCode: string) {
-  const { holdings, etfQuoteMap, stockQuoteMap } = await loadBaseData();
+  const code = String(stockCode || "").trim();
 
-  const latest = latestDateByEtf(holdings);
-  const quote = stockQuoteMap[stockCode] || {};
+  const [stockHistoryRows, stockQuoteRows, priceHistoryRes, institutionalRes] = await Promise.all([
+    selectPaged(
+      "holdings",
+      "*",
+      (q) => q.eq("stock_code", code)
+    ),
+    selectPaged(
+      "stock_quotes",
+      "*",
+      (q) => q.eq("stock_code", code).limit(1)
+    ),
+    supabase
+      .from("stock_price_history")
+      .select("*")
+      .eq("stock_code", code)
+      .order("trade_date", { ascending: true })
+      .limit(160),
+    supabase
+      .from("institutional_flows")
+      .select("*")
+      .eq("stock_code", code)
+      .order("trade_date", { ascending: false })
+      .limit(80),
+  ]);
 
-  const rows = holdings
-    .filter((h) => h.stock_code === stockCode && String(h.data_date) === latest[h.etf_code])
-    .map((r) => {
-      const q = etfQuoteMap[r.etf_code] || {};
+  const relatedEtfs = Array.from(new Set(
+    (stockHistoryRows || [])
+      .map((r: any) => String(r.etf_code || "").trim())
+      .filter(Boolean)
+  ));
+
+  const [dateRows, etfQuotes] = await Promise.all([
+    relatedEtfs.length
+      ? selectPaged(
+          "holdings",
+          "etf_code,data_date",
+          (q) => q.in("etf_code", relatedEtfs).order("data_date", { ascending: false })
+        )
+      : Promise.resolve([]),
+    relatedEtfs.length
+      ? selectPaged(
+          "etf_quotes",
+          "*",
+          (q) => q.in("etf_code", relatedEtfs)
+        )
+      : Promise.resolve([]),
+  ]);
+
+  const etfQuoteMap: Record<string, any> = {};
+  for (const q of etfQuotes || []) {
+    const etf = String(q.etf_code || "");
+    if (etf) etfQuoteMap[etf] = q;
+  }
+
+  const datesByEtf: Record<string, Set<string>> = {};
+  for (const r of dateRows || []) {
+    const etf = String(r.etf_code || "");
+    const d = String(r.data_date || "");
+    if (!etf || !d) continue;
+    if (!datesByEtf[etf]) datesByEtf[etf] = new Set();
+    datesByEtf[etf].add(d);
+  }
+
+  const latestByEtf: Record<string, string> = {};
+  for (const etf of Object.keys(datesByEtf)) {
+    const dates = Array.from(datesByEtf[etf]).sort();
+    if (dates.length) latestByEtf[etf] = dates[dates.length - 1];
+  }
+
+  const stockQuote = stockQuoteRows?.[0] || {};
+  const priceHistory = priceHistoryRes.data || [];
+  const institutional = institutionalRes.data || [];
+  const latestPrice = priceHistory.length ? priceHistory[priceHistory.length - 1] : {};
+
+  const quote = {
+    ...latestPrice,
+    ...stockQuote,
+    stock_code: code,
+    stock_name: stockQuote.stock_name || latestPrice.stock_name || stockHistoryRows?.[0]?.stock_name || code,
+    price: stockQuote.price ?? latestPrice.close ?? null,
+    change_pct: stockQuote.change_pct ?? latestPrice.change_pct ?? null,
+  };
+
+  const rows = (stockHistoryRows || [])
+    .filter((h: any) => {
+      const etf = String(h.etf_code || "");
+      const d = String(h.data_date || "");
+      return etf && d && d === latestByEtf[etf];
+    })
+    .map((r: any) => {
+      const etf = String(r.etf_code || "");
+      const q = etfQuoteMap[etf] || {};
       const price = quote.price ?? null;
       return {
         ...r,
-        etf_name: q.etf_name || ETF_NAMES[r.etf_code] || r.etf_code,
+        etf_name: q.etf_name || ETF_NAMES[etf] || etf,
         market_value_billion: price ? Number(r.shares || 0) * Number(price) / 100000000 : null,
       };
     })
-    .sort((a, b) => Number(b.weight || 0) - Number(a.weight || 0));
+    .sort((a: any, b: any) => Number(b.weight || 0) - Number(a.weight || 0));
 
-  const stockHistoryRows = holdings.filter((h) => h.stock_code === stockCode);
-
-  const datesByEtf: Record<string, Set<string>> = {};
   const stockRowByEtfDate: Record<string, Record<string, any>> = {};
 
-  for (const h of holdings) {
+  for (const h of stockHistoryRows || []) {
     const etf = String(h.etf_code || "");
     const date = String(h.data_date || "");
     if (!etf || !date) continue;
-
-    if (!datesByEtf[etf]) datesByEtf[etf] = new Set();
-    datesByEtf[etf].add(date);
-
-    if (h.stock_code === stockCode) {
-      if (!stockRowByEtfDate[etf]) stockRowByEtfDate[etf] = {};
-      stockRowByEtfDate[etf][date] = h;
-    }
+    if (!stockRowByEtfDate[etf]) stockRowByEtfDate[etf] = {};
+    stockRowByEtfDate[etf][date] = h;
   }
 
-  const augmentedHistory = [...stockHistoryRows];
+  const augmentedHistory = [...(stockHistoryRows || [])];
   const seenHistoryKeys = new Set(
-    augmentedHistory.map((h) => [h.etf_code, h.data_date, h.stock_code].join("|"))
+    augmentedHistory.map((h: any) => [h.etf_code, h.data_date, h.stock_code].join("|"))
   );
 
   function addSyntheticHistoryRow(row: any) {
@@ -478,49 +554,38 @@ async function getStockDetail(stockCode: string) {
   }
 
   const history = augmentedHistory
-    .map((r) => {
+    .map((r: any) => {
       const etf = String(r.etf_code || "");
       return {
         ...r,
         etf_name: r.etf_name || etfQuoteMap[etf]?.etf_name || ETF_NAMES[etf] || etf,
       };
     })
-    .sort((a, b) => String(b.data_date).localeCompare(String(a.data_date)) || String(a.etf_code).localeCompare(String(b.etf_code)))
+    .sort((a: any, b: any) =>
+      String(b.data_date).localeCompare(String(a.data_date)) ||
+      String(a.etf_code).localeCompare(String(b.etf_code))
+    )
     .slice(0, 300);
 
-  const [{ data: priceHistory }, { data: institutional }] = await Promise.all([
-    supabase
-      .from("stock_price_history")
-      .select("*")
-      .eq("stock_code", stockCode)
-      .order("trade_date", { ascending: true })
-      .limit(160),
-    supabase
-      .from("institutional_flows")
-      .select("*")
-      .eq("stock_code", stockCode)
-      .order("trade_date", { ascending: false })
-      .limit(80),
-  ]);
-
-  const name = rows[0]?.stock_name || quote.stock_name || stockCode;
+  const name = rows[0]?.stock_name || quote.stock_name || code;
 
   return {
-    stock_code: stockCode,
+    stock_code: code,
     stock_name: name,
     quote,
     summary: {
-      etf_count: new Set(rows.map((r) => r.etf_code)).size,
-      total_shares: rows.reduce((s, r) => s + Number(r.shares || 0), 0),
-      total_weight: rows.reduce((s, r) => s + Number(r.weight || 0), 0),
-      market_value_billion: rows.reduce((s, r) => s + Number(r.market_value_billion || 0), 0),
+      etf_count: new Set(rows.map((r: any) => r.etf_code)).size,
+      total_shares: rows.reduce((sum: number, r: any) => sum + Number(r.shares || 0), 0),
+      total_weight: rows.reduce((sum: number, r: any) => sum + Number(r.weight || 0), 0),
+      market_value_billion: rows.reduce((sum: number, r: any) => sum + Number(r.market_value_billion || 0), 0),
     },
     etfs: rows,
     history,
-    price_history: priceHistory || [],
-    institutional: institutional || [],
+    price_history: priceHistory,
+    institutional,
   };
 }
+
 
 
 const VALID_SIGNAL_RANGE_DAYS = [1, 5, 10, 20];
