@@ -5,6 +5,46 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+async function readEtfListAppCache(cacheKey: string) {
+  try {
+    const { data, error } = await supabase
+      .from('app_cache')
+      .select('payload,updated_at')
+      .eq('cache_key', cacheKey)
+      .maybeSingle();
+
+    if (error || !data?.payload) return null;
+    return data.payload as any;
+  } catch {
+    return null;
+  }
+}
+
+async function writeEtfListAppCache(cacheKey: string, dataDate: string | null, payload: any) {
+  try {
+    await supabase
+      .from('app_cache')
+      .upsert({
+        cache_key: cacheKey,
+        data_date: dataDate || null,
+        payload,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'cache_key' });
+  } catch {}
+}
+
+async function getLatestHoldingsDataDateV80() {
+  const { data } = await supabase
+    .from('holdings')
+    .select('data_date')
+    .order('data_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return String(data?.data_date || '').slice(0, 10);
+}
+
+
 export const ETF_CODES = [
   '00400A',
   '00401A',
@@ -261,6 +301,14 @@ async function selectMaybePagedV80(table: string, build: (q: any) => any, pageSi
 }
 
 export async function getEtfListRows() {
+  const appCacheDate = await getLatestHoldingsDataDateV80();
+  const appCacheKey = `etf_list:v1:date=${appCacheDate || 'latest'}`;
+  const cached = await readEtfListAppCache(appCacheKey);
+
+  if (cached && Array.isArray(cached.rows)) {
+    return cached.rows;
+  }
+
   const quotes = await selectMaybe('etf_quotes', (q) => q);
 
   const quoteMap: Record<string, any> = {};
@@ -299,7 +347,7 @@ export async function getEtfListRows() {
     if (date) latestHoldingDateMap[code] = date;
   }
 
-  return codes.map((code) => {
+  const result = codes.map((code) => {
     const q = quoteMap[code] || {};
     const fallbackName = ETF_NAME_FALLBACK_V80[code] || q.etf_name || q.name || q.stock_name || code;
     const normalized = normalizeQuote(code, {
@@ -327,6 +375,13 @@ export async function getEtfListRows() {
       has_quote: !!quoteMap[code],
     };
   });
+
+  await writeEtfListAppCache(appCacheKey, appCacheDate, {
+    rows: result,
+    data_date: appCacheDate,
+  });
+
+  return result;
 }
 
 

@@ -369,6 +369,13 @@ async function getConstituentSummary() {
   const targetDate = String(latestRow?.data_date || "").slice(0, 10);
   if (!targetDate) return [];
 
+  const appCacheKey = `holdings_summary:v1:date=${targetDate}`;
+  const cached = await readAppCache(appCacheKey);
+
+  if (cached && Array.isArray((cached as any).rows)) {
+    return (cached as any).rows;
+  }
+
   const [latestRows, stockQuotes] = await Promise.all([
     selectPaged(
       "holdings",
@@ -420,11 +427,18 @@ async function getConstituentSummary() {
     return g;
   });
 
-  return out.sort((a: any, b: any) =>
+  const result = out.sort((a: any, b: any) =>
     Number(b.market_value_billion || 0) - Number(a.market_value_billion || 0) ||
     Number(b.etf_count || 0) - Number(a.etf_count || 0) ||
     Number(b.total_weight || 0) - Number(a.total_weight || 0)
   );
+
+  await writeAppCache(appCacheKey, targetDate, {
+    rows: result,
+    data_date: targetDate,
+  });
+
+  return result;
 }
 
 
