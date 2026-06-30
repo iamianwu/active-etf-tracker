@@ -12720,3 +12720,86 @@ body {
 .v120-head .v124-dual-sort button.active.desc i em:last-child {
   color: #2563eb !important;
 }
+
+/* v126 compact signals rows */
+
+.v120-head,
+.v120-row {
+  grid-template-columns: minmax(76px, 1fr) 70px 104px 82px !important;
+  gap: 4px !important;
+}
+
+.v120-head {
+  min-height: 44px !important;
+  padding: 7px 6px !important;
+}
+
+.v120-row {
+  min-height: 58px !important;
+  padding: 8px 6px !important;
+}
+
+.v120-target b {
+  font-size: 15px !important;
+}
+
+.v120-target span {
+  font-size: 12px !important;
+  margin-top: 3px !important;
+}
+
+.v120-price b,
+.v120-flow b {
+  font-size: 15px !important;
+}
+
+.v120-price span,
+.v120-flow span {
+  font-size: 12px !important;
+  margin-top: 3px !important;
+}
+
+.v120-status b {
+  min-width: 54px !important;
+  font-size: 12px !important;
+  padding: 3px 8px !important;
+}
+
+.v120-status span {
+  font-size: 10px !important;
+  margin-top: 3px !important;
+}
+
+.v120-head button {
+  font-size: 12px !important;
+  gap: 3px !important;
+}
+
+.v120-head button i {
+  font-size: 9px !important;
+}
+
+/* v127 compact status chips */
+
+.v120-status-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  overflow: visible !important;
+  padding-bottom: 8px !important;
+}
+
+.v120-status-tabs button {
+  min-width: 0 !important;
+  width: 100% !important;
+  padding: 7px 4px !important;
+  border-radius: 999px !important;
+  font-size: 13px !important;
+  font-weight: 950 !important;
+  white-space: nowrap !important;
+  text-align: center !important;
+}
+
+.v120-sort-tabs {
+  display: none !important;
+}

@@ -908,15 +908,6 @@ export default function SignalsClient(props: { data: any; activeDays?: number })
           <button type="button" className={filter === '減碼' ? 'active reduce' : 'reduce'} onClick={() => setFilter('減碼')}>減碼 {counts.減碼}</button>
         </div>
 
-        <div className="v120-sort-tabs">
-          <SortButton label="淨流入" active={sortKey === 'inflow'} arrow={sortKey === 'inflow' ? '▼' : '↕'} onClick={() => setSortKey('inflow')} />
-          <SortButton label="淨流出" active={sortKey === 'outflow'} arrow={sortKey === 'outflow' ? '▼' : '↕'} onClick={() => setSortKey('outflow')} />
-          <SortButton label="絕對金額" active={sortKey === 'absAmount'} arrow={sortKey === 'absAmount' ? '▼' : '↕'} onClick={() => setSortKey('absAmount')} />
-          <SortButton label="張數" active={sortKey === 'lots'} arrow={sortKey === 'lots' ? '▼' : '↕'} onClick={() => setSortKey('lots')} />
-          <SortButton label="股價" active={sortKey === 'price'} arrow={sortKey === 'price' ? '▼' : '↕'} onClick={() => setSortKey('price')} />
-          <SortButton label="漲跌幅" active={sortKey === 'pct'} arrow={sortKey === 'pct' ? '▼' : '↕'} onClick={() => setSortKey('pct')} />
-        </div>
-
         <div className="v120-table">
           <div className="v120-head">
             <button type="button" className={sortClass('code')} onClick={() => setSort('code', 'asc')}>
