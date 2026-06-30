@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 
 type AnyRow = Record<string, any>;
 type Status = '新增' | '刪除' | '加碼' | '減碼';
-type SortKey = 'inflow' | 'outflow' | 'absAmount' | 'lots' | 'price' | 'pct';
+type SortKey = 'code' | 'inflow' | 'outflow' | 'absAmount' | 'lots' | 'price' | 'pct' | 'etfCount';
 type FilterKey = '全部' | Status;
 
 const TOTAL_ACTIVE_ETFS = 27;
@@ -373,6 +373,11 @@ function isLimitUp(row: AnyRow): boolean {
   return p !== null && p >= 9.7;
 }
 
+function isLimitDown(row: AnyRow): boolean {
+  const p = pctOf(row);
+  return p !== null && p <= -9.7;
+}
+
 function getTotalEtfs(data: any): number {
   const v = firstNum(data, ['total_etf_count', 'totalEtfCount', 'total_etfs', 'totalEtfs'], NaN);
   return Number.isFinite(v) && v > 0 ? Math.round(v) : TOTAL_ACTIVE_ETFS;
@@ -506,12 +511,18 @@ function sortRows(rows: AnyRow[], key: SortKey): AnyRow[] {
   const copy = [...rows];
 
   copy.sort((a, b) => {
+    if (key === 'code') return codeOf(a).localeCompare(codeOf(b), 'zh-Hant');
     if (key === 'inflow') return amountOf(b) - amountOf(a);
     if (key === 'outflow') return amountOf(a) - amountOf(b);
     if (key === 'absAmount') return Math.abs(amountOf(b)) - Math.abs(amountOf(a));
     if (key === 'lots') return Math.abs(lotsOf(b)) - Math.abs(lotsOf(a));
     if (key === 'price') return (priceOf(b) ?? -Infinity) - (priceOf(a) ?? -Infinity);
     if (key === 'pct') return (pctOf(b) ?? -Infinity) - (pctOf(a) ?? -Infinity);
+    if (key === 'etfCount') {
+      const ab = (a.__buySell?.buy ?? 0) + (a.__buySell?.sell ?? 0);
+      const bb = (b.__buySell?.buy ?? 0) + (b.__buySell?.sell ?? 0);
+      return bb - ab;
+    }
     return 0;
   });
 
@@ -771,7 +782,8 @@ function DetailRow({ row }: { row: AnyRow }) {
       <div className="v120-price">
         <b>{fmtPrice(p)}</b>
         <span className={tone(pct ?? 0)}>{fmtPct(pct)}</span>
-        {isLimitUp(row) && <em></em>}
+        {isLimitUp(row) && <em className="limit-up">漲停</em>}
+        {isLimitDown(row) && <em className="limit-down">跌停</em>}
       </div>
 
       <div className="v120-flow">
@@ -884,10 +896,22 @@ export default function SignalsClient(props: { data: any; activeDays?: number })
 
         <div className="v120-table">
           <div className="v120-head">
-            <span>標的</span>
-            <span>股價</span>
-            <span>淨額 / 張數</span>
-            <span>狀態 / 異動</span>
+            <button type="button" className={sortKey === 'code' ? 'active' : ''} onClick={() => setSortKey('code')}>
+              <span>標的</span>
+              <i aria-hidden="true"><em>▲</em><em>▼</em></i>
+            </button>
+            <button type="button" className={sortKey === 'price' ? 'active' : ''} onClick={() => setSortKey('price')}>
+              <span>股價</span>
+              <i aria-hidden="true"><em>▲</em><em>▼</em></i>
+            </button>
+            <button type="button" className={sortKey === 'inflow' || sortKey === 'outflow' || sortKey === 'absAmount' || sortKey === 'lots' ? 'active' : ''} onClick={() => setSortKey('inflow')}>
+              <span>淨額/張數</span>
+              <i aria-hidden="true"><em>▲</em><em>▼</em></i>
+            </button>
+            <button type="button" className={sortKey === 'etfCount' ? 'active' : ''} onClick={() => setSortKey('etfCount')}>
+              <span>狀態/異動</span>
+              <i aria-hidden="true"><em>▲</em><em>▼</em></i>
+            </button>
           </div>
 
           {filteredRows.length ? (

@@ -12362,3 +12362,262 @@ body {
   color: white;
   box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
 }
+
+.v120-table {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 0;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.v120-head,
+.v120-row {
+  display: grid;
+  grid-template-columns: minmax(86px, 1.15fr) 86px 96px 78px;
+  align-items: center;
+  gap: 8px;
+}
+
+.v120-head {
+  padding: 12px 10px;
+  background: #f3f4f6;
+  color: #2f3744;
+  font-size: 14px;
+  font-weight: 950;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.v120-row {
+  min-height: 76px;
+  padding: 11px 10px;
+  color: inherit;
+  text-decoration: none;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.v120-row:last-child {
+  border-bottom: 0;
+}
+
+.v120-target b {
+  display: block;
+  color: #242b35;
+  font-size: 18px;
+  font-weight: 950;
+  line-height: 1.15;
+}
+
+.v120-target span {
+  display: block;
+  margin-top: 5px;
+  color: #8a93a3;
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.v120-price {
+  text-align: right;
+}
+
+.v120-price b {
+  display: inline-block;
+  padding: 2px 5px;
+  color: #ffffff;
+  background: #e15b62;
+  font-size: 20px;
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.v120-price span {
+  display: block;
+  margin-top: 6px;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.v120-flow {
+  text-align: right;
+}
+
+.v120-flow b {
+  display: block;
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.v120-flow span {
+  display: block;
+  margin-top: 5px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.v120-status {
+  text-align: right;
+}
+
+.v120-status b {
+  display: block;
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.v120-status b.new,
+.v120-status b.add {
+  color: #e0525b;
+}
+
+.v120-status b.reduce {
+  color: #2fa876;
+}
+
+.v120-status span {
+  display: block;
+  margin-top: 5px;
+  color: #8a93a3;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+@media (max-width: 390px) {
+  .v120-head,
+  .v120-row {
+    grid-template-columns: minmax(78px, 1.15fr) 74px 86px 68px;
+    gap: 6px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .v120-head {
+    font-size: 12px;
+  }
+
+  .v120-target b {
+    font-size: 16px;
+  }
+
+  .v120-target span {
+    font-size: 13px;
+  }
+
+  .v120-price b {
+    font-size: 17px;
+  }
+
+  .v120-price span,
+  .v120-flow b,
+  .v120-status b {
+    font-size: 15px;
+  }
+
+  .v120-flow span,
+  .v120-status span {
+    font-size: 11px;
+  }
+}
+
+.v120-price em.limit-up,
+.v120-price em.limit-down {
+  display: inline-block;
+  margin-top: 4px;
+  border-radius: 999px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 950;
+  line-height: 1.3;
+}
+
+.v120-price em.limit-up {
+  color: #dc2626;
+  background: #fee2e2;
+}
+
+.v120-price em.limit-down {
+  color: #059669;
+  background: #d1fae5;
+}
+
+.v120-head button {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 950;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  text-align: left;
+}
+
+.v120-head button:not(:first-child) {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.v120-head button i {
+  display: grid;
+  grid-template-rows: 8px 8px;
+  align-items: center;
+  justify-items: center;
+  color: #9aa3af;
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.v120-head button i em {
+  display: block;
+  height: 8px;
+  font-style: normal;
+  line-height: 8px;
+}
+
+.v120-head button.active {
+  color: #2563eb;
+}
+
+.v120-head button.active i em:last-child {
+  color: #2563eb;
+}
+
+.v120-head,
+.v120-row {
+  grid-template-columns: minmax(82px, 1.15fr) 82px 106px 92px;
+}
+
+.v120-head button span {
+  white-space: nowrap;
+}
+
+.v120-head button i {
+  margin-left: 2px;
+  flex: 0 0 auto;
+}
+
+.v120-head button:not(:first-child) {
+  justify-content: flex-end;
+}
+
+@media (max-width: 390px) {
+  .v120-head,
+  .v120-row {
+    grid-template-columns: minmax(76px, 1.05fr) 74px 96px 84px;
+  }
+
+  .v120-head button {
+    gap: 3px;
+  }
+
+  .v120-head button span {
+    font-size: 12px;
+  }
+}
