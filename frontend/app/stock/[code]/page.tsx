@@ -1,9 +1,8 @@
-export const revalidate = 60;
+import StockDetailPageLoader from '@/components/StockDetailPageLoader';
 
-import { apiGet } from '@/lib/api';
-import StockDetailClient from '@/components/StockDetailClient';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-export default async function StockPage({ params }: { params: { code: string } }) {
-  const data = await apiGet(`/stocks/${params.code}`);
-  return <StockDetailClient data={data} />;
+export default function StockPage({ params }: { params: { code: string } }) {
+  return <StockDetailPageLoader code={params.code} />;
 }
