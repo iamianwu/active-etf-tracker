@@ -8,8 +8,18 @@ on:
         required: true
         type: boolean
         default: true
+      run_reference_etfs:
+        description: "Run Update Reference ETF Data"
+        required: true
+        type: boolean
+        default: true
       run_official_quotes:
         description: "Run Update Official Close Quotes"
+        required: true
+        type: boolean
+        default: true
+      run_etf_market:
+        description: "Run Update Pocket ETF Market Data"
         required: true
         type: boolean
         default: true
@@ -20,6 +30,11 @@ on:
         default: true
       run_signals_cache:
         description: "Run Warm Signals Cache"
+        required: true
+        type: boolean
+        default: true
+      run_app_cache:
+        description: "Run Warm App Cache"
         required: true
         type: boolean
         default: true
@@ -59,10 +74,22 @@ jobs:
                 timeoutMinutes: 50,
               },
               {
+                name: 'Update Reference ETF Data',
+                file: 'update-reference-etfs.yml',
+                enabled: isEnabled('run_reference_etfs'),
+                timeoutMinutes: 60,
+              },
+              {
                 name: 'Update Official Close Quotes',
                 file: 'update-official-close-quotes.yml',
                 enabled: isEnabled('run_official_quotes'),
                 timeoutMinutes: 35,
+              },
+              {
+                name: 'Update Pocket ETF Market Data',
+                file: 'update-etf-market.yml',
+                enabled: isEnabled('run_etf_market'),
+                timeoutMinutes: 30,
               },
               {
                 name: 'Rebuild Search Index',
@@ -75,6 +102,12 @@ jobs:
                 file: 'warm-signals-cache.yml',
                 enabled: isEnabled('run_signals_cache'),
                 timeoutMinutes: 35,
+              },
+              {
+                name: 'Warm App Cache',
+                file: 'warm-app-cache.yml',
+                enabled: isEnabled('run_app_cache'),
+                timeoutMinutes: 120,
               },
             ].filter(w => w.enabled);
 
