@@ -1,0 +1,47 @@
+name: Warm App Cache
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_stocks:
+        description: "Max stock codes to warm. 0 = all"
+        required: false
+        default: "0"
+      max_workers:
+        description: "Parallel workers"
+        required: false
+        default: "4"
+  schedule:
+    # GitHub cron uses UTC. 11:30 UTC = 19:30 Taiwan time.
+    - cron: "30 11 * * 1-5"
+
+jobs:
+  warm-app-cache:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Warm app cache
+        env:
+          SITE_URL: https://active-etf-tracker.vercel.app
+          MAX_STOCKS: ${{ github.event.inputs.max_stocks || '0' }}
+          MAX_WORKERS: ${{ github.event.inputs.max_workers || '4' }}
+          SLEEP_SEC: "0.05"
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python -m app.jobs.warm_app_cache_from_api
