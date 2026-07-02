@@ -1,6 +1,9 @@
 name: Run Daily Pipeline
 
 on:
+  # 10:10 UTC = 18:10 Taiwan time
+  schedule:
+    - cron: "10 10 * * 1-5"
   workflow_dispatch:
     inputs:
       run_update_etf:
@@ -50,7 +53,7 @@ concurrency:
 jobs:
   run-daily-pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 240
 
     steps:
       - name: Run workflows in order
@@ -101,7 +104,7 @@ jobs:
                 name: 'Warm Signals Cache',
                 file: 'warm-signals-cache.yml',
                 enabled: isEnabled('run_signals_cache'),
-                timeoutMinutes: 35,
+                timeoutMinutes: 60,
               },
               {
                 name: 'Warm App Cache',

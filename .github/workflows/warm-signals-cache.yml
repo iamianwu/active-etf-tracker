@@ -2,9 +2,6 @@ name: Warm Signals Cache
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "58 10 * * 1-5"
-
 concurrency:
   group: signals-cache-writes
   cancel-in-progress: false

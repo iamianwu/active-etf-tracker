@@ -2,9 +2,6 @@ name: Rebuild Search Index
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "45 10 * * 1-5"
-
 concurrency:
   group: search-index-writes
   cancel-in-progress: false

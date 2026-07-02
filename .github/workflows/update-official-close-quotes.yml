@@ -2,10 +2,6 @@ name: Update Official Close Quotes
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "35 8 * * 1-5"   # Taiwan 16:35
-    - cron: "20 10 * * 1-5"  # Taiwan 18:20
-
 jobs:
   update-official-close-quotes:
     runs-on: ubuntu-latest

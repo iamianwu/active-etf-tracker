@@ -11,10 +11,6 @@ on:
         description: "Parallel workers"
         required: false
         default: "4"
-  schedule:
-    # GitHub cron uses UTC. 11:30 UTC = 19:30 Taiwan time.
-    - cron: "30 11 * * 1-5"
-
 jobs:
   warm-app-cache:
     runs-on: ubuntu-latest

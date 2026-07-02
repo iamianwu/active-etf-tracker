@@ -11,9 +11,6 @@ on:
         description: "Sleep seconds between ETFs"
         required: false
         default: "0.5"
-  schedule:
-    - cron: "25 10 * * 1-5"
-
 concurrency:
   group: update-reference-etfs
   cancel-in-progress: false

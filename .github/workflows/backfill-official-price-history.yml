@@ -7,10 +7,6 @@ on:
         description: "How many months to backfill. 4 is enough for 3-month chart."
         required: false
         default: "4"
-  schedule:
-    # 台灣時間週一到週五 18:45，收盤價更新後補歷史表
-    - cron: "45 10 * * 1-5"
-
 jobs:
   backfill-history:
     runs-on: ubuntu-latest
