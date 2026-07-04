@@ -983,7 +983,11 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
     const todayRowsAll = await selectAll(
       'holdings',
       'etf_code,data_date,stock_code,stock_name,weight,shares',
-      (q) => q.in('etf_code', totalEtfCodes).eq('data_date', targetDate)
+      (q) => q
+        .in('etf_code', totalEtfCodes)
+        .eq('data_date', targetDate)
+        .order('etf_code', { ascending: true })
+        .order('stock_code', { ascending: true })
     );
     const todayEtfSet = new Set(todayRowsAll.map((r: any) => codeKey(r.etf_code)).filter(Boolean));
 
@@ -995,7 +999,11 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
     const dateRows = await selectAll(
       'holdings',
       'etf_code,data_date',
-      (q) => q.in('etf_code', universeEtfs).lte('data_date', targetDate)
+      (q) => q
+        .in('etf_code', universeEtfs)
+        .lte('data_date', targetDate)
+        .order('etf_code', { ascending: true })
+        .order('data_date', { ascending: true })
     );
     const datesByEtf: Record<string, string[]> = {};
     for (const r of dateRows) {
@@ -1028,7 +1036,12 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
       ? await selectAll(
           'holdings',
           'etf_code,data_date,stock_code,stock_name,weight,shares',
-          (q) => q.in('etf_code', includedEtfs).in('data_date', dateList)
+          (q) => q
+            .in('etf_code', includedEtfs)
+            .in('data_date', dateList)
+            .order('etf_code', { ascending: true })
+            .order('data_date', { ascending: true })
+            .order('stock_code', { ascending: true })
         )
       : [];
 
