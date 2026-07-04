@@ -5,40 +5,56 @@ import StockDetailClient from '@/components/StockDetailClient';
 
 export default function StockDetailPageLoader({ code }: { code: string }) {
   const [data, setData] = useState<any>(null);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    let alive = true;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 20000);
 
     async function load() {
       try {
         setError('');
-        const res = await fetch(`/api/stock-detail?code=${encodeURIComponent(code)}`, {
-          cache: 'no-store',
-        });
+
+        const res = await fetch(
+          `/api/stock-detail?code=${encodeURIComponent(code)}`,
+          {
+            cache: 'no-store',
+            signal: controller.signal,
+          }
+        );
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const json = await res.json();
-        if (alive) setData(json);
+        setData(json);
       } catch (e: any) {
-        if (alive) setError(String(e?.message || e));
+        if (e?.name === 'AbortError') {
+          setError('載入時間過久，請重新整理頁面。');
+        } else {
+          setError(String(e?.message || e));
+        }
+      } finally {
+        window.clearTimeout(timer);
       }
     }
 
     load();
 
     return () => {
-      alive = false;
+      window.clearTimeout(timer);
+      controller.abort();
     };
   }, [code]);
 
   if (error) {
     return (
-      <main className="page">
-        <section className="card">
-          <h1>個股資料載入失敗</h1>
-          <p>{error}</p>
+      <main className="v130-stock-loading">
+        <section className="v130-stock-error">
+          <b>個股資料載入失敗</b>
+          <span>{error}</span>
+          <button type="button" onClick={() => window.location.reload()}>
+            重新載入
+          </button>
         </section>
       </main>
     );
@@ -46,10 +62,42 @@ export default function StockDetailPageLoader({ code }: { code: string }) {
 
   if (!data) {
     return (
-      <main className="page">
-        <section className="card">
-          <h1>{code}</h1>
-          <p className="muted">正在載入個股資料...</p>
+      <main className="v130-stock-loading" aria-busy="true">
+        <div className="v130-stock-loading-head">
+          <div>
+            <span className="v130-skeleton v130-skeleton-code" />
+            <span className="v130-skeleton v130-skeleton-name" />
+          </div>
+          <span className="v130-skeleton v130-skeleton-price" />
+        </div>
+
+        <section className="v130-stock-loading-card">
+          <div className="v130-loading-metrics">
+            <span className="v130-skeleton" />
+            <span className="v130-skeleton" />
+            <span className="v130-skeleton" />
+            <span className="v130-skeleton" />
+          </div>
+        </section>
+
+        <section className="v130-stock-loading-card">
+          <span className="v130-skeleton v130-skeleton-title" />
+          <div className="v130-loading-chart">
+            <span className="v130-skeleton" />
+          </div>
+        </section>
+
+        <section className="v130-stock-loading-card">
+          <span className="v130-skeleton v130-skeleton-title" />
+          <div className="v130-loading-rows">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index}>
+                <span className="v130-skeleton" />
+                <span className="v130-skeleton" />
+                <span className="v130-skeleton" />
+              </div>
+            ))}
+          </div>
         </section>
       </main>
     );

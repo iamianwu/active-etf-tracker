@@ -12803,3 +12803,159 @@ body {
 .v120-sort-tabs {
   display: none !important;
 }
+
+/* v130 stock detail loading skeleton */
+
+.v130-stock-loading {
+  width: min(100%, 860px);
+  margin: 0 auto;
+  padding: 18px 14px 110px;
+}
+
+.v130-stock-loading-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.v130-stock-loading-head > div {
+  display: grid;
+  gap: 8px;
+}
+
+.v130-stock-loading-card,
+.v130-stock-error {
+  margin-bottom: 12px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e8edf3;
+  border-radius: 18px;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+}
+
+.v130-skeleton {
+  display: block;
+  min-height: 16px;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    #edf1f5 25%,
+    #f7f9fb 50%,
+    #edf1f5 75%
+  );
+  background-size: 200% 100%;
+  animation: v130-skeleton-pulse 1.25s infinite linear;
+}
+
+.v130-skeleton-code {
+  width: 72px;
+  height: 24px;
+}
+
+.v130-skeleton-name {
+  width: 132px;
+}
+
+.v130-skeleton-price {
+  width: 92px;
+  height: 36px;
+}
+
+.v130-skeleton-title {
+  width: 118px;
+  height: 22px;
+  margin-bottom: 16px;
+}
+
+.v130-loading-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.v130-loading-metrics .v130-skeleton {
+  height: 54px;
+}
+
+.v130-loading-chart .v130-skeleton {
+  height: 170px;
+}
+
+.v130-loading-rows {
+  display: grid;
+  gap: 14px;
+}
+
+.v130-loading-rows > div {
+  display: grid;
+  grid-template-columns: 70px 1fr 90px;
+  gap: 12px;
+}
+
+.v130-stock-error {
+  display: grid;
+  gap: 10px;
+  text-align: center;
+}
+
+.v130-stock-error button {
+  justify-self: center;
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+@keyframes v130-skeleton-pulse {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (max-width: 640px) {
+  .v130-loading-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* v130 stock operation universe tabs */
+
+.v130-op-universe-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0 0 12px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #f1f4f8;
+}
+
+.v130-op-universe-tabs button {
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.v130-op-universe-tabs button.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.v130-op-empty {
+  padding: 26px 12px;
+  border: 1px dashed #d9e0e8;
+  border-radius: 14px;
+  color: #7b8794;
+  text-align: center;
+  font-size: 14px;
+}

@@ -506,8 +506,18 @@ function StockRecentOperationPanel({ data, etfRows }: { data: any; etfRows: any[
   const [openInfo, setOpenInfo] = useState(false);
   const [sortKey, setSortKey] = useState<StockOpSortKey>('date');
   const [sortDir, setSortDir] = useState<StockOpSortDir>('desc');
+  const [universe, setUniverse] = useState<'active' | 'reference' | 'all'>('active');
 
   if (!baseRows.length) return null;
+
+  const filteredRows = baseRows.filter((row: any) => {
+    const code = String(row?.code || '').trim().toUpperCase();
+    const isActive = code.endsWith('A');
+
+    if (universe === 'active') return isActive;
+    if (universe === 'reference') return !isActive;
+    return true;
+  });
 
   function toggleSort(key: StockOpSortKey) {
     if (sortKey === key) {
@@ -527,7 +537,7 @@ function StockRecentOperationPanel({ data, etfRows }: { data: any; etfRows: any[
     return '';
   }
 
-  const rows = [...baseRows]
+  const rows = [...filteredRows]
     .sort((a, b) => {
       const av = sortValue(a, sortKey);
       const bv = sortValue(b, sortKey);
@@ -552,6 +562,31 @@ function StockRecentOperationPanel({ data, etfRows }: { data: any; etfRows: any[
         <button type="button" className="v96-op-info-btn" onClick={() => setOpenInfo(true)} aria-label="變動資料說明">i</button>
       </div>
 
+      <div className="v130-op-universe-tabs" role="tablist" aria-label="ETF 類型">
+        <button
+          type="button"
+          className={universe === 'active' ? 'active' : ''}
+          onClick={() => setUniverse('active')}
+        >
+          主動式
+        </button>
+        <button
+          type="button"
+          className={universe === 'reference' ? 'active' : ''}
+          onClick={() => setUniverse('reference')}
+        >
+          一般
+        </button>
+        <button
+          type="button"
+          className={universe === 'all' ? 'active' : ''}
+          onClick={() => setUniverse('all')}
+        >
+          全部
+        </button>
+      </div>
+
+      {rows.length ? (
       <div className="v96-op-table">
         <div className="v96-op-head">
           <SortBtn k="date">日期</SortBtn>
@@ -578,6 +613,11 @@ function StockRecentOperationPanel({ data, etfRows }: { data: any; etfRows: any[
           );
         })}
       </div>
+      ) : (
+        <div className="v130-op-empty">
+          目前沒有此類 ETF 的近期異動
+        </div>
+      )}
 
       {openInfo && (
         <div className="v96-op-modal-mask" onClick={() => setOpenInfo(false)}>
