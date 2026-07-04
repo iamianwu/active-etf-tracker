@@ -369,9 +369,63 @@ function buildStockRecentOperationRows(data: any, etfRows: any[]) {
 
   let rows: any[] = [];
 
-  // 優先用歷史持股重算：同一 ETF 相鄰日期的 raw shares 相減，再 /1000 轉成張。
+  const explicitOperations = ([] as any[]).concat(
+    Array.isArray(data?.operation_records) ? data.operation_records : [],
+    Array.isArray(data?.operationRecords) ? data.operationRecords : [],
+    Array.isArray(data?.recent_operations) ? data.recent_operations : [],
+    Array.isArray(data?.recentOperations) ? data.recentOperations : []
+  );
+
+  if (explicitOperations.length) {
+    rows = explicitOperations.map((r: any) => {
+      const deltaLotsValue = stockOpNum(stockOpPick(r, [
+        'delta_shares',
+        'delta_lots',
+        'change_lots',
+        'deltaShares',
+        'deltaLots',
+      ]));
+
+      const deltaRawShares = stockOpNum(stockOpPick(r, [
+        'delta_raw_shares',
+        'deltaRawShares',
+      ]));
+
+      const lots = Number.isFinite(deltaLotsValue)
+        ? deltaLotsValue
+        : Number.isFinite(deltaRawShares)
+          ? deltaRawShares / 1000
+          : NaN;
+
+      const pct = stockOpNum(stockOpPick(r, [
+        'change_pct',
+        'delta_pct',
+        'changePct',
+        'deltaPct',
+      ]));
+
+      return {
+        date: stockOpDate(r),
+        code: stockOpCode(r),
+        name: stockOpName(r, etfMap),
+        lots,
+        pct,
+        status: String(
+          stockOpPick(r, ['operation_status', 'status', 'action']) ||
+          (lots > 0 ? '加碼' : '減碼')
+        ),
+      };
+    }).filter((r: any) =>
+      r.code &&
+      Number.isFinite(r.lots) &&
+      Math.abs(r.lots) > 0.000001
+    );
+  }
+
+  // 沒有後端 operation_records 時，才由歷史持股重算。
+
   // 不要先把每天 shares 轉成張再相減，否則 9000 股與 20000 股會被混成 9000 - 20。
-  if (hist.length) {
+  if (!rows.length && hist.length) {
     const grouped: Record<string, Record<string, any>> = {};
 
     for (const r of hist) {

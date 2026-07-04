@@ -12,7 +12,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const data = await apiGet(`/stocks/${code}`);
+    const fresh = ["1", "true", "yes"].includes(
+      String(req.nextUrl.searchParams.get("fresh") || "").toLowerCase()
+    );
+
+    const data = await apiGet(
+      `/stocks/${code}?fresh=${fresh ? "1" : "0"}`
+    );
     return NextResponse.json(data, {
       headers: {
         'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',

@@ -442,13 +442,15 @@ async function getConstituentSummary() {
 }
 
 
-async function getStockDetail(stockCode: string) {
+async function getStockDetail(stockCode: string, fresh = false) {
   const code = String(stockCode || "").trim();
   const appCacheDate = await getLatestHoldingsDataDate();
-  const appCacheKey = `stock_detail:v1:${code}:date=${appCacheDate || "latest"}`;
+  const appCacheKey = `stock_detail:v2:${code}:date=${appCacheDate || "latest"}`;
 
-  const cached = await readAppCache(appCacheKey);
-  if (cached) return cached;
+  if (!fresh) {
+    const cached = await readAppCache(appCacheKey);
+    if (cached) return cached;
+  }
 
   const [stockHistoryRows, stockQuoteRows, priceHistoryRes, institutionalRes] = await Promise.all([
     selectPaged(
@@ -632,6 +634,71 @@ async function getStockDetail(stockCode: string) {
     )
     .slice(0, 300);
 
+  const operationRecords: any[] = [];
+
+  for (const etf of Object.keys(datesByEtf)) {
+    const dates = Array.from(datesByEtf[etf]).sort();
+    const byDate = stockRowByEtfDate[etf] || {};
+
+    for (let i = 1; i < dates.length; i++) {
+      const prevDate = dates[i - 1];
+      const currDate = dates[i];
+      const prev = byDate[prevDate];
+      const curr = byDate[currDate];
+
+      if (!prev && !curr) continue;
+
+      const prevRawShares = Number(prev?.shares || 0);
+      const currRawShares = Number(curr?.shares || 0);
+      const prevWeight = Number(prev?.weight || 0);
+      const currWeight = Number(curr?.weight || 0);
+
+      const deltaRawShares = currRawShares - prevRawShares;
+      const deltaWeight = currWeight - prevWeight;
+
+      if (
+        Math.abs(deltaRawShares) < 0.000001 &&
+        Math.abs(deltaWeight) < 0.000001
+      ) continue;
+
+      let status = "";
+      if (!prev && curr) status = "新增";
+      else if (prev && !curr) status = "刪除";
+      else if (deltaRawShares > 0) status = "加碼";
+      else if (deltaRawShares < 0) status = "減碼";
+      else if (deltaWeight > 0) status = "加碼";
+      else if (deltaWeight < 0) status = "減碼";
+
+      if (!status) continue;
+
+      operationRecords.push({
+        data_date: currDate,
+        prev_date: prevDate,
+        etf_code: etf,
+        etf_name: etfQuoteMap[etf]?.etf_name || ETF_NAMES[etf] || etf,
+        stock_code: code,
+        stock_name: curr?.stock_name || prev?.stock_name || quote.stock_name || code,
+        prev_raw_shares: prevRawShares,
+        curr_raw_shares: currRawShares,
+        delta_raw_shares: deltaRawShares,
+        delta_shares: deltaRawShares / 1000,
+        prev_weight: prevWeight,
+        curr_weight: currWeight,
+        delta_weight: deltaWeight,
+        change_pct: prevRawShares > 0
+          ? deltaRawShares / prevRawShares * 100
+          : null,
+        status,
+        operation_status: status,
+      });
+    }
+  }
+
+  operationRecords.sort((a, b) =>
+    String(b.data_date).localeCompare(String(a.data_date)) ||
+    String(a.etf_code).localeCompare(String(b.etf_code))
+  );
+
   const name = rows[0]?.stock_name || quote.stock_name || code;
 
   const result = {
@@ -646,6 +713,7 @@ async function getStockDetail(stockCode: string) {
     },
     etfs: rows,
     history,
+    operation_records: operationRecords.slice(0, 500),
     price_history: priceHistory,
     institutional,
   };
@@ -1441,7 +1509,14 @@ export async function apiGet(path: string) {
   if (u.pathname === "/holdings") return getConstituentSummary();
 
   if (u.pathname.startsWith("/stocks/")) {
-    return getStockDetail(decodeURIComponent(u.pathname.split("/")[2]));
+    const fresh = ["1", "true", "yes"].includes(
+      String(u.searchParams.get("fresh") || "").toLowerCase()
+    );
+
+    return getStockDetail(
+      decodeURIComponent(u.pathname.split("/")[2]),
+      fresh
+    );
   }
 
   if (u.pathname === "/signals") {
