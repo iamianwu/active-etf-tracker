@@ -1062,15 +1062,41 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
         const currWeight = n(curr?.weight);
         const prevWeight = n(prev?.weight);
         const deltaWeight = currWeight - prevWeight;
-        if (Math.abs(deltaRawShares) < 0.000001 && Math.abs(deltaWeight) < 0.000001) continue;
+
+        // 若該日期沒有持股 row，視為已知的 0 股。
+        // 只有 shares 欄位本身缺失時，才使用權重變化作為 fallback。
+        const currSharesKnown =
+          !curr ||
+          (curr.shares !== null &&
+            curr.shares !== undefined &&
+            String(curr.shares).trim() !== '');
+
+        const prevSharesKnown =
+          !prev ||
+          (prev.shares !== null &&
+            prev.shares !== undefined &&
+            String(prev.shares).trim() !== '');
+
+        const sharesComparable = currSharesKnown && prevSharesKnown;
 
         let etfStatus = '';
-        if (prevRawShares <= 0 && currRawShares > 0) etfStatus = '新增';
-        else if (currRawShares <= 0 && prevRawShares > 0) etfStatus = '刪除';
-        else if (deltaRawShares > 0) etfStatus = '加碼';
-        else if (deltaRawShares < 0) etfStatus = '減碼';
-        else if (deltaWeight > 0) etfStatus = '加碼';
-        else if (deltaWeight < 0) etfStatus = '減碼';
+
+        if (sharesComparable) {
+          // 股數未改變時，權重波動不視為 ETF 實際操作。
+          if (Math.abs(deltaRawShares) < 1) continue;
+
+          if (prevRawShares <= 0 && currRawShares > 0) etfStatus = '新增';
+          else if (currRawShares <= 0 && prevRawShares > 0) etfStatus = '刪除';
+          else if (deltaRawShares > 0) etfStatus = '加碼';
+          else if (deltaRawShares < 0) etfStatus = '減碼';
+        } else {
+          // 部分來源沒有提供持股股數時，才退回權重判斷。
+          if (!prev && curr) etfStatus = '新增';
+          else if (prev && !curr) etfStatus = '刪除';
+          else if (deltaWeight > 0) etfStatus = '加碼';
+          else if (deltaWeight < 0) etfStatus = '減碼';
+        }
+
         if (!etfStatus) continue;
 
         if (!agg[code]) {
