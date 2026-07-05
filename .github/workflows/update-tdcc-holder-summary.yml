@@ -1,0 +1,34 @@
+name: Update TDCC Holder Summary
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update-tdcc-holder-summary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Update TDCC holder summary
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TDCC_URL: https://openapi-t.tdcc.com.tw/v1/opendata/1-5
+          TDCC_REQUEST_TIMEOUT: "240"
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python -m app.jobs.update_tdcc_holder_summary
