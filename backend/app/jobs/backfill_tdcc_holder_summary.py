@@ -396,8 +396,11 @@ class TdccHistoryClient:
                 if len(levels) >= 15:
                     return levels
 
+                # ETF 尚未上市或該週沒有集保資料時，
+                # TDCC 可能只回傳空表，不一定顯示「查無資料」。
                 if (
-                    "查無資料" in response.text
+                    len(levels) == 0
+                    or "查無資料" in response.text
                     or "無符合" in response.text
                 ):
                     return None
