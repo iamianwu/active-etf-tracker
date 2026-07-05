@@ -1,0 +1,54 @@
+name: Backfill Institutional Trading
+
+on:
+  workflow_dispatch:
+    inputs:
+      backfill_days:
+        description: "Number of calendar days to backfill"
+        required: false
+        default: "90"
+      sleep_sec:
+        description: "Delay between market requests"
+        required: false
+        default: "0.5"
+
+jobs:
+  backfill-institutional-trading:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Backfill institutional trading
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BACKFILL_DAYS: ${{ github.event.inputs.backfill_days || '90' }}
+          SLEEP_SEC: ${{ github.event.inputs.sleep_sec || '0.5' }}
+          REQUEST_TIMEOUT: "90"
+          REPORT_PATH: institutional-backfill-report.json
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python -m app.jobs.backfill_institutional_trading
+
+      - name: Upload backfill report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: institutional-backfill-report
+          path: backend/institutional-backfill-report.json
+          if-no-files-found: warn
+          retention-days: 14
