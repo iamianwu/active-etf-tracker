@@ -172,8 +172,10 @@ export default function StockDetailClient(props: any) {
 
   return (
     <main className="v89-detail-page">
-      <Header code={code} name={name} />
-      <Tabs tab={tab} setTab={setTab} />
+      <div className="v147-detail-sticky-shell">
+        <Header code={code} name={name} />
+        <Tabs tab={tab} setTab={setTab} />
+      </div>
 
       {tab === 'overview' && <section className="v89-section">
         <div className="v89-stock-quote">
