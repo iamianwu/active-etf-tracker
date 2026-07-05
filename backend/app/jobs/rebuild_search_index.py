@@ -407,6 +407,10 @@ def main() -> None:
 
             cur.execute(etf_query)
 
+            # 必須先取出 ETF 查詢結果。
+            # load_etf_quote_names() 會在同一個 cursor 執行另一個 SQL。
+            raw_etf_rows = cur.fetchall()
+
             quote_names = (
                 load_etf_quote_names(cur)
             )
@@ -415,7 +419,7 @@ def main() -> None:
                 dict[str, Any]
             ] = []
 
-            for row in cur.fetchall():
+            for row in raw_etf_rows:
                 code = str(
                     row[0] or ""
                 ).strip().upper()
