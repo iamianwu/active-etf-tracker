@@ -1,0 +1,49 @@
+name: Check Signal Operation Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_workers:
+        description: "Parallel API workers"
+        required: false
+        default: "4"
+
+jobs:
+  check-signal-operation-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Check signal operation sync
+        env:
+          SITE_URL: https://active-etf-tracker.vercel.app
+          MAX_WORKERS: ${{ github.event.inputs.max_workers || '4' }}
+          REQUEST_TIMEOUT: "90"
+          REPORT_PATH: signal-operation-sync-report.json
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python -m app.jobs.check_signal_operation_sync
+
+      - name: Upload sync report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: signal-operation-sync-report
+          path: backend/signal-operation-sync-report.json
+          if-no-files-found: warn
+          retention-days: 14

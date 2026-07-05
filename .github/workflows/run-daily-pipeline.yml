@@ -41,6 +41,11 @@ on:
         required: true
         type: boolean
         default: true
+      run_signal_operation_sync:
+        description: "Check Signal Operation Sync"
+        required: true
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -111,6 +116,12 @@ jobs:
                 file: 'warm-app-cache.yml',
                 enabled: isEnabled('run_app_cache'),
                 timeoutMinutes: 120,
+              },
+              {
+                name: 'Check Signal Operation Sync',
+                file: 'check-signal-operation-sync.yml',
+                enabled: isEnabled('run_signal_operation_sync'),
+                timeoutMinutes: 45,
               },
             ].filter(w => w.enabled);
 
