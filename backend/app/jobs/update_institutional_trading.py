@@ -4,6 +4,7 @@ import html
 import os
 import re
 from datetime import date, timedelta
+from html.parser import HTMLParser
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -365,6 +366,43 @@ def roc_date_text(target: date) -> str:
     )
 
 
+class TpexTableParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.in_cell = False
+        self.cell_parts: list[str] = []
+        self.current_row: list[str] = []
+        self.rows: list[list[str]] = []
+
+    def handle_starttag(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]],
+    ) -> None:
+        if tag.lower() in {"td", "th"}:
+            self.in_cell = True
+            self.cell_parts = []
+
+    def handle_data(self, data: str) -> None:
+        if self.in_cell:
+            self.cell_parts.append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        tag = tag.lower()
+
+        if tag in {"td", "th"} and self.in_cell:
+            self.current_row.append(
+                clean_text("".join(self.cell_parts))
+            )
+            self.in_cell = False
+
+        elif tag == "tr":
+            if self.current_row:
+                self.rows.append(self.current_row)
+
+            self.current_row = []
+
+
 def fetch_tpex(
     session: requests.Session,
     target: date,
@@ -373,61 +411,110 @@ def fetch_tpex(
         TPEX_URL,
         params={
             "l": "zh-tw",
-            "o": "json",
+            "o": "htm",
             "se": "EW",
             "t": "D",
             "d": roc_date_text(target),
-            "s": "0",
+            "s": "0,asc",
+        },
+        headers={
+            "Referer": (
+                "https://www.tpex.org.tw/zh-tw/"
+                "mainboard/trading/major-institutional/"
+                "detail/day.html"
+            ),
         },
         timeout=(20, REQUEST_TIMEOUT),
     )
     response.raise_for_status()
 
-    payload = response.json()
-    raw_rows = payload.get("aaData", [])
+    encoding = response.encoding or ""
 
-    if not isinstance(raw_rows, list):
-        return target.strftime("%Y%m%d"), []
+    if (
+        not encoding
+        or encoding.lower() in {
+            "iso-8859-1",
+            "latin-1",
+        }
+    ):
+        encoding = "utf-8"
+
+    page_text = response.content.decode(
+        encoding,
+        errors="replace",
+    )
+
+    parser = TpexTableParser()
+    parser.feed(page_text)
+
+    actual_target = target
+
+    date_match = re.search(
+        r"(\d{3})年(\d{2})月(\d{2})日",
+        page_text,
+    )
+
+    if date_match:
+        actual_target = date(
+            int(date_match.group(1)) + 1911,
+            int(date_match.group(2)),
+            int(date_match.group(3)),
+        )
 
     rows: list[tuple[Any, ...]] = []
-    trade_date = target.isoformat()
 
-    for raw_row in raw_rows:
-        if not isinstance(raw_row, list):
+    for raw_row in parser.rows:
+        cleaned = [
+            clean_text(value)
+            for value in raw_row
+        ]
+
+        code_index = None
+
+        for index, value in enumerate(cleaned):
+            if re.fullmatch(
+                r"[0-9A-Z]{4,6}",
+                value.upper(),
+            ):
+                code_index = index
+                break
+
+        if code_index is None:
             continue
 
-        # 代號與名稱後共有 22 個數值欄位。
-        if len(raw_row) < 24:
+        values = cleaned[code_index:]
+
+        # 代號、名稱，加上 22 個法人數值欄位。
+        if len(values) < 24:
             continue
 
-        code = clean_text(raw_row[0]).upper()
-        name = clean_text(raw_row[1])
+        code = values[0].upper()
+        name = values[1]
 
-        if not re.fullmatch(r"[0-9A-Z]{4,6}", code):
-            continue
+        foreign_buy = to_int(values[2])
+        foreign_sell = to_int(values[3])
+        foreign_net = to_int(values[4])
 
-        foreign_buy = to_int(raw_row[2])
-        foreign_sell = to_int(raw_row[3])
-        foreign_net = to_int(raw_row[4])
+        # values[5:8] 是外資自營商。
+        # 資料表的 foreign_* 使用不含外資自營商欄位。
+        trust_buy = to_int(values[11])
+        trust_sell = to_int(values[12])
+        trust_net = to_int(values[13])
 
-        trust_buy = to_int(raw_row[11])
-        trust_sell = to_int(raw_row[12])
-        trust_net = to_int(raw_row[13])
+        dealer_self_buy = to_int(values[14])
+        dealer_self_sell = to_int(values[15])
+        dealer_self_net = to_int(values[16])
 
-        dealer_self_buy = to_int(raw_row[14])
-        dealer_self_sell = to_int(raw_row[15])
-        dealer_self_net = to_int(raw_row[16])
+        dealer_hedge_buy = to_int(values[17])
+        dealer_hedge_sell = to_int(values[18])
+        dealer_hedge_net = to_int(values[19])
 
-        dealer_hedge_buy = to_int(raw_row[17])
-        dealer_hedge_sell = to_int(raw_row[18])
-        dealer_hedge_net = to_int(raw_row[19])
-
-        dealer_net = to_int(raw_row[22])
-        institutional_net = to_int(raw_row[23])
+        dealer_net = to_int(values[22])
+        institutional_net = to_int(values[23])
 
         rows.append((
             code,
-            trade_date,
+            actual_target.isoformat(),
             "TPEX",
             name,
 
@@ -450,11 +537,10 @@ def fetch_tpex(
             dealer_net,
             institutional_net,
 
-            "TPEX_3INSTI",
+            "TPEX_3INSTI_HTML",
         ))
 
-    return target.strftime("%Y%m%d"), rows
-
+    return actual_target.strftime("%Y%m%d"), rows
 
 def find_latest_rows(
     session: requests.Session,
