@@ -1,0 +1,65 @@
+name: Backfill TDCC Holder Summary
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_weeks:
+        description: "Number of recent TDCC weeks"
+        required: false
+        default: "5"
+      max_codes:
+        description: "Maximum website codes. 0 = all"
+        required: false
+        default: "0"
+      start_after:
+        description: "Resume after this security code"
+        required: false
+        default: ""
+      sleep_sec:
+        description: "Delay between TDCC requests"
+        required: false
+        default: "0.8"
+
+jobs:
+  backfill-tdcc-holder-summary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Backfill TDCC holder history
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TARGET_WEEKS: ${{ github.event.inputs.target_weeks || '5' }}
+          MAX_CODES: ${{ github.event.inputs.max_codes || '0' }}
+          START_AFTER: ${{ github.event.inputs.start_after || '' }}
+          SLEEP_SEC: ${{ github.event.inputs.sleep_sec || '0.8' }}
+          REQUEST_TIMEOUT: "90"
+          REFRESH_EVERY: "50"
+          REPORT_PATH: tdcc-backfill-report.json
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python -m app.jobs.backfill_tdcc_holder_summary
+
+      - name: Upload backfill report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tdcc-backfill-report
+          path: backend/tdcc-backfill-report.json
+          if-no-files-found: warn
+          retention-days: 14
