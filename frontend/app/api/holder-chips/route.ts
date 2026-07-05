@@ -121,7 +121,14 @@ export async function GET(request: NextRequest) {
   }
 
   const rows = Array.isArray(data) ? data : [];
-  const latest = normalizeRow(rows[0]);
+
+  const normalizedRows = rows
+    .map((row: any) => normalizeRow(row))
+    .filter(Boolean) as Array<
+      NonNullable<ReturnType<typeof normalizeRow>>
+    >;
+
+  const latest = normalizedRows[0] || null;
 
   if (!latest) {
     return NextResponse.json(
@@ -131,6 +138,8 @@ export async function GET(request: NextRequest) {
         latest: null,
         comparison: null,
         four_week_change: null,
+        trend_ready: false,
+        history: [],
       },
       {
         status: 404,
@@ -146,16 +155,15 @@ export async function GET(request: NextRequest) {
   const fourWeekTarget =
     latestTimestamp - 28 * 24 * 60 * 60 * 1000;
 
-  const comparisonRaw = rows.find((row: any) => {
-    const timestamp = dateMs(row.data_date);
+  const comparison =
+    normalizedRows.find((row) => {
+      const timestamp = dateMs(row.data_date);
 
-    return (
-      Number.isFinite(timestamp) &&
-      timestamp <= fourWeekTarget
-    );
-  });
-
-  const comparison = normalizeRow(comparisonRaw);
+      return (
+        Number.isFinite(timestamp) &&
+        timestamp <= fourWeekTarget
+      );
+    }) || null;
 
   const fourWeekChange = comparison
     ? {
@@ -181,7 +189,10 @@ export async function GET(request: NextRequest) {
       latest,
       comparison,
       four_week_change: fourWeekChange,
-      trend_ready: Boolean(comparison),
+      trend_ready:
+        Boolean(comparison) &&
+        normalizedRows.length >= 5,
+      history: [...normalizedRows].reverse(),
       source: 'TDCC_OD_1-5',
     },
     {

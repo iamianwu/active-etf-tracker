@@ -1,6 +1,22 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+} from 'react';
+
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 type HolderSummary = {
   security_code: string;
@@ -29,6 +45,7 @@ type HolderPayload = {
   comparison: HolderSummary | null;
   four_week_change: HolderChange | null;
   trend_ready: boolean;
+  history: HolderSummary[];
   source?: string;
 };
 
@@ -68,6 +85,24 @@ function formatDate(value: string): string {
   );
 
   return match ? `${match[1]}/${match[2]}/${match[3]}` : value;
+}
+
+function formatWeekDate(value: string): string {
+  const match = String(value || '').match(
+    /^(\d{4})-(\d{2})-(\d{2})/
+  );
+
+  return match ? `${match[2]}/${match[3]}` : value;
+}
+
+function chartTick(value: unknown): string {
+  const result = Number(value);
+
+  if (!Number.isFinite(result)) return '0';
+
+  const sign = result > 0 ? '+' : '';
+
+  return `${sign}${result.toFixed(1)}`;
 }
 
 export default function HolderChipCard({
@@ -160,6 +195,45 @@ export default function HolderChipCard({
     };
   }, [code, reloadKey]);
 
+  const trendRows = useMemo(() => {
+    if (state.status !== 'ready') {
+      return [];
+    }
+
+    const history = Array.isArray(state.data.history)
+      ? state.data.history.slice(-5)
+      : [];
+
+    if (!history.length) {
+      return [];
+    }
+
+    const baseline = history[0];
+
+    const baselineLargeRatio =
+      baseline.major_ratio +
+      baseline.thousand_holder_ratio;
+
+    return history.map((row) => {
+      const largeRatio =
+        row.major_ratio +
+        row.thousand_holder_ratio;
+
+      return {
+        date: row.data_date,
+        large_ratio: largeRatio,
+        retail_ratio: row.retail_ratio,
+        large_change:
+          largeRatio - baselineLargeRatio,
+        retail_change:
+          row.retail_ratio -
+          baseline.retail_ratio,
+        thousand_holder_count:
+          row.thousand_holder_count,
+      };
+    });
+  }, [state]);
+
   if (state.status === 'loading') {
     return (
       <section
@@ -222,10 +296,49 @@ export default function HolderChipCard({
     );
   }
 
-  const { latest, four_week_change, trend_ready } =
-    state.data;
+  const { latest, trend_ready } = state.data;
 
   if (!latest) return null;
+
+  const firstTrend = trendRows[0];
+  const lastTrend =
+    trendRows[trendRows.length - 1];
+
+  const largeChange =
+    lastTrend?.large_change || 0;
+
+  const retailChange =
+    lastTrend?.retail_change || 0;
+
+  const holderCountChange =
+    firstTrend && lastTrend
+      ? lastTrend.thousand_holder_count -
+        firstTrend.thousand_holder_count
+      : 0;
+
+  const concentrationStatus =
+    largeChange >= 0.2 &&
+    retailChange <= -0.1
+      ? {
+          label: '籌碼集中',
+          className: 'is-concentrating',
+        }
+      : largeChange <= -0.2 &&
+          retailChange >= 0.1
+        ? {
+            label: '籌碼分散',
+            className: 'is-dispersing',
+          }
+        : Math.abs(largeChange) < 0.2 &&
+            Math.abs(retailChange) < 0.2
+          ? {
+              label: '籌碼大致持平',
+              className: 'is-mixed',
+            }
+          : {
+              label: '籌碼變化分歧',
+              className: 'is-mixed',
+            };
 
   return (
     <section
@@ -277,60 +390,257 @@ export default function HolderChipCard({
         </div>
       </div>
 
-      {trend_ready && four_week_change ? (
-        <div className="v140-holder-trend">
-          <div>
-            <span>近 4 週千張大戶</span>
+      {trend_ready && trendRows.length >= 5 ? (
+        <div className="v140-concentration">
+          <div className="v140-concentration-heading">
+            <div>
+              <h3>近 5 週籌碼集中趨勢</h3>
+              <span>
+                以最早一週為基準，單位為百分點
+              </span>
+            </div>
+
             <b
               className={
-                four_week_change.thousand_holder_count >= 0
-                  ? 'up'
-                  : 'down'
+                concentrationStatus.className
               }
             >
-              {formatSigned(
-                four_week_change.thousand_holder_count,
-                ' 人',
-                0
-              )}
+              {concentrationStatus.label}
             </b>
           </div>
 
-          <div>
-            <span>主力持股變化</span>
-            <b
-              className={
-                four_week_change.major_ratio >= 0
-                  ? 'up'
-                  : 'down'
-              }
+          <div className="v140-concentration-chart">
+            <ResponsiveContainer
+              width="100%"
+              height={190}
             >
-              {formatSigned(
-                four_week_change.major_ratio,
-                ' 個百分點'
-              )}
+              <LineChart
+                data={trendRows}
+                margin={{
+                  top: 12,
+                  right: 20,
+                  bottom: 0,
+                  left: -12,
+                }}
+              >
+                <CartesianGrid
+                  vertical={false}
+                  strokeDasharray="3 3"
+                />
+
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={formatWeekDate}
+                  interval={0}
+                  tick={{
+                    fontSize: 10,
+                  }}
+                />
+
+                <YAxis
+                  tickFormatter={chartTick}
+                  tick={{
+                    fontSize: 10,
+                  }}
+                />
+
+                <ReferenceLine
+                  y={0}
+                  stroke="rgba(15, 23, 42, 0.35)"
+                />
+
+                <Tooltip
+                  labelFormatter={(label) =>
+                    formatDate(String(label || ''))
+                  }
+                  formatter={(
+                    value: any,
+                    name: any
+                  ) => [
+                    formatSigned(
+                      Number(value),
+                      ' 個百分點',
+                      2
+                    ),
+                    name === 'large_change'
+                      ? '大額持股'
+                      : '散戶持股',
+                  ]}
+                />
+
+                <Line
+                  type="monotone"
+                  dataKey="large_change"
+                  stroke="#d9485f"
+                  strokeWidth={2.5}
+                  dot={{
+                    r: 3,
+                  }}
+                  activeDot={{
+                    r: 5,
+                  }}
+                  isAnimationActive={false}
+                />
+
+                <Line
+                  type="monotone"
+                  dataKey="retail_change"
+                  stroke="#18865f"
+                  strokeWidth={2.5}
+                  dot={{
+                    r: 3,
+                  }}
+                  activeDot={{
+                    r: 5,
+                  }}
+                  isAnimationActive={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="v140-concentration-legend">
+            <span className="large">
+              大額持股
+            </span>
+
+            <span className="retail">
+              散戶持股
+            </span>
+          </div>
+
+          <div className="v140-holder-trend">
+            <div>
+              <span>近 4 週大額持股</span>
+              <b
+                className={
+                  largeChange >= 0
+                    ? 'up'
+                    : 'down'
+                }
+              >
+                {formatSigned(
+                  largeChange,
+                  ' 個百分點',
+                  2
+                )}
+              </b>
+            </div>
+
+            <div>
+              <span>近 4 週散戶持股</span>
+              <b
+                className={
+                  retailChange <= 0
+                    ? 'up'
+                    : 'down'
+                }
+              >
+                {formatSigned(
+                  retailChange,
+                  ' 個百分點',
+                  2
+                )}
+              </b>
+            </div>
+
+            <div>
+              <span>近 4 週千張大戶</span>
+              <b
+                className={
+                  holderCountChange >= 0
+                    ? 'up'
+                    : 'down'
+                }
+              >
+                {formatSigned(
+                  holderCountChange,
+                  ' 人',
+                  0
+                )}
+              </b>
+            </div>
+          </div>
+
+          <div className="v140-holder-count-heading">
+            <div>
+              <h3>千張大戶人數</h3>
+              <span>最近 5 週</span>
+            </div>
+
+            <b>
+              {latest.thousand_holder_count.toLocaleString()}
+              <small> 人</small>
             </b>
           </div>
 
-          <div>
-            <span>散戶持股變化</span>
-            <b
-              className={
-                four_week_change.retail_ratio <= 0
-                  ? 'up'
-                  : 'down'
-              }
+          <div className="v140-holder-count-chart">
+            <ResponsiveContainer
+              width="100%"
+              height={105}
             >
-              {formatSigned(
-                four_week_change.retail_ratio,
-                ' 個百分點'
-              )}
-            </b>
+              <LineChart
+                data={trendRows}
+                margin={{
+                  top: 8,
+                  right: 20,
+                  bottom: 0,
+                  left: -12,
+                }}
+              >
+                <CartesianGrid
+                  vertical={false}
+                  strokeDasharray="3 3"
+                />
+
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={formatWeekDate}
+                  interval={0}
+                  tick={{
+                    fontSize: 10,
+                  }}
+                />
+
+                <YAxis
+                  domain={['dataMin - 2', 'dataMax + 2']}
+                  tick={{
+                    fontSize: 10,
+                  }}
+                />
+
+                <Tooltip
+                  labelFormatter={(label) =>
+                    formatDate(String(label || ''))
+                  }
+                  formatter={(value: any) => [
+                    `${Math.round(
+                      Number(value)
+                    ).toLocaleString()} 人`,
+                    '千張大戶',
+                  ]}
+                />
+
+                <Line
+                  type="monotone"
+                  dataKey="thousand_holder_count"
+                  stroke="#2563eb"
+                  strokeWidth={2.5}
+                  dot={{
+                    r: 3,
+                  }}
+                  activeDot={{
+                    r: 5,
+                  }}
+                  isAnimationActive={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
       ) : (
         <div className="v140-holder-pending">
-          近 4 週趨勢資料累積中
+          近 5 週趨勢資料累積中
         </div>
       )}
 

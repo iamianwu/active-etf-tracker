@@ -21,6 +21,11 @@ on:
         required: true
         type: boolean
         default: true
+      run_institutional_trading:
+        description: "Run Update Institutional Trading"
+        required: true
+        type: boolean
+        default: true
       run_etf_market:
         description: "Run Update Pocket ETF Market Data"
         required: true
@@ -92,6 +97,14 @@ jobs:
                 file: 'update-official-close-quotes.yml',
                 enabled: isEnabled('run_official_quotes'),
                 timeoutMinutes: 35,
+              },
+              {
+                name: 'Update Institutional Trading',
+                file: 'update-institutional-trading.yml',
+                enabled: isEnabled(
+                  'run_institutional_trading'
+                ),
+                timeoutMinutes: 25,
               },
               {
                 name: 'Update Pocket ETF Market Data',

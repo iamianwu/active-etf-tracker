@@ -13790,3 +13790,129 @@ body {
     font-size: 10px;
   }
 }
+
+/* v146 TDCC concentration trend */
+
+.v140-concentration {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(24, 32, 50, 0.08);
+}
+
+.v140-concentration-heading,
+.v140-holder-count-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.v140-concentration-heading > div,
+.v140-holder-count-heading > div {
+  display: grid;
+  gap: 2px;
+}
+
+.v140-concentration-heading h3,
+.v140-holder-count-heading h3 {
+  margin: 0;
+  color: #182032;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.v140-concentration-heading span,
+.v140-holder-count-heading span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.v140-concentration-heading > b {
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.v140-concentration-heading > b.is-concentrating {
+  background: rgba(217, 72, 95, 0.1);
+  color: #d9485f;
+}
+
+.v140-concentration-heading > b.is-dispersing {
+  background: rgba(24, 134, 95, 0.1);
+  color: #18865f;
+}
+
+.v140-concentration-heading > b.is-mixed {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.v140-concentration-chart {
+  width: 100%;
+  min-height: 190px;
+  margin-top: 6px;
+}
+
+.v140-concentration-legend {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin-top: -2px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.v140-concentration-legend span::before {
+  display: inline-block;
+  width: 16px;
+  height: 3px;
+  margin-right: 5px;
+  border-radius: 999px;
+  vertical-align: middle;
+  content: '';
+}
+
+.v140-concentration-legend .large::before {
+  background: #d9485f;
+}
+
+.v140-concentration-legend .retail::before {
+  background: #18865f;
+}
+
+.v140-holder-count-heading {
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(24, 32, 50, 0.08);
+}
+
+.v140-holder-count-heading > b {
+  color: #182032;
+  font-size: 20px;
+}
+
+.v140-holder-count-heading > b small {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.v140-holder-count-chart {
+  width: 100%;
+  min-height: 105px;
+  margin-top: 4px;
+}
+
+@media (max-width: 760px) {
+  .v140-concentration-chart {
+    margin-left: -4px;
+    width: calc(100% + 4px);
+  }
+
+  .v140-holder-count-chart {
+    margin-left: -4px;
+    width: calc(100% + 4px);
+  }
+}
