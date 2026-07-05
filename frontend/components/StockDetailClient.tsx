@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import HolderChipCard from './HolderChipCard';
+import InstitutionalTradingCard from './InstitutionalTradingCard';
 import {useMemo, useState} from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { rowsOf, quoteOf, stockCode, stockName, etfCode, etfName, fmtFree, fmtPct, fmtSigned, priceOf, changePctOf, marketValueBillionOf, sharesLotsOf, allHoldingHistory, trendRowsFromAny, dateOf, shortDate, sortRows, toneClass, num, toggleFavorite, favoriteExists, type SortDir } from './mobileV89Utils';
@@ -190,6 +191,7 @@ export default function StockDetailClient(props: any) {
           <span>近20日淨變化 {fmtSigned(delta20, 0, ' 張')}</span>
         </div>
         <HolderChipCard code={String(code || '')} />
+        <InstitutionalTradingCard code={String(code || '')} />
         <h2>主動 ETF 總持股趨勢</h2>
         <MiniArea rows={holdingTrend.length ? holdingTrend : priceTrend} color={delta20 >= 0 ? 'red' : 'green'} />
         <h2>前五大持有 ETF</h2>
