@@ -13986,3 +13986,14 @@ body {
     -webkit-backdrop-filter: none;
   }
 }
+
+/* v149 prevent stock holding sort row overlap with fixed detail header */
+
+.v89-detail-page .v89-sort-row.sticky {
+  position: static !important;
+  top: auto !important;
+  z-index: auto !important;
+  margin-top: 10px;
+  padding-top: 6px;
+  background: #ffffff;
+}
