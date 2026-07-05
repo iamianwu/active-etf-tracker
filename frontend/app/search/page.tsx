@@ -1,17 +1,56 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
-import { fmt0, fmt } from '@/lib/api';
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+
+import {
+  fmt,
+  fmt0,
+} from '@/lib/api';
+
+const SEARCH_INDEX_KEY =
+  'activeEtfSearchIndexV3';
 
 const HOT_ITEMS = [
-  { code: '00403A', name: '主動統一升級50', type: 'etf' },
-  { code: '00981A', name: '主動統一台股增長', type: 'etf' },
-  { code: '00980A', name: '主動野村臺灣優選', type: 'etf' },
-  { code: '00982A', name: '主動群益台灣強棒', type: 'etf' },
-  { code: '2330', name: '台積電', type: 'stock' },
-  { code: '2317', name: '鴻海', type: 'stock' },
-  { code: '2454', name: '聯發科', type: 'stock' },
+  {
+    code: '00403A',
+    name: '主動統一升級50',
+    type: 'etf',
+  },
+  {
+    code: '00981A',
+    name: '主動統一台股增長',
+    type: 'etf',
+  },
+  {
+    code: '00980A',
+    name: '主動野村臺灣優選',
+    type: 'etf',
+  },
+  {
+    code: '00982A',
+    name: '主動群益台灣強棒',
+    type: 'etf',
+  },
+  {
+    code: '2330',
+    name: '台積電',
+    type: 'stock',
+  },
+  {
+    code: '2317',
+    name: '鴻海',
+    type: 'stock',
+  },
+  {
+    code: '2454',
+    name: '聯發科',
+    type: 'stock',
+  },
 ];
 
 type SearchResults = {
@@ -19,136 +58,385 @@ type SearchResults = {
   stocks: any[];
 };
 
-const EMPTY_RESULTS: SearchResults = { etfs: [], stocks: [] };
+type SearchIndexPayload = SearchResults & {
+  generated_at?: string;
+};
+
+const EMPTY_RESULTS: SearchResults = {
+  etfs: [],
+  stocks: [],
+};
+
+function normalize(value: unknown): string {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '');
+}
+
+function scoreItem(
+  codeValue: unknown,
+  nameValue: unknown,
+  query: string
+): number {
+  const code = normalize(codeValue);
+  const name = normalize(nameValue);
+
+  if (!query) {
+    return -1;
+  }
+
+  if (code === query) {
+    return 1000;
+  }
+
+  if (name === query) {
+    return 950;
+  }
+
+  if (code.startsWith(query)) {
+    return 900;
+  }
+
+  if (name.startsWith(query)) {
+    return 800;
+  }
+
+  const codeIndex = code.indexOf(query);
+
+  if (codeIndex >= 0) {
+    return 700 - codeIndex;
+  }
+
+  const nameIndex = name.indexOf(query);
+
+  if (nameIndex >= 0) {
+    return 600 - nameIndex;
+  }
+
+  return -1;
+}
+
+function localSearch(
+  index: SearchIndexPayload,
+  query: string
+): SearchResults {
+  const normalizedQuery = normalize(query);
+
+  if (!normalizedQuery) {
+    return EMPTY_RESULTS;
+  }
+
+  const etfs = index.etfs
+    .map((item: any) => ({
+      item,
+      score: scoreItem(
+        item?.etf_code,
+        item?.etf_name,
+        normalizedQuery
+      ),
+    }))
+    .filter((entry) => entry.score >= 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+
+      return (
+        Number(
+          b.item?.holding_count || 0
+        ) -
+        Number(
+          a.item?.holding_count || 0
+        )
+      );
+    })
+    .slice(0, 20)
+    .map((entry) => entry.item);
+
+  const stocks = index.stocks
+    .map((item: any) => ({
+      item,
+      score: scoreItem(
+        item?.stock_code,
+        item?.stock_name,
+        normalizedQuery
+      ),
+    }))
+    .filter((entry) => entry.score >= 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+
+      const etfCountDifference =
+        Number(
+          b.item?.etf_count || 0
+        ) -
+        Number(
+          a.item?.etf_count || 0
+        );
+
+      if (etfCountDifference !== 0) {
+        return etfCountDifference;
+      }
+
+      return (
+        Number(
+          b.item?.total_weight || 0
+        ) -
+        Number(
+          a.item?.total_weight || 0
+        )
+      );
+    })
+    .slice(0, 40)
+    .map((entry) => entry.item);
+
+  return {
+    etfs,
+    stocks,
+  };
+}
 
 function saveHistory(item: any) {
   try {
-    const old = JSON.parse(localStorage.getItem('searchHistory') || '[]');
-    const next = [item, ...old.filter((x: any) => !(x.code === item.code && x.type === item.type))].slice(0, 8);
-    localStorage.setItem('searchHistory', JSON.stringify(next));
+    const old = JSON.parse(
+      localStorage.getItem(
+        'searchHistory'
+      ) || '[]'
+    );
+
+    const next = [
+      item,
+      ...old.filter(
+        (value: any) =>
+          !(
+            value.code === item.code &&
+            value.type === item.type
+          )
+      ),
+    ].slice(0, 8);
+
+    localStorage.setItem(
+      'searchHistory',
+      JSON.stringify(next)
+    );
   } catch {}
 }
 
 export default function SearchPage() {
   const [q, setQ] = useState('');
-  const [debouncedQ, setDebouncedQ] = useState('');
-  const [loadedQ, setLoadedQ] = useState('');
-  const [results, setResults] = useState<SearchResults>(EMPTY_RESULTS);
-  const [history, setHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const cacheRef = useRef<Record<string, SearchResults>>({});
+  const [index, setIndex] =
+    useState<SearchIndexPayload | null>(
+      null
+    );
+  const [history, setHistory] =
+    useState<any[]>([]);
+  const [loading, setLoading] =
+    useState(true);
+  const [loadError, setLoadError] =
+    useState('');
 
   useEffect(() => {
+    let active = true;
+
     try {
-      setHistory(JSON.parse(localStorage.getItem('searchHistory') || '[]'));
+      setHistory(
+        JSON.parse(
+          localStorage.getItem(
+            'searchHistory'
+          ) || '[]'
+        )
+      );
     } catch {}
-  }, []);
 
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      setDebouncedQ(q.trim());
-    }, 220);
+    try {
+      const cachedText =
+        localStorage.getItem(
+          SEARCH_INDEX_KEY
+        );
 
-    return () => window.clearTimeout(t);
-  }, [q]);
+      if (cachedText) {
+        const cached = JSON.parse(
+          cachedText
+        );
 
-  useEffect(() => {
-    const keyword = debouncedQ.trim();
-    const key = keyword.toLowerCase();
+        if (
+          Array.isArray(
+            cached?.data?.etfs
+          ) &&
+          Array.isArray(
+            cached?.data?.stocks
+          )
+        ) {
+          setIndex(cached.data);
+          setLoading(false);
+        }
+      }
+    } catch {}
 
-    if (!keyword) {
-      setResults(EMPTY_RESULTS);
-      setLoadedQ('');
-      setLoading(false);
-      return;
-    }
-
-    if (cacheRef.current[key]) {
-      setResults(cacheRef.current[key]);
-      setLoadedQ(key);
-      setLoading(false);
-      return;
-    }
-
-    const ctrl = new AbortController();
-    setLoading(true);
-
-    fetch(`/api/search?q=${encodeURIComponent(keyword)}`, {
-      signal: ctrl.signal,
-      cache: 'no-store',
+    fetch('/api/search-index', {
+      cache: 'force-cache',
     })
-      .then((r) => {
-        if (!r.ok) throw new Error(`Search failed: ${r.status}`);
-        return r.json();
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(
+            `HTTP ${response.status}`
+          );
+        }
+
+        return response.json();
       })
-      .then((data) => {
-        const next = {
-          etfs: Array.isArray(data?.etfs) ? data.etfs : [],
-          stocks: Array.isArray(data?.stocks) ? data.stocks : [],
+      .then((payload) => {
+        if (!active) {
+          return;
+        }
+
+        const next: SearchIndexPayload = {
+          etfs: Array.isArray(
+            payload?.etfs
+          )
+            ? payload.etfs
+            : [],
+
+          stocks: Array.isArray(
+            payload?.stocks
+          )
+            ? payload.stocks
+            : [],
+
+          generated_at:
+            payload?.generated_at,
         };
-        cacheRef.current[key] = next;
-        setResults(next);
-        setLoadedQ(key);
+
+        setIndex(next);
+        setLoadError('');
+
+        try {
+          localStorage.setItem(
+            SEARCH_INDEX_KEY,
+            JSON.stringify({
+              saved_at: Date.now(),
+              data: next,
+            })
+          );
+        } catch {}
       })
-      .catch((e) => {
-        if (e?.name !== 'AbortError') {
-          console.error(e);
-          setResults(EMPTY_RESULTS);
-          setLoadedQ(key);
+      .catch((error) => {
+        console.error(error);
+
+        if (active && !index) {
+          setLoadError(
+            '搜尋資料暫時無法載入'
+          );
         }
       })
       .finally(() => {
-        if (!ctrl.signal.aborted) setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       });
 
-    return () => ctrl.abort();
-  }, [debouncedQ]);
+    return () => {
+      active = false;
+    };
+    // 搜尋索引只在進入頁面時載入一次。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const queryKey = normalize(q);
+  const hasQuery = Boolean(queryKey);
+
+  const displayResults = useMemo(
+    () =>
+      index && hasQuery
+        ? localSearch(index, queryKey)
+        : EMPTY_RESULTS,
+    [index, hasQuery, queryKey]
+  );
 
   function clearHistory() {
-    localStorage.removeItem('searchHistory');
+    localStorage.removeItem(
+      'searchHistory'
+    );
     setHistory([]);
   }
-
-  const queryKey = q.trim().toLowerCase();
-  const hasQuery = !!queryKey;
-  const stillSearching = hasQuery && loadedQ !== queryKey;
-  const displayResults = hasQuery && !stillSearching ? results : EMPTY_RESULTS;
 
   return (
     <main className="page search-page">
       <div className="search-header">
-        <Link href="/" className="back">‹</Link>
+        <Link href="/" className="back">
+          ‹
+        </Link>
+
         <h2>搜尋</h2>
+
         <div className="back-placeholder" />
       </div>
 
       <div className="search-box">
-        <span className="search-mark"><a href="/search" className="header-icon-link-v67" aria-label="搜尋" title="搜尋"><span className="header-icon-v67 header-icon-search-v67" /></a></span>
+        <span className="search-mark">
+          <span
+            className="
+              header-icon-v67
+              header-icon-search-v67
+            "
+          />
+        </span>
+
         <input
           autoFocus
+          autoComplete="off"
+          enterKeyHint="search"
+          inputMode="search"
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(event) =>
+            setQ(event.target.value)
+          }
           placeholder="輸入 ETF 或個股代號 / 名稱"
         />
       </div>
 
-      {hasQuery && (loading || stillSearching) && <p className="muted">資料載入中...</p>}
+      {hasQuery &&
+        !index &&
+        loading && (
+          <p className="muted">
+            正在準備搜尋資料…
+          </p>
+        )}
+
+      {hasQuery &&
+        !index &&
+        loadError && (
+          <p className="muted">
+            {loadError}
+          </p>
+        )}
 
       {!hasQuery && (
         <>
           <section className="search-section">
             <h3>熱門搜尋</h3>
+
             <div className="search-chip-row">
               {HOT_ITEMS.map((item) => {
-                const href = item.type === 'etf' ? `/etf/${item.code}` : `/stock/${item.code}`;
+                const href =
+                  item.type === 'etf'
+                    ? `/etf/${item.code}`
+                    : `/stock/${item.code}`;
+
                 return (
                   <Link
                     key={`${item.type}-${item.code}`}
                     className="search-chip"
                     href={href}
-                    onClick={() => saveHistory(item)}
+                    onClick={() =>
+                      saveHistory(item)
+                    }
                   >
-                    <b>{item.code}</b> {item.name}
+                    <b>{item.code}</b>{' '}
+                    {item.name}
                   </Link>
                 );
               })}
@@ -158,85 +446,171 @@ export default function SearchPage() {
           <section className="search-section">
             <div className="search-section-title">
               <h3>歷史搜尋</h3>
-              {history.length > 0 && <button className="clear-btn" onClick={clearHistory}>清空</button>}
+
+              {history.length > 0 && (
+                <button
+                  className="clear-btn"
+                  onClick={clearHistory}
+                >
+                  清空
+                </button>
+              )}
             </div>
 
             {history.length === 0 ? (
-              <p className="muted">尚無歷史搜尋</p>
+              <p className="muted">
+                尚無歷史搜尋
+              </p>
             ) : (
               <div className="history-list">
-                {history.map((item: any) => {
-                  const href = item.type === 'etf' ? `/etf/${item.code}` : `/stock/${item.code}`;
-                  return (
-                    <Link
-                      key={`${item.type}-${item.code}`}
-                      href={href}
-                      className="history-item"
-                      onClick={() => saveHistory(item)}
-                    >
-                      <b>{item.code}</b>
-                      <span>{item.name}</span>
-                    </Link>
-                  );
-                })}
+                {history.map(
+                  (item: any) => {
+                    const href =
+                      item.type === 'etf'
+                        ? `/etf/${item.code}`
+                        : `/stock/${item.code}`;
+
+                    return (
+                      <Link
+                        key={`${item.type}-${item.code}`}
+                        href={href}
+                        className="history-item"
+                        onClick={() =>
+                          saveHistory(item)
+                        }
+                      >
+                        <b>{item.code}</b>
+                        <span>
+                          {item.name}
+                        </span>
+                      </Link>
+                    );
+                  }
+                )}
               </div>
             )}
           </section>
         </>
       )}
 
-      {hasQuery && !stillSearching && (
+      {hasQuery && index && (
         <>
           <section className="search-section">
             <h3>ETF 搜尋結果</h3>
-            {displayResults.etfs.length === 0 ? (
-              <p className="muted">沒有符合的 ETF</p>
+
+            {displayResults.etfs.length ===
+            0 ? (
+              <p className="muted">
+                沒有符合的 ETF
+              </p>
             ) : (
               <div className="result-list">
-                {displayResults.etfs.map((x: any) => (
-                  <Link
-                    key={x.etf_code}
-                    href={`/etf/${x.etf_code}`}
-                    className="result-row"
-                    onClick={() => saveHistory({ code: x.etf_code, name: x.etf_name, type: 'etf' })}
-                  >
-                    <div>
-                      <b>{x.etf_code}</b>
-                      <div>{x.etf_name}</div>
-                    </div>
-                    <div className="result-meta">
-                      <div>成分股 {fmt0(x.holding_count)} 檔</div>
-                      <div>股票權重 {fmt(x.stock_weight)}%</div>
-                    </div>
-                  </Link>
-                ))}
+                {displayResults.etfs.map(
+                  (item: any) => (
+                    <Link
+                      key={item.etf_code}
+                      href={`/etf/${item.etf_code}`}
+                      className="result-row"
+                      onClick={() =>
+                        saveHistory({
+                          code:
+                            item.etf_code,
+                          name:
+                            item.etf_name,
+                          type: 'etf',
+                        })
+                      }
+                    >
+                      <div>
+                        <b>
+                          {item.etf_code}
+                        </b>
+
+                        <div>
+                          {item.etf_name}
+                        </div>
+                      </div>
+
+                      <div className="result-meta">
+                        <div>
+                          成分股{' '}
+                          {fmt0(
+                            item.holding_count
+                          )}{' '}
+                          檔
+                        </div>
+
+                        <div>
+                          股票權重{' '}
+                          {fmt(
+                            item.stock_weight
+                          )}
+                          %
+                        </div>
+                      </div>
+                    </Link>
+                  )
+                )}
               </div>
             )}
           </section>
 
           <section className="search-section">
             <h3>個股搜尋結果</h3>
-            {displayResults.stocks.length === 0 ? (
-              <p className="muted">沒有符合的個股</p>
+
+            {displayResults.stocks
+              .length === 0 ? (
+              <p className="muted">
+                沒有符合的個股
+              </p>
             ) : (
               <div className="result-list">
-                {displayResults.stocks.map((x: any) => (
-                  <Link
-                    key={x.stock_code}
-                    href={`/stock/${x.stock_code}`}
-                    className="result-row"
-                    onClick={() => saveHistory({ code: x.stock_code, name: x.stock_name, type: 'stock' })}
-                  >
-                    <div>
-                      <b>{x.stock_name}</b>
-                      <div className="code">{x.stock_code}</div>
-                    </div>
-                    <div className="result-meta">
-                      <div>ETF {fmt0(x.etf_count)} 檔</div>
-                      <div>合計權重 {fmt(x.total_weight)}%</div>
-                    </div>
-                  </Link>
-                ))}
+                {displayResults.stocks.map(
+                  (item: any) => (
+                    <Link
+                      key={item.stock_code}
+                      href={`/stock/${item.stock_code}`}
+                      className="result-row"
+                      onClick={() =>
+                        saveHistory({
+                          code:
+                            item.stock_code,
+                          name:
+                            item.stock_name,
+                          type: 'stock',
+                        })
+                      }
+                    >
+                      <div>
+                        <b>
+                          {item.stock_name}
+                        </b>
+
+                        <div className="code">
+                          {item.stock_code}
+                        </div>
+                      </div>
+
+                      <div className="result-meta">
+                        <div>
+                          ETF{' '}
+                          {fmt0(
+                            item.etf_count
+                          )}{' '}
+                          檔
+                        </div>
+
+                        <div>
+                          合計權重{' '}
+                          {fmt(
+                            item.total_weight
+                          )}
+                          %
+                        </div>
+                      </div>
+                    </Link>
+                  )
+                )}
               </div>
             )}
           </section>

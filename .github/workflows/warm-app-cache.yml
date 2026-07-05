@@ -39,5 +39,8 @@ jobs:
           SLEEP_SEC: "0.05"
           PYTHONUNBUFFERED: "1"
         run: |
+          echo "Warming search index"
+          curl --fail             --silent             --show-error             --retry 3             --max-time 180             "$SITE_URL/api/search-index"             > /dev/null
+
           cd backend
           python -m app.jobs.warm_app_cache_from_api
