@@ -49,11 +49,46 @@ def fetch_signals(site_url: str, universe: str, days: int) -> dict:
         "fresh": "1",
     })
     url = f"{site_url.rstrip('/')}/api/signals?{qs}"
-    print(f"fetch {url}", flush=True)
 
-    res = requests.get(url, timeout=300)
-    res.raise_for_status()
-    return res.json()
+    if universe == "all":
+        timeout_sec = int(getenv("SIGNALS_ALL_FETCH_TIMEOUT_SEC", "180"))
+        retries = max(1, int(getenv("SIGNALS_ALL_FETCH_RETRIES", "1")))
+    else:
+        timeout_sec = int(getenv("SIGNALS_FETCH_TIMEOUT_SEC", "300"))
+        retries = max(1, int(getenv("SIGNALS_FETCH_RETRIES", "2")))
+
+    last_error: Exception | None = None
+
+    for attempt in range(1, retries + 1):
+        print(
+            f"fetch {url} attempt={attempt}/{retries} timeout={timeout_sec}s",
+            flush=True,
+        )
+
+        try:
+            res = requests.get(
+                url,
+                timeout=(20, timeout_sec),
+            )
+            res.raise_for_status()
+            return res.json()
+        except (requests.RequestException, ValueError) as exc:
+            last_error = exc
+            print({
+                "ok": False,
+                "stage": "fetch_signals",
+                "universe": universe,
+                "days": days,
+                "attempt": attempt,
+                "error": str(exc),
+            }, flush=True)
+
+            if attempt < retries:
+                time.sleep(min(15, attempt * 5))
+
+    raise RuntimeError(
+        f"signals fetch failed universe={universe} days={days}"
+    ) from last_error
 
 
 def write_cache(conn, universe: str, days: int, payload: dict) -> dict:
@@ -157,23 +192,72 @@ def main() -> None:
     with psycopg.connect(database_url) as conn:
         init_table(conn)
 
-        for universe in universes:
-            for days in days_list:
-                payload = fetch_signals(site_url, universe, days)
-                meta = write_cache(conn, universe, days, payload)
+        failures: list[dict] = []
 
-                print({
-                    "ok": True,
-                    "universe": universe,
-                    "days": days,
-                    "signal_count": payload.get("signal_count"),
-                    "total_etf_count": payload.get("total_etf_count"),
-                    "fetched_etf_count": payload.get("fetched_etf_count"),
-                    **meta,
-                }, flush=True)
+        # 先完成所有 universe 的 1 日資料，再處理 5、10、20 日。
+        for days in days_list:
+            for universe in universes:
+                try:
+                    payload = fetch_signals(site_url, universe, days)
 
-                warm_cdn(site_url, universe, days)
+                    fetched = int(payload.get("fetched_etf_count") or 0)
+                    total = int(payload.get("total_etf_count") or 0)
+
+                    # all 曾出現 13/93 半成品；低於 80% 時拒絕覆蓋正常快取。
+                    if (
+                        universe == "all"
+                        and total > 0
+                        and fetched / total < 0.80
+                    ):
+                        raise RuntimeError(
+                            "refusing incomplete all cache: "
+                            f"fetched={fetched} total={total}"
+                        )
+
+                    meta = write_cache(conn, universe, days, payload)
+
+                    print({
+                        "ok": True,
+                        "universe": universe,
+                        "days": days,
+                        "signal_count": payload.get("signal_count"),
+                        "total_etf_count": total,
+                        "fetched_etf_count": fetched,
+                        **meta,
+                    }, flush=True)
+
+                    warm_cdn(site_url, universe, days)
+
+                except Exception as exc:
+                    failure = {
+                        "ok": False,
+                        "stage": "signals_cache_task",
+                        "universe": universe,
+                        "days": days,
+                        "error": str(exc),
+                    }
+                    failures.append(failure)
+                    print(failure, flush=True)
+
                 time.sleep(sleep_sec)
+
+        print({
+            "ok": not failures,
+            "stage": "signals_cache_summary",
+            "failure_count": len(failures),
+            "failures": failures,
+        }, flush=True)
+
+        critical_failures = [
+            item
+            for item in failures
+            if item["universe"] in {"active", "reference"}
+        ]
+
+        if critical_failures:
+            raise RuntimeError(
+                f"{len(critical_failures)} critical signals cache tasks failed"
+            )
 
 
 if __name__ == "__main__":
