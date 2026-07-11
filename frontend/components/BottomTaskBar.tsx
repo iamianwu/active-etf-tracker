@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const items = [
-  { href: '/', label: '總覽', icon: '⌂', active: (p: string) => p === '/' },
+  { href: '/', label: '總覽', icon: '⌂', active: (p: string) => p === '/' || p.startsWith('/home-v2') },
   { href: '/signals', label: '訊號', icon: '⌁', active: (p: string) => p.startsWith('/signals') },
   { href: '/search', label: '個股', icon: '⌕', active: (p: string) => p.startsWith('/search') || p.startsWith('/stock') },
   { href: '/etfs', label: 'ETF', icon: '▱', active: (p: string) => p.startsWith('/etfs') || p.startsWith('/etf/') },

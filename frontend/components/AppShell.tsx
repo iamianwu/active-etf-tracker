@@ -7,7 +7,9 @@ import BottomTaskBar from '@/components/BottomTaskBar';
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || '';
   const isDetailPage = pathname.startsWith('/etf/') || pathname.startsWith('/stock/');
-  const showTopNav = pathname !== '/';
+  const showTopNav =
+    pathname !== '/' &&
+    pathname !== '/home-v2';
 
   return (
     <div className={`shell ${isDetailPage ? 'detail-shell' : ''}`}>
