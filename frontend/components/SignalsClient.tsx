@@ -5,7 +5,9 @@ import { useMemo, useState } from 'react';
 
 type AnyRow = Record<string, any>;
 type Status = '新增' | '刪除' | '加碼' | '減碼';
-type SortKey = 'code' | 'inflow' | 'outflow' | 'absAmount' | 'lots' | 'price' | 'pct' | 'etfCount';
+type SortKey = 'code' | 'inflow' | 'outflow' | 'absAmount' | 'lots' | 'price' | 'pct' | 'etfCount'
+  | 'deltaWeight'
+  | 'consensus';
 type SortDir = 'asc' | 'desc';
 type FilterKey = '全部' | Status;
 
@@ -336,6 +338,25 @@ function mmdd(v: any): string {
   return s || '-';
 }
 
+function fmtUpdatedAt(value: any): string {
+  const date = new Date(String(value ?? ''));
+
+  if (!Number.isFinite(date.getTime())) {
+    return '-';
+  }
+
+  return new Intl.DateTimeFormat('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+    .format(date)
+    .replace(',', '');
+}
+
 function fmtPrice(v: number | null): string {
   if (v === null || !Number.isFinite(v)) return '-';
   return v.toLocaleString('zh-TW', { maximumFractionDigits: v >= 100 ? 1 : 2 });
@@ -508,6 +529,116 @@ function missingRowsOf(data: any): AnyRow[] {
   return [];
 }
 
+function signalNumber(
+  value: unknown
+): number | null {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ''
+  ) {
+    return null;
+  }
+
+  const result = Number(
+    String(value)
+      .replace(/,/g, '')
+      .replace(/[^\d.-]/g, '')
+  );
+
+  return Number.isFinite(result)
+    ? result
+    : null;
+}
+
+function deltaWeightOf(
+  row: AnyRow
+): number | null {
+  const directKeys = [
+    'delta_weight',
+    'deltaWeight',
+    'weight_change',
+    'weightChange',
+    'net_delta_weight',
+    'total_delta_weight',
+  ];
+
+  for (const key of directKeys) {
+    const value = signalNumber(
+      row?.[key]
+    );
+
+    if (value !== null) {
+      return value;
+    }
+  }
+
+  const sources = Array.isArray(
+    row?.__sources
+  )
+    ? row.__sources
+    : [];
+
+  let total = 0;
+  let found = false;
+
+  for (const source of sources) {
+    const value = signalNumber(
+      source?.delta_weight ??
+        source?.deltaWeight ??
+        source?.weight_change ??
+        source?.weightChange
+    );
+
+    if (value !== null) {
+      total += value;
+      found = true;
+    }
+  }
+
+  return found ? total : null;
+}
+
+function fmtWeightDelta(
+  value: number | null
+): string {
+  if (value === null) {
+    return '-';
+  }
+
+  const sign = value > 0 ? '+' : '';
+
+  return `${sign}${value.toFixed(2)}%`;
+}
+
+function consensusScoreOf(
+  row: AnyRow
+): number {
+  const buy = Number(
+    row?.__buySell?.buy ?? 0
+  );
+
+  const sell = Number(
+    row?.__buySell?.sell ?? 0
+  );
+
+  return buy - sell;
+}
+
+function consensusTotalOf(
+  row: AnyRow
+): number {
+  const buy = Number(
+    row?.__buySell?.buy ?? 0
+  );
+
+  const sell = Number(
+    row?.__buySell?.sell ?? 0
+  );
+
+  return buy + sell;
+}
+
 function sortRows(rows: AnyRow[], key: SortKey, dir: SortDir): AnyRow[] {
   const copy = [...rows];
 
@@ -519,6 +650,28 @@ function sortRows(rows: AnyRow[], key: SortKey, dir: SortDir): AnyRow[] {
     if (key === 'lots') return Math.abs(lotsOf(b)) - Math.abs(lotsOf(a));
     if (key === 'price') return (priceOf(b) ?? -Infinity) - (priceOf(a) ?? -Infinity);
     if (key === 'pct') return (pctOf(b) ?? -Infinity) - (pctOf(a) ?? -Infinity);
+    if (key === 'deltaWeight') {
+      return (
+        (deltaWeightOf(b) ?? -Infinity) -
+        (deltaWeightOf(a) ?? -Infinity)
+      );
+    }
+
+    if (key === 'consensus') {
+      const scoreDiff =
+        consensusScoreOf(b) -
+        consensusScoreOf(a);
+
+      if (scoreDiff !== 0) {
+        return scoreDiff;
+      }
+
+      return (
+        consensusTotalOf(b) -
+        consensusTotalOf(a)
+      );
+    }
+
     if (key === 'etfCount') {
       const ab = (a.__buySell?.buy ?? 0) + (a.__buySell?.sell ?? 0);
       const bb = (b.__buySell?.buy ?? 0) + (b.__buySell?.sell ?? 0);
@@ -772,42 +925,130 @@ function DetailRow({ row }: { row: AnyRow }) {
   const pct = pctOf(row);
   const amount = amountOf(row);
   const lots = lotsOf(row);
+  const deltaWeight =
+    deltaWeightOf(row);
   const st = statusOf(row);
-  const bs = row.__buySell ?? { buy: 0, sell: 0 };
+
+  const bs =
+    row.__buySell ?? {
+      buy: 0,
+      sell: 0,
+    };
+
+  const statusClass =
+    st === '新增'
+      ? 'new'
+      : st === '刪除'
+        ? 'remove'
+        : st === '加碼'
+          ? 'add'
+          : st === '減碼'
+            ? 'reduce'
+            : 'flat';
+
+  const limitTitle = isLimitUp(row)
+    ? '漲停'
+    : isLimitDown(row)
+      ? '跌停'
+      : undefined;
 
   return (
-    <Link className="v120-row" href={`/stock/${codeOf(row)}`}>
+    <Link
+      className="v120-row"
+      href={`/stock/${codeOf(row)}`}
+    >
       <div className="v120-target">
         <b>{nameOf(row)}</b>
         <span>{codeOf(row)}</span>
       </div>
 
       <div className="v120-price">
-        <b className={isLimitUp(row) ? 'v123-limit-up-price' : isLimitDown(row) ? 'v123-limit-down-price' : tone(pct ?? 0)}>{fmtPrice(p)}</b>
-        <span className={tone(pct ?? 0)}>{fmtPct(pct)}</span>
-        {isLimitUp(row) && <em className="limit-up">漲停</em>}
-        {isLimitDown(row) && <em className="limit-down">跌停</em>}
+        <b
+          title={limitTitle}
+          className={
+            isLimitUp(row)
+              ? 'v123-limit-up-price'
+              : isLimitDown(row)
+                ? 'v123-limit-down-price'
+                : tone(pct ?? 0)
+          }
+        >
+          {fmtPrice(p)}
+        </b>
+
+        <span className={tone(pct ?? 0)}>
+          {fmtPct(pct)}
+        </span>
       </div>
 
-      <div className="v120-flow">
-        <b className={tone(amount)}>{fmtBillion(amount)}</b>
-        <span className={tone(lots)}>{fmtLots(lots)}</span>
+      <div className="v125-amount">
+        <b className={tone(amount)}>
+          {fmtBillion(amount)}
+        </b>
       </div>
 
-      <div className="v120-status">
-        {st && <b className={st === '新增' ? 'new' : st === '加碼' ? 'add' : 'reduce'}>{st}</b>}
-        <span>異動 {bs.buy}:{bs.sell}</span>
+      <div className="v125-status-text">
+        <b className={statusClass}>
+          {st || '-'}
+        </b>
+
+        <span>
+          {bs.buy}:{bs.sell}
+        </span>
+      </div>
+
+      <div className="v125-lots">
+        <b className={tone(lots)}>
+          {fmtLots(lots)}
+        </b>
+      </div>
+
+      <div className="v125-weight">
+        <b
+          className={tone(
+            deltaWeight ?? 0
+          )}
+        >
+          {fmtWeightDelta(
+            deltaWeight
+          )}
+        </b>
       </div>
     </Link>
   );
 }
 
-export default function SignalsClient(props: { data: any; activeDays?: number }) {
+export default function SignalsClient(props: {
+  data: any;
+  activeDays?: number;
+  universeLabel?: string;
+  coverage?: {
+    activeFetched: number;
+    activeTotal: number;
+    referenceFetched: number;
+    referenceTotal: number;
+    allFetched: number;
+    allTotal: number;
+  };
+}) {
   const data = props.data ?? {};
-  const activeDays = Number(props.activeDays ?? data?.signalRangeDays ?? data?.rangeDays ?? 1) || 1;
+
+  const activeDays =
+    Number(
+      props.activeDays ??
+        data?.signalRangeDays ??
+        data?.rangeDays ??
+        1,
+    ) || 1;
+
+  const universeLabel =
+    props.universeLabel || 'ETF';
+
+  const coverage =
+    props.coverage;
 
   const [filter, setFilter] = useState<FilterKey>('全部');
-  const [sortKey, setSortKey] = useState<SortKey>(activeDays === 1 ? 'inflow' : 'absAmount');
+  const [sortKey, setSortKey] = useState<SortKey>('lots');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [showMissing, setShowMissing] = useState(false);
 
@@ -866,28 +1107,59 @@ export default function SignalsClient(props: { data: any; activeDays?: number })
 
   return (
     <main className="signals-v120">
-      <RangeTabs activeDays={activeDays} />
-
       <section className="v120-title">
-        <h1>{activeDays === 1 ? '今日訊號' : `近${activeDays}日訊號`}</h1>
-        <div className="v120-quality">
-          {activeDays === 1 ? (
-            <>
-              <span>資料日 <b>{mmdd(date)}</b></span>
-              <span>已取得今日資料 <b>{today} / {total}</b> 檔 ETF</span>
-              {missing > 0 && (
-                <button type="button" onClick={() => setShowMissing(true)}>
-                  未更新 {missing} 檔，查看說明
-                </button>
-              )}
-            </>
-          ) : (
-            <>
-              <span>區間 <b>近 {activeDays} 日</b></span>
-              <span>最新資料日 <b>{mmdd(date)}</b></span>
-            </>
-          )}
+        <div className="v120-overview-kicker">
+          SIGNAL OVERVIEW
         </div>
+
+        <h1>
+          {activeDays === 1
+            ? `${universeLabel} 今日出現 ${rows.length} 筆持股異動`
+            : `${universeLabel} 近 ${activeDays} 日出現 ${rows.length} 筆訊號`}
+        </h1>
+
+        <p className="v120-overview-copy">
+          最大加碼為{' '}
+          <b className="red">
+            {focus.inflow
+              ? `${nameOf(focus.inflow)} ${fmtBillion(amountOf(focus.inflow))}`
+              : '-'}
+          </b>
+          {'；'}最大減碼為{' '}
+          <b className="green">
+            {focus.outflow
+              ? `${nameOf(focus.outflow)} ${fmtBillion(amountOf(focus.outflow))}`
+              : '-'}
+          </b>
+        </p>
+
+        {coverage && (
+          <div className="v120-overview-coverage">
+            <span>
+              主動式{' '}
+              <b>
+                {coverage.activeFetched}/
+                {coverage.activeTotal}
+              </b>
+            </span>
+
+            <span>
+              一般 ETF{' '}
+              <b>
+                {coverage.referenceFetched}/
+                {coverage.referenceTotal}
+              </b>
+            </span>
+
+            <span>
+              全部追蹤{' '}
+              <b>
+                {coverage.allFetched}/
+                {coverage.allTotal}
+              </b>
+            </span>
+          </div>
+        )}
       </section>
 
       <section className="v120-focus-grid">
@@ -910,27 +1182,119 @@ export default function SignalsClient(props: { data: any; activeDays?: number })
 
         <div className="v120-table">
           <div className="v120-head">
-            <button type="button" className={sortClass('code')} onClick={() => setSort('code', 'asc')}>
+            <button
+              type="button"
+              className={sortClass('code')}
+              onClick={() =>
+                setSort('code', 'asc')
+              }
+            >
               <span>標的</span>
-              <i aria-hidden="true"><em>▲</em><em>▼</em></i>
+              <i aria-hidden="true">
+                <em>▲</em>
+                <em>▼</em>
+              </i>
             </button>
+
             <div className="v124-dual-sort">
-              <button type="button" className={sortClass('price')} onClick={() => setSort('price', 'desc')}>
+              <button
+                type="button"
+                className={sortClass('price')}
+                onClick={() =>
+                  setSort('price', 'desc')
+                }
+              >
                 <span>股價</span>
-                <i aria-hidden="true"><em>▲</em><em>▼</em></i>
+                <i aria-hidden="true">
+                  <em>▲</em>
+                  <em>▼</em>
+                </i>
               </button>
-              <button type="button" className={sortClass('pct')} onClick={() => setSort('pct', 'desc')}>
+
+              <button
+                type="button"
+                className={sortClass('pct')}
+                onClick={() =>
+                  setSort('pct', 'desc')
+                }
+              >
                 <span>漲跌幅</span>
-                <i aria-hidden="true"><em>▲</em><em>▼</em></i>
+                <i aria-hidden="true">
+                  <em>▲</em>
+                  <em>▼</em>
+                </i>
               </button>
             </div>
-            <button type="button" className={sortKey === 'inflow' || sortKey === 'outflow' || sortKey === 'absAmount' || sortKey === 'lots' ? `active ${sortDir}` : ''} onClick={() => setSort('inflow', 'desc')}>
-              <span>淨額/張數</span>
-              <i aria-hidden="true"><em>▲</em><em>▼</em></i>
+
+            <button
+              type="button"
+              className={
+                sortKey === 'inflow' ||
+                sortKey === 'outflow' ||
+                sortKey === 'absAmount'
+                  ? `active ${sortDir}`
+                  : ''
+              }
+              onClick={() =>
+                setSort('inflow', 'desc')
+              }
+            >
+              <span>淨額</span>
+              <i aria-hidden="true">
+                <em>▲</em>
+                <em>▼</em>
+              </i>
             </button>
-            <button type="button" className={sortClass('etfCount')} onClick={() => setSort('etfCount', 'desc')}>
-              <span>狀態/異動</span>
-              <i aria-hidden="true"><em>▲</em><em>▼</em></i>
+
+            <button
+              type="button"
+              className={`v125-consensus-head ${sortClass(
+                'consensus'
+              )}`}
+              onClick={() =>
+                setSort(
+                  'consensus',
+                  'desc'
+                )
+              }
+            >
+              <span>多空共識</span>
+
+              <i aria-hidden="true">
+                <em>▲</em>
+                <em>▼</em>
+              </i>
+            </button>
+
+            <button
+              type="button"
+              className={sortClass('lots')}
+              onClick={() =>
+                setSort('lots', 'desc')
+              }
+            >
+              <span>變動張數</span>
+              <i aria-hidden="true">
+                <em>▲</em>
+                <em>▼</em>
+              </i>
+            </button>
+
+            <button
+              type="button"
+              className={sortClass('deltaWeight')}
+              onClick={() =>
+                setSort(
+                  'deltaWeight',
+                  'desc'
+                )
+              }
+            >
+              <span>變動幅度</span>
+              <i aria-hidden="true">
+                <em>▲</em>
+                <em>▼</em>
+              </i>
             </button>
           </div>
 

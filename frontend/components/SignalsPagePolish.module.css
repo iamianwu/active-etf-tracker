@@ -1,0 +1,1330 @@
+.shell {
+  width: 100%;
+  max-width: 460px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding-bottom: 96px;
+  background: #f5f7fa;
+  color: #182032;
+}
+
+.shell :global(.page) {
+  padding: 12px 12px 0;
+}
+
+.shell :global(.v89-etf-type-filter) {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px !important;
+  margin-bottom: 8px !important;
+  padding: 4px !important;
+  border: 1px solid #e1e7ef;
+  border-radius: 13px;
+  background: #eef2f7;
+}
+
+.shell :global(.v89-etf-type-filter .chip) {
+  min-width: 0 !important;
+  min-height: 38px;
+  padding: 0 6px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: #6f7d91 !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+  white-space: nowrap;
+}
+
+.shell :global(.v89-etf-type-filter .chip.active) {
+  background: #fff !important;
+  color: #1766bd !important;
+  box-shadow: 0 2px 8px rgba(27, 64, 109, 0.1);
+}
+
+.shell :global(.signals-v120) {
+  width: 100%;
+  max-width: none;
+  padding: 0 12px 20px;
+  background: transparent;
+}
+
+.shell :global(.v120-range) {
+  margin: 0 0 10px !important;
+  padding: 4px !important;
+  border: 1px solid #e1e7ef;
+  border-radius: 13px;
+  background: #eef2f7;
+}
+
+.shell :global(.v120-range-label) {
+  display: none !important;
+}
+
+.shell :global(.v120-range-tabs) {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px !important;
+}
+
+.shell :global(.v120-range-tabs a) {
+  min-width: 0 !important;
+  min-height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0 5px !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  color: #6f7d91 !important;
+  background: transparent !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+  text-decoration: none;
+}
+
+.shell :global(.v120-range-tabs a.active) {
+  color: #1766bd !important;
+  background: #fff !important;
+  box-shadow: 0 2px 8px rgba(27, 64, 109, 0.1);
+}
+
+.shell :global(.v120-title) {
+  margin: 0 0 10px;
+  padding: 16px;
+  border: 1px solid #dfe7f0;
+  border-radius: 17px;
+  background:
+    radial-gradient(
+      circle at 100% 0,
+      rgba(48, 112, 185, 0.1),
+      transparent 42%
+    ),
+    #fff;
+  box-shadow: 0 6px 20px rgba(26, 48, 76, 0.045);
+}
+
+.shell :global(.v120-overview-kicker) {
+  color: #647995;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+}
+
+.shell :global(.v120-title h1) {
+  margin: 6px 0 5px !important;
+  color: #173b68;
+  font-size: 22px !important;
+  line-height: 1.32;
+  letter-spacing: -0.025em;
+}
+
+.shell :global(.v120-overview-copy) {
+  margin: 0;
+  color: #718096;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.55;
+}
+
+.shell :global(.v120-overview-copy .red) {
+  color: #d04459;
+}
+
+.shell :global(.v120-overview-copy .green) {
+  color: #23845f;
+}
+
+.shell :global(.v120-quality) {
+  display: flex !important;
+  margin-top: 11px;
+  padding-top: 10px;
+  align-items: center;
+  gap: 7px 12px !important;
+  border-top: 1px solid #e8edf3;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.shell :global(.v120-quality::-webkit-scrollbar) {
+  display: none;
+}
+
+.shell :global(.v120-quality span),
+.shell :global(.v120-quality button) {
+  flex: 0 0 auto;
+  font-size: 10px !important;
+  white-space: nowrap;
+}
+
+.shell :global(.v120-quality span) {
+  color: #7d899a;
+}
+
+.shell :global(.v120-quality b) {
+  color: #344258;
+  font-variant-numeric: tabular-nums;
+}
+
+.shell :global(.v120-quality button) {
+  padding: 4px 7px !important;
+  border: 0 !important;
+  border-radius: 7px;
+  background: #fff5df !important;
+  color: #a56f14 !important;
+  font-weight: 850;
+}
+
+.shell :global(.v120-focus-grid) {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px !important;
+  margin: 0 0 10px !important;
+}
+
+.shell :global(.v120-focus) {
+  min-width: 0;
+  min-height: 112px;
+  padding: 11px !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+}
+
+.shell :global(.v120-focus > b) {
+  margin-bottom: 7px !important;
+  font-size: 11px !important;
+  line-height: 1.25;
+}
+
+.shell :global(.v120-focus-name strong) {
+  overflow: hidden;
+  font-size: 14px !important;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell :global(.v120-focus-name em) {
+  font-size: 9px !important;
+}
+
+.shell :global(.v120-focus-price strong) {
+  font-size: 20px !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.shell :global(.v120-focus-price span) {
+  font-size: 10px !important;
+}
+
+.shell :global(.v120-focus-meta) {
+  display: flex !important;
+  margin-top: 6px;
+  gap: 4px 7px !important;
+  flex-wrap: wrap;
+}
+
+.shell :global(.v120-focus-meta span) {
+  font-size: 8px !important;
+  white-space: nowrap;
+}
+
+.shell :global(.v120-detail) {
+  margin: 0;
+  padding: 14px 11px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(26, 48, 76, 0.04);
+}
+
+.shell :global(.v120-detail h2) {
+  margin: 0 0 10px !important;
+  color: #1d2739;
+  font-size: 17px !important;
+  letter-spacing: -0.015em;
+}
+
+.shell :global(.v120-status-tabs) {
+  display: flex !important;
+  gap: 6px !important;
+  margin-bottom: 8px !important;
+  padding-bottom: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.shell :global(.v120-status-tabs::-webkit-scrollbar) {
+  display: none;
+}
+
+.shell :global(.v120-status-tabs button) {
+  flex: 0 0 auto;
+  min-height: 31px;
+  padding: 0 10px !important;
+  border-radius: 999px !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  white-space: nowrap;
+}
+
+.shell :global(.v120-head),
+.shell :global(.v120-row) {
+  grid-template-columns:
+    minmax(78px, 1.12fr)
+    67px
+    81px
+    61px !important;
+  gap: 4px !important;
+}
+
+.shell :global(.v120-head) {
+  position: sticky;
+  top: 70px;
+  z-index: 8;
+  min-height: 31px !important;
+  background: #f5f7fa !important;
+  box-shadow: 0 1px 0 #e3e9f0;
+}
+
+.shell :global(.v120-head button),
+.shell :global(.v124-dual-sort button) {
+  min-width: 0;
+  padding: 4px 1px !important;
+  font-size: 8px !important;
+  line-height: 1.2;
+}
+
+.shell :global(.v120-row) {
+  min-height: 54px !important;
+  padding: 6px 1px !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.shell :global(.v120-target b) {
+  overflow: hidden;
+  font-size: 11px !important;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell :global(.v120-target span),
+.shell :global(.v120-price span),
+.shell :global(.v120-flow span),
+.shell :global(.v120-status span) {
+  font-size: 8px !important;
+}
+
+.shell :global(.v120-price b),
+.shell :global(.v120-flow b) {
+  font-size: 10px !important;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.shell :global(.v120-status b) {
+  padding: 3px 6px !important;
+  font-size: 8px !important;
+  white-space: nowrap;
+}
+
+.shell :global(.v120-row),
+.shell :global(.v120-focus) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shell :global(.v120-row:active),
+.shell :global(.v120-focus:active) {
+  opacity: 0.72;
+}
+
+@media (max-width: 390px) {
+  .shell :global(.v120-head),
+  .shell :global(.v120-row) {
+    grid-template-columns:
+      minmax(72px, 1.08fr)
+      62px
+      75px
+      57px !important;
+  }
+
+  .shell :global(.v120-focus) {
+    padding: 10px 9px !important;
+  }
+}
+
+/* Planned mobile signals layout */
+.statusRow {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 0 10px;
+  border: 1px solid #dfe6ef;
+  border-radius: 13px;
+  background: #ffffff;
+}
+
+.statusRow > div {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
+
+.statusRow span {
+  color: #7d899a;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.statusRow strong {
+  color: #344258;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.partialStatus,
+.completeStatus {
+  justify-self: end;
+  align-items: center !important;
+}
+
+.partialStatus i,
+.completeStatus i {
+  display: block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.partialStatus i {
+  background: #d5a23e;
+  box-shadow:
+    0 0 0 4px
+    rgba(213, 162, 62, 0.13);
+}
+
+.completeStatus i {
+  background: #288b66;
+}
+
+.shell :global(.v120-overview-coverage) {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e7edf3;
+}
+
+.shell :global(.v120-overview-coverage span) {
+  color: #768397;
+  font-size: 10px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.shell :global(.v120-overview-coverage b) {
+  color: #29384d;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 390px) {
+  .statusRow {
+    grid-template-columns: auto auto minmax(0, 1fr);
+    gap: 6px;
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  .statusRow span {
+    font-size: 9px;
+  }
+
+  .statusRow strong {
+    font-size: 10px;
+  }
+}
+
+
+/* Planned mockup status and coverage */
+.statusRow {
+  display: grid;
+  grid-template-columns:
+    auto auto minmax(0, 1fr);
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 0 10px;
+  border: 1px solid #dfe6ef;
+  border-radius: 13px;
+  background: #ffffff;
+}
+
+.statusRow > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.statusRow span {
+  color: #7d899a;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.statusRow strong {
+  color: #344258;
+  font-size: 11px;
+  font-variant-numeric:
+    tabular-nums;
+  white-space: nowrap;
+}
+
+.partialStatus,
+.completeStatus {
+  justify-self: end;
+  align-items: center !important;
+}
+
+.partialStatus i,
+.completeStatus i {
+  display: block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.partialStatus i {
+  background: #d5a23e;
+  box-shadow:
+    0 0 0 4px
+    rgba(213, 162, 62, 0.13);
+}
+
+.completeStatus i {
+  background: #288b66;
+}
+
+.shell :global(
+  .v120-overview-coverage
+) {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e7edf3;
+}
+
+.shell :global(
+  .v120-overview-coverage span
+) {
+  color: #768397;
+  font-size: 10px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.shell :global(
+  .v120-overview-coverage b
+) {
+  color: #29384d;
+  font-size: 11px;
+  font-variant-numeric:
+    tabular-nums;
+}
+
+@media (max-width: 390px) {
+  .statusRow {
+    gap: 6px;
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  .statusRow span {
+    font-size: 9px;
+  }
+
+  .statusRow strong {
+    font-size: 10px;
+  }
+}
+
+
+/* Planned mockup exact alignment v2 */
+
+/* 狀態列後方不要留下大面積空白 */
+.shell :global(.page) {
+  margin: 0 !important;
+}
+
+.shell :global(.page) + :global(.signals-v120) {
+  margin-top: 0 !important;
+}
+
+.shell :global(.signals-v120) {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* 訊號總覽 */
+.shell :global(.v120-title) {
+  margin: 0 0 10px !important;
+  padding: 14px 16px 12px !important;
+  min-height: 0 !important;
+}
+
+.shell :global(.v120-overview-kicker) {
+  margin: 0 0 5px !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+}
+
+.shell :global(.v120-title h1) {
+  margin: 0 0 6px !important;
+  font-size: 18px !important;
+  line-height: 1.28 !important;
+  letter-spacing: -0.02em !important;
+  white-space: nowrap !important;
+}
+
+.shell :global(.v120-overview-copy) {
+  margin: 0 !important;
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+  white-space: nowrap !important;
+}
+
+.shell :global(.v120-overview-coverage) {
+  margin-top: 10px !important;
+  padding-top: 9px !important;
+}
+
+.shell :global(.v120-overview-coverage span) {
+  font-size: 10px !important;
+}
+
+.shell :global(.v120-overview-coverage b) {
+  font-size: 11px !important;
+}
+
+/* 四張焦點卡維持原資訊，但壓縮高度 */
+.shell :global(.v120-focus-grid) {
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin: 0 0 10px !important;
+}
+
+.shell :global(.v120-focus) {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 10px 11px !important;
+  border-radius: 14px !important;
+}
+
+.shell :global(.v120-focus > b) {
+  margin: 0 0 7px !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+}
+
+.shell :global(.v120-focus-name) {
+  margin: 0 !important;
+}
+
+.shell :global(.v120-focus-name strong) {
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+}
+
+.shell :global(.v120-focus-name em) {
+  font-size: 9px !important;
+}
+
+.shell :global(.v120-focus-price) {
+  margin: 6px 0 0 !important;
+}
+
+.shell :global(.v120-focus-price strong) {
+  font-size: 20px !important;
+  line-height: 1.05 !important;
+}
+
+.shell :global(.v120-focus-price span) {
+  font-size: 10px !important;
+  line-height: 1.1 !important;
+}
+
+.shell :global(.v120-focus-meta) {
+  display: flex !important;
+  margin-top: 7px !important;
+  gap: 3px 7px !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+}
+
+.shell :global(.v120-focus-meta span) {
+  font-size: 8px !important;
+  line-height: 1.3 !important;
+  white-space: nowrap !important;
+}
+
+/* 資金交易明細 */
+.shell :global(.v120-detail) {
+  margin: 0 !important;
+  padding: 13px 11px 8px !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+.shell :global(.v120-detail h2) {
+  margin: 0 0 10px !important;
+  font-size: 17px !important;
+  line-height: 1.25 !important;
+}
+
+/* 五個分類膠囊同時顯示 */
+.shell :global(.v120-status-tabs) {
+  display: grid !important;
+  grid-template-columns:
+    repeat(5, minmax(0, 1fr)) !important;
+  width: 100% !important;
+  gap: 6px !important;
+  margin: 0 0 8px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+.shell :global(.v120-status-tabs button) {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  min-height: 31px !important;
+  margin: 0 !important;
+  padding: 0 2px !important;
+  flex: none !important;
+  border-radius: 999px !important;
+  font-size: 10px !important;
+  line-height: 31px !important;
+  white-space: nowrap !important;
+}
+
+/* 清除表格上方舊版留白 */
+.shell :global(.v120-table) {
+  display: block !important;
+  position: relative !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+.shell :global(.v120-table::before),
+.shell :global(.v120-table::after) {
+  display: none !important;
+  content: none !important;
+}
+
+/* 表頭緊接膠囊，不使用舊 sticky 位移 */
+.shell :global(.v120-head) {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: 100% !important;
+  min-height: 32px !important;
+  margin: 0 !important;
+  padding: 0 2px !important;
+  transform: none !important;
+}
+
+.shell :global(.v120-head),
+.shell :global(.v120-row) {
+  grid-template-columns:
+    minmax(78px, 1.12fr)
+    67px
+    81px
+    61px !important;
+  gap: 4px !important;
+}
+
+/* 保留密集表格 */
+.shell :global(.v120-row) {
+  min-height: 53px !important;
+  margin: 0 !important;
+  padding: 6px 1px !important;
+}
+
+.shell :global(.v120-target b) {
+  font-size: 11px !important;
+}
+
+.shell :global(.v120-target span),
+.shell :global(.v120-price span),
+.shell :global(.v120-flow span),
+.shell :global(.v120-status span) {
+  font-size: 8px !important;
+}
+
+.shell :global(.v120-price b),
+.shell :global(.v120-flow b) {
+  font-size: 10px !important;
+}
+
+.shell :global(.v120-status b) {
+  padding: 3px 6px !important;
+  font-size: 8px !important;
+}
+
+@media (max-width: 390px) {
+  .shell :global(.v120-title h1) {
+    font-size: 17px !important;
+  }
+
+  .shell :global(.v120-overview-copy) {
+    font-size: 10px !important;
+  }
+
+  .shell :global(.v120-head),
+  .shell :global(.v120-row) {
+    grid-template-columns:
+      minmax(72px, 1.08fr)
+      62px
+      75px
+      57px !important;
+  }
+}
+
+/* Planned mockup top alignment v3 */
+
+/* 狀態列結束後，總覽卡立即接續 */
+.statusRow {
+  margin-bottom: 0 !important;
+}
+
+.shell > :global(.signals-v120) {
+  display: block !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding-top: 0 !important;
+  top: auto !important;
+  transform: none !important;
+}
+
+.shell > :global(.signals-v120)::before,
+.shell > :global(.signals-v120)::after {
+  display: none !important;
+  content: none !important;
+}
+
+.shell
+  > :global(.signals-v120)
+  > :global(.v120-title) {
+  margin-top: 10px !important;
+  top: auto !important;
+  transform: none !important;
+}
+
+
+/* Planned status wrapper v4 */
+.statusWrap {
+  width: 100%;
+  margin: 0;
+  padding: 12px 12px 0;
+}
+
+.statusWrap + :global(.signals-v120) {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.statusWrap
+  + :global(.signals-v120)
+  > :global(.v120-title) {
+  margin-top: 10px !important;
+}
+
+
+/* Figure 3 detail table v5 */
+
+.shell :global(.v120-head),
+.shell :global(.v120-row) {
+  grid-template-columns:
+    minmax(74px, 1.08fr)
+    59px
+    43px
+    67px
+    57px !important;
+  gap: 2px !important;
+}
+
+.shell :global(.v120-head) {
+  min-height: 42px !important;
+  padding: 3px 3px !important;
+  align-items: center !important;
+}
+
+.shell :global(.v120-head button),
+.shell :global(.v124-dual-sort button) {
+  min-width: 0 !important;
+  padding: 2px 0 !important;
+  color: #303846 !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+  line-height: 1.12 !important;
+}
+
+.shell :global(.v124-dual-sort) {
+  display: grid !important;
+  grid-template-rows:
+    repeat(2, minmax(0, 1fr));
+  min-width: 0 !important;
+  align-self: stretch !important;
+}
+
+.shell :global(.v125-status-head) {
+  display: grid;
+  min-width: 0;
+  place-content: center;
+  color: #303846;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.shell :global(.v125-status-head small) {
+  margin-top: 3px;
+  color: #8b96a5;
+  font-size: 7px;
+  font-weight: 800;
+}
+
+.shell :global(.v120-row) {
+  min-height: 53px !important;
+  padding: 6px 3px !important;
+  align-items: center !important;
+}
+
+.shell :global(.v120-target) {
+  min-width: 0;
+  padding-left: 0 !important;
+}
+
+.shell :global(.v120-target b) {
+  overflow: hidden;
+  color: #202733;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  line-height: 1.18 !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell :global(.v120-target span) {
+  margin-top: 2px;
+  color: #8994a4;
+  font-size: 8px !important;
+  font-weight: 800;
+}
+
+.shell :global(.v120-price) {
+  min-width: 0;
+  text-align: right !important;
+}
+
+.shell :global(.v120-price b) {
+  display: inline-block;
+  padding: 1px 2px;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  line-height: 1.18 !important;
+  white-space: nowrap;
+}
+
+.shell :global(.v120-price span) {
+  margin-top: 2px;
+  font-size: 8px !important;
+  font-weight: 850 !important;
+  white-space: nowrap;
+}
+
+/* 漲跌停只亮股價，不顯示文字 */
+.shell :global(.v120-price em) {
+  display: none !important;
+}
+
+.shell :global(.v123-limit-up-price),
+.shell :global(.v123-limit-down-price) {
+  border-radius: 0 !important;
+}
+
+/* 狀態改為純文字 */
+.shell :global(.v125-status-text) {
+  display: grid;
+  min-width: 0;
+  place-content: center;
+  text-align: center;
+}
+
+.shell :global(.v125-status-text b) {
+  display: block;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+  line-height: 1.15 !important;
+  white-space: nowrap;
+}
+
+.shell :global(.v125-status-text b.add) {
+  color: #df515b !important;
+}
+
+.shell :global(.v125-status-text b.reduce) {
+  color: #23976e !important;
+}
+
+.shell :global(.v125-status-text b.new) {
+  color: #bd9700 !important;
+}
+
+.shell :global(.v125-status-text b.remove) {
+  color: #6f7782 !important;
+}
+
+.shell :global(.v125-status-text b.flat) {
+  color: #7d8795 !important;
+}
+
+.shell :global(.v125-status-text span) {
+  display: block;
+  margin-top: 3px;
+  color: #8a95a5;
+  font-size: 7px !important;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.shell :global(.v125-lots),
+.shell :global(.v125-weight) {
+  min-width: 0;
+  text-align: right;
+}
+
+.shell :global(.v125-lots b),
+.shell :global(.v125-weight b) {
+  display: block;
+  overflow: hidden;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+  line-height: 1.18 !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 390px) {
+  .shell :global(.v120-head),
+  .shell :global(.v120-row) {
+    grid-template-columns:
+      minmax(68px, 1.05fr)
+      55px
+      40px
+      63px
+      54px !important;
+  }
+}
+
+
+/* Restore net amount column v6 */
+
+/*
+  保留所有原始資訊：
+  標的｜股價／漲跌幅｜淨額｜狀態／買賣｜變動張數｜變動幅度
+*/
+.shell :global(.v120-head),
+.shell :global(.v120-row) {
+  grid-template-columns:
+    minmax(68px, 1.06fr)
+    50px
+    56px
+    37px
+    59px
+    50px !important;
+  gap: 2px !important;
+}
+
+.shell :global(.v125-amount) {
+  min-width: 0;
+  text-align: right;
+}
+
+.shell :global(.v125-amount b) {
+  display: block;
+  overflow: hidden;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+  line-height: 1.18 !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 390px) {
+  .shell :global(.v120-head),
+  .shell :global(.v120-row) {
+    grid-template-columns:
+      minmax(62px, 1.03fr)
+      47px
+      52px
+      35px
+      55px
+      47px !important;
+    gap: 1px !important;
+  }
+
+  .shell :global(.v125-amount b),
+  .shell :global(.v125-lots b),
+  .shell :global(.v125-weight b) {
+    font-size: 8px !important;
+  }
+}
+
+
+/* Source-style typography and consensus v7 */
+
+/*
+  iPhone 使用 SF Pro；
+  中文自動使用 PingFang TC。
+*/
+.shell {
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "SF Pro Display",
+    "PingFang TC",
+    "Noto Sans TC",
+    sans-serif;
+  font-feature-settings:
+    "tnum" 1,
+    "kern" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/*
+  六欄完整保留：
+  標的｜股價/漲跌幅｜淨額｜
+  多空共識｜變動張數｜變動幅度
+*/
+.shell :global(.v120-head),
+.shell :global(.v120-row) {
+  grid-template-columns:
+    minmax(66px, 1.04fr)
+    49px
+    52px
+    47px
+    58px
+    50px !important;
+  gap: 2px !important;
+}
+
+/* 明細標題 */
+.shell :global(.v120-detail h2) {
+  font-size: 19px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* 分類按鈕 */
+.shell :global(.v120-status-tabs button) {
+  font-size: 12px !important;
+  font-weight: 750 !important;
+}
+
+/* 表頭 */
+.shell :global(.v120-head) {
+  min-height: 46px !important;
+  padding: 4px 3px !important;
+}
+
+.shell :global(.v120-head button),
+.shell :global(.v124-dual-sort button),
+.shell :global(.v125-consensus-head) {
+  min-width: 0 !important;
+  padding: 2px 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #303846 !important;
+  font-family: inherit !important;
+  font-size: 11px !important;
+  font-weight: 750 !important;
+  line-height: 1.15 !important;
+}
+
+/* 多空共識可排序表頭 */
+.shell :global(.v125-consensus-head) {
+  display: flex !important;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.shell :global(.v125-consensus-head span) {
+  display: block;
+  max-width: 30px;
+  line-height: 1.12;
+  white-space: normal;
+}
+
+.shell :global(.v125-consensus-head i) {
+  display: inline-flex;
+  flex-direction: column;
+  color: #a2acb9;
+  font-size: 7px;
+  font-style: normal;
+  line-height: 0.75;
+}
+
+.shell :global(
+  .v125-consensus-head.active i
+) {
+  color: #2870d5;
+}
+
+.shell :global(
+  .v125-consensus-head em
+) {
+  font-style: normal;
+}
+
+/* 表格列 */
+.shell :global(.v120-row) {
+  min-height: 57px !important;
+  padding: 7px 3px !important;
+}
+
+/* 股票名稱與代號 */
+.shell :global(.v120-target b) {
+  color: #202733 !important;
+  font-size: 14px !important;
+  font-weight: 750 !important;
+  line-height: 1.18 !important;
+  letter-spacing: -0.015em;
+}
+
+.shell :global(.v120-target span) {
+  margin-top: 3px !important;
+  color: #8793a4 !important;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+  line-height: 1.1 !important;
+}
+
+/* 股價 */
+.shell :global(.v120-price b) {
+  font-size: 13px !important;
+  font-weight: 750 !important;
+  line-height: 1.16 !important;
+}
+
+.shell :global(.v120-price span) {
+  margin-top: 3px !important;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+  line-height: 1.1 !important;
+}
+
+/* 淨額 */
+.shell :global(.v125-amount b) {
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  line-height: 1.15 !important;
+}
+
+/* 多空共識 */
+.shell :global(.v125-status-text b) {
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  line-height: 1.15 !important;
+}
+
+.shell :global(.v125-status-text span) {
+  margin-top: 3px !important;
+  font-size: 10px !important;
+  font-weight: 650 !important;
+  line-height: 1.1 !important;
+}
+
+/* 變動張數與變動幅度 */
+.shell :global(.v125-lots b),
+.shell :global(.v125-weight b) {
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  line-height: 1.15 !important;
+}
+
+/* 數字保持整齊 */
+.shell :global(.v120-price),
+.shell :global(.v125-amount),
+.shell :global(.v125-lots),
+.shell :global(.v125-weight) {
+  font-variant-numeric:
+    tabular-nums;
+}
+
+/* 漲跌停仍只顯示價格亮燈 */
+.shell :global(.v123-limit-up-price),
+.shell :global(.v123-limit-down-price) {
+  padding: 2px 4px !important;
+  font-weight: 800 !important;
+}
+
+@media (max-width: 390px) {
+  .shell :global(.v120-head),
+  .shell :global(.v120-row) {
+    grid-template-columns:
+      minmax(61px, 1.02fr)
+      46px
+      49px
+      44px
+      54px
+      47px !important;
+    gap: 1px !important;
+  }
+
+  .shell :global(.v120-target b) {
+    font-size: 13px !important;
+  }
+
+  .shell :global(.v120-price b),
+  .shell :global(.v125-amount b),
+  .shell :global(.v125-lots b),
+  .shell :global(.v125-weight b),
+  .shell :global(.v125-status-text b) {
+    font-size: 11px !important;
+  }
+}
