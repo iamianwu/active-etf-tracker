@@ -1,5 +1,8 @@
-import { redirect } from 'next/navigation';
+import HomePageClient from '@/components/HomePageClient';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default function Page() {
-  redirect('/signals');
+  return <HomePageClient />;
 }
