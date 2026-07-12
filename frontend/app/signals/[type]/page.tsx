@@ -26,7 +26,7 @@ export default async function SignalTypePage({
 }) {
   const days = normalizeSignalDays(searchParams);
   const type = params.type;
-  const data = await apiGet(`/signals?type=${type}&days=${days}&fresh=1`);
+  const data = await apiGet(`/signals?type=${type}&days=${days}`);
 
   return (
     <SignalsClient

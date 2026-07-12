@@ -1,5 +1,4 @@
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 60;
 import { getEtfListRows } from '@/lib/etfData';
 import { REFERENCE_ETFS } from '@/lib/referenceEtfs';
 import EtfListClient from '@/components/EtfListClient';

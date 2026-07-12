@@ -1,5 +1,4 @@
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 60;
 import { apiGet } from '@/lib/api';
 import HoldingsClient from '@/components/HoldingsClient';
 
