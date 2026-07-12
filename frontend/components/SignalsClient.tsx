@@ -721,8 +721,8 @@ function FocusCard({ title, row, kind }: { title: string; row: AnyRow | null; ki
         <span className={tone(pct ?? 0)}>{fmtPct(pct)}</span>
       </div>
       <div className="v120-focus-meta">
-        <span>淨額 <i className={tone(amount)}>{fmtBillion(amount)}</i></span>
-        <span>張數 <i className={tone(lots)}>{fmtLots(lots)}</i></span>
+        <span>淨額 <i className={tone(amount)}>{fmtBillion(amount).replace('億', '')}</i></span>
+        <span>張數 <i className={tone(lots)}>{fmtLots(lots).replace('張', '')}</i></span>
         <span>異動ETF {bs.buy}:{bs.sell}</span>
       </div>
     </Link>
@@ -981,12 +981,6 @@ function DetailRow({ row }: { row: AnyRow }) {
         </span>
       </div>
 
-      <div className="v125-amount">
-        <b className={tone(amount)}>
-          {fmtBillion(amount)}
-        </b>
-      </div>
-
       <div className="v125-status-text">
         <b className={statusClass}>
           {st || '-'}
@@ -997,10 +991,14 @@ function DetailRow({ row }: { row: AnyRow }) {
         </span>
       </div>
 
-      <div className="v125-lots">
+      <div className="v126-flow">
         <b className={tone(lots)}>
           {fmtLots(lots)}
         </b>
+
+        <span className={tone(amount)}>
+          {fmtBillion(amount)}
+        </span>
       </div>
 
       <div className="v125-weight">
@@ -1190,6 +1188,7 @@ export default function SignalsClient(props: {
               }
             >
               <span>標的</span>
+
               <i aria-hidden="true">
                 <em>▲</em>
                 <em>▼</em>
@@ -1205,6 +1204,7 @@ export default function SignalsClient(props: {
                 }
               >
                 <span>股價</span>
+
                 <i aria-hidden="true">
                   <em>▲</em>
                   <em>▼</em>
@@ -1219,32 +1219,13 @@ export default function SignalsClient(props: {
                 }
               >
                 <span>漲跌幅</span>
+
                 <i aria-hidden="true">
                   <em>▲</em>
                   <em>▼</em>
                 </i>
               </button>
             </div>
-
-            <button
-              type="button"
-              className={
-                sortKey === 'inflow' ||
-                sortKey === 'outflow' ||
-                sortKey === 'absAmount'
-                  ? `active ${sortDir}`
-                  : ''
-              }
-              onClick={() =>
-                setSort('inflow', 'desc')
-              }
-            >
-              <span>淨額</span>
-              <i aria-hidden="true">
-                <em>▲</em>
-                <em>▼</em>
-              </i>
-            </button>
 
             <button
               type="button"
@@ -1266,23 +1247,49 @@ export default function SignalsClient(props: {
               </i>
             </button>
 
-            <button
-              type="button"
-              className={sortClass('lots')}
-              onClick={() =>
-                setSort('lots', 'desc')
-              }
-            >
-              <span>變動張數</span>
-              <i aria-hidden="true">
-                <em>▲</em>
-                <em>▼</em>
-              </i>
-            </button>
+            <div className="v126-flow-head">
+              <button
+                type="button"
+                className={sortClass('lots')}
+                onClick={() =>
+                  setSort('lots', 'desc')
+                }
+              >
+                <span>變動張數</span>
+
+                <i aria-hidden="true">
+                  <em>▲</em>
+                  <em>▼</em>
+                </i>
+              </button>
+
+              <button
+                type="button"
+                className={
+                  sortKey === 'inflow' ||
+                  sortKey === 'outflow' ||
+                  sortKey === 'absAmount'
+                    ? `active ${sortDir}`
+                    : ''
+                }
+                onClick={() =>
+                  setSort('inflow', 'desc')
+                }
+              >
+                <span>淨額</span>
+
+                <i aria-hidden="true">
+                  <em>▲</em>
+                  <em>▼</em>
+                </i>
+              </button>
+            </div>
 
             <button
               type="button"
-              className={sortClass('deltaWeight')}
+              className={sortClass(
+                'deltaWeight'
+              )}
               onClick={() =>
                 setSort(
                   'deltaWeight',
@@ -1291,6 +1298,7 @@ export default function SignalsClient(props: {
               }
             >
               <span>變動幅度</span>
+
               <i aria-hidden="true">
                 <em>▲</em>
                 <em>▼</em>
