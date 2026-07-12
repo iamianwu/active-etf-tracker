@@ -1105,6 +1105,8 @@ export default function SignalsClient(props: {
 
   return (
     <main className="signals-v120">
+      <RangeTabs activeDays={activeDays} />
+
       <section className="v120-title">
         <div className="v120-overview-kicker">
           SIGNAL OVERVIEW
