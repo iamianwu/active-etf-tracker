@@ -2,6 +2,9 @@ name: Update TDCC Holder Summary
 
 on:
   workflow_dispatch:
+  schedule:
+    # 每週日 10:15 Asia/Taipei（GitHub Actions 使用 UTC）
+    - cron: "15 2 * * 0"
 
 jobs:
   update-tdcc-holder-summary:
