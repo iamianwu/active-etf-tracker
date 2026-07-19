@@ -285,6 +285,39 @@ function buySell(row: AnyRow, src: AnyRow[]): { buy: number; sell: number } {
     return { buy: addEtfs.size, sell: reduceEtfs.size };
   }
 
+  /*
+    Compact API 已在伺服器端將 changed_etfs
+    預算為 buy_count / sell_count。
+    完整 payload 仍維持上方來源明細計算。
+  */
+  if (rowStatus === '加碼' || rowStatus === '減碼') {
+    const directBuy = firstNum(
+      row,
+      ['buy_count', 'buyCount'],
+      NaN
+    );
+
+    const directSell = firstNum(
+      row,
+      ['sell_count', 'sellCount'],
+      NaN
+    );
+
+    if (
+      Number.isFinite(directBuy) ||
+      Number.isFinite(directSell)
+    ) {
+      return {
+        buy: Number.isFinite(directBuy)
+          ? Math.max(0, Math.trunc(directBuy))
+          : 0,
+        sell: Number.isFinite(directSell)
+          ? Math.max(0, Math.trunc(directSell))
+          : 0,
+      };
+    }
+  }
+
   if (rowStatus === '新增' || rowStatus === '刪除') {
     const add = firstNum(row, ['add_count'], NaN);
     const del = firstNum(row, ['delete_count', 'remove_count'], NaN);
