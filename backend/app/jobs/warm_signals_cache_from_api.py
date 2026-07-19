@@ -47,6 +47,7 @@ def fetch_signals(site_url: str, universe: str, days: int) -> dict:
         "days": str(days),
         "universe": universe,
         "fresh": "1",
+        "full": "1",
     })
     url = f"{site_url.rstrip('/')}/api/signals?{qs}"
 
@@ -91,8 +92,270 @@ def fetch_signals(site_url: str, universe: str, days: int) -> dict:
     ) from last_error
 
 
-def write_cache(conn, universe: str, days: int, payload: dict) -> dict:
-    data_date = str(payload.get("data_date") or payload.get("target_data_date") or "")
+
+ROW_ALIASES = (
+    "rows",
+    "items",
+    "allRows",
+    "changes",
+    "signals",
+    "rawChanges",
+    "all_changes",
+)
+
+
+def signal_number(value):
+    if value is None or value == "":
+        return None
+
+    if isinstance(value, bool):
+        return None
+
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    text = str(value).replace(",", "")
+    cleaned = "".join(
+        char
+        for char in text
+        if char.isdigit()
+        or char in ".-"
+    )
+
+    try:
+        return float(cleaned)
+    except (TypeError, ValueError):
+        return None
+
+
+def first_number(row: dict, keys: list[str]):
+    for key in keys:
+        value = signal_number(
+            row.get(key)
+        )
+
+        if value is not None:
+            return value
+
+    return None
+
+
+def first_text(row: dict, keys: list[str]) -> str:
+    for key in keys:
+        value = str(
+            row.get(key) or ""
+        ).strip()
+
+        if value:
+            return value
+
+    return ""
+
+
+def source_delta(source: dict):
+    lots = first_number(
+        source,
+        [
+            "delta_shares",
+            "delta_shares_lots",
+            "shares_change",
+            "change_lots",
+            "delta_lots",
+            "display_delta_lots",
+        ],
+    )
+
+    if lots is not None:
+        return lots
+
+    return first_number(
+        source,
+        [
+            "delta_raw_shares",
+            "deltaRawShares",
+            "raw_delta_shares",
+        ],
+    )
+
+
+def changed_etf_counts(sources):
+    if not isinstance(sources, list):
+        return None
+
+    add_etfs: set[str] = set()
+    reduce_etfs: set[str] = set()
+
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+
+        etf_code = first_text(
+            source,
+            [
+                "etf_code",
+                "etfCode",
+                "fund_code",
+                "fundCode",
+                "etf",
+            ],
+        )
+
+        if not etf_code:
+            continue
+
+        delta = source_delta(source)
+
+        if (
+            delta is None
+            or abs(delta) < 0.001
+        ):
+            continue
+
+        if delta > 0:
+            add_etfs.add(etf_code)
+
+        if delta < 0:
+            reduce_etfs.add(etf_code)
+
+    return {
+        "buy": len(add_etfs),
+        "sell": len(reduce_etfs),
+    }
+
+
+def compact_node(value):
+    if isinstance(value, list):
+        return [
+            compact_node(item)
+            for item in value
+        ]
+
+    if not isinstance(value, dict):
+        return value
+
+    changed_etfs = (
+        value.get("changed_etfs")
+        if isinstance(
+            value.get("changed_etfs"),
+            list,
+        )
+        else value.get("changedEtfs")
+        if isinstance(
+            value.get("changedEtfs"),
+            list,
+        )
+        else None
+    )
+
+    counts = changed_etf_counts(
+        changed_etfs
+    )
+
+    output = {}
+
+    for key, child in value.items():
+        if key in {
+            "changed_etfs",
+            "changedEtfs",
+        }:
+            continue
+
+        output[key] = compact_node(
+            child
+        )
+
+    if counts is not None:
+        existing_buy = first_number(
+            value,
+            [
+                "buy_count",
+                "buyCount",
+            ],
+        )
+
+        existing_sell = first_number(
+            value,
+            [
+                "sell_count",
+                "sellCount",
+            ],
+        )
+
+        output["buy_count"] = (
+            int(existing_buy)
+            if existing_buy is not None
+            else counts["buy"]
+        )
+
+        output["sell_count"] = (
+            int(existing_sell)
+            if existing_sell is not None
+            else counts["sell"]
+        )
+
+    return output
+
+
+def compact_signals_payload(data):
+    if not isinstance(data, dict):
+        return data
+
+    source_rows = []
+
+    for key in ROW_ALIASES:
+        value = data.get(key)
+
+        if isinstance(value, list):
+            source_rows = value
+            break
+
+    if (
+        not source_rows
+        and isinstance(
+            data.get("aggregate"),
+            list,
+        )
+    ):
+        source_rows = data["aggregate"]
+
+    output = {}
+
+    for key, value in data.items():
+        if key in ROW_ALIASES:
+            continue
+
+        output[key] = compact_node(
+            value
+        )
+
+    output["rows"] = [
+        compact_node(row)
+        for row in source_rows
+    ]
+
+    output["compact_payload"] = True
+    output["compact_version"] = 1
+
+    return output
+
+
+def write_cache(
+    conn,
+    universe: str,
+    days: int,
+    payload: dict,
+) -> dict:
+    if payload.get("compact_payload"):
+        raise RuntimeError(
+            "Expected full payload, received compact payload"
+        )
+
+    data_date = str(
+        payload.get("data_date")
+        or payload.get("target_data_date")
+        or ""
+    )
+
     holdings_row_count = int(
         payload.get("today_holding_rows")
         or payload.get("included_holding_rows")
@@ -100,50 +363,160 @@ def write_cache(conn, universe: str, days: int, payload: dict) -> dict:
         or 0
     )
 
-    signal_type = f"{universe}::"
-    cache_key = f"signals:v2:{universe}:all:days={days}:date={data_date}:rows={holdings_row_count}"
-    updated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    full_signal_type = (
+        f"{universe}::"
+    )
 
-    payload = dict(payload)
-    payload["universe"] = universe
-    payload["etf_universe"] = universe
-    payload["cache_written_by"] = "github_action"
-    payload["cache_key"] = cache_key
-    payload["cache_updated_at"] = updated_at
+    compact_signal_type = (
+        f"compact::{universe}::"
+    )
+
+    full_cache_key = (
+        f"signals:v2:{universe}:all"
+        f":days={days}"
+        f":date={data_date}"
+        f":rows={holdings_row_count}"
+    )
+
+    compact_cache_key = (
+        f"signals:v3:compact:{universe}:all"
+        f":days={days}"
+        f":date={data_date}"
+        f":rows={holdings_row_count}"
+    )
+
+    updated_at = (
+        datetime.now(timezone.utc)
+        .isoformat(timespec="seconds")
+    )
+
+    full_payload = dict(payload)
+
+    full_payload["universe"] = universe
+    full_payload["etf_universe"] = universe
+    full_payload["cache_written_by"] = (
+        "github_action"
+    )
+    full_payload["cache_key"] = (
+        full_cache_key
+    )
+    full_payload["cache_updated_at"] = (
+        updated_at
+    )
+
+    compact_payload = (
+        compact_signals_payload(
+            full_payload
+        )
+    )
+
+    compact_payload["cache_written_by"] = (
+        "github_action_compact"
+    )
+    compact_payload["cache_key"] = (
+        compact_cache_key
+    )
+    compact_payload["cache_updated_at"] = (
+        updated_at
+    )
+
+    rows = [
+        (
+            full_cache_key,
+            data_date,
+            holdings_row_count,
+            days,
+            full_signal_type,
+            full_payload,
+            updated_at,
+        ),
+        (
+            compact_cache_key,
+            data_date,
+            holdings_row_count,
+            days,
+            compact_signal_type,
+            compact_payload,
+            updated_at,
+        ),
+    ]
 
     with conn.cursor() as cur:
-        cur.execute(
-            """
-            INSERT INTO signals_cache (
-                cache_key, data_date, holdings_row_count, days, signal_type, payload, updated_at
+        for (
+            cache_key,
+            row_data_date,
+            row_count,
+            row_days,
+            signal_type,
+            row_payload,
+            row_updated_at,
+        ) in rows:
+            cur.execute(
+                """
+                INSERT INTO signals_cache (
+                    cache_key,
+                    data_date,
+                    holdings_row_count,
+                    days,
+                    signal_type,
+                    payload,
+                    updated_at
+                )
+                VALUES (
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s::jsonb,
+                    %s
+                )
+                ON CONFLICT (cache_key)
+                DO UPDATE SET
+                    data_date =
+                        EXCLUDED.data_date,
+                    holdings_row_count =
+                        EXCLUDED.holdings_row_count,
+                    days =
+                        EXCLUDED.days,
+                    signal_type =
+                        EXCLUDED.signal_type,
+                    payload =
+                        EXCLUDED.payload,
+                    updated_at =
+                        EXCLUDED.updated_at
+                """,
+                (
+                    cache_key,
+                    row_data_date,
+                    row_count,
+                    row_days,
+                    signal_type,
+                    json.dumps(
+                        row_payload,
+                        ensure_ascii=False,
+                    ),
+                    row_updated_at,
+                ),
             )
-            VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s)
-            ON CONFLICT (cache_key) DO UPDATE SET
-                data_date = EXCLUDED.data_date,
-                holdings_row_count = EXCLUDED.holdings_row_count,
-                days = EXCLUDED.days,
-                signal_type = EXCLUDED.signal_type,
-                payload = EXCLUDED.payload,
-                updated_at = EXCLUDED.updated_at
-            """,
-            (
-                cache_key,
-                data_date,
-                holdings_row_count,
-                days,
-                signal_type,
-                json.dumps(payload, ensure_ascii=False),
-                updated_at,
-            ),
-        )
+
     conn.commit()
 
     return {
-        "cache_key": cache_key,
-        "signal_type": signal_type,
-        "data_date": data_date,
-        "holdings_row_count": holdings_row_count,
-        "updated_at": updated_at,
+        "cache_key":
+            full_cache_key,
+        "signal_type":
+            full_signal_type,
+        "compact_cache_key":
+            compact_cache_key,
+        "compact_signal_type":
+            compact_signal_type,
+        "data_date":
+            data_date,
+        "holdings_row_count":
+            holdings_row_count,
+        "updated_at":
+            updated_at,
     }
 
 

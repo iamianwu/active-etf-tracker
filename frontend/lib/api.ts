@@ -1,3 +1,4 @@
+import { compactSignalsPayload } from './signalsCompact';
 import { createClient } from "@supabase/supabase-js";
 import { ETF_CODES } from './etfData';
 import { REFERENCE_ETF_CODES } from './referenceEtfs';
@@ -814,8 +815,21 @@ function normalizeSignalUniverse(input: any): 'active' | 'reference' | 'all' {
   return 'active';
 }
 
-function makeSignalsCacheSignalType(signalType: string | null | undefined, universe: 'active' | 'reference' | 'all') {
-  return `${universe}::${String(signalType || '')}`;
+function makeSignalsCacheSignalType(
+  signalType:
+    string | null | undefined,
+  universe:
+    'active' | 'reference' | 'all',
+  compact = false,
+) {
+  const base =
+    `${universe}::${String(
+      signalType || '',
+    )}`;
+
+  return compact
+    ? `compact::${base}`
+    : base;
 }
 
 async function getSignalsCacheScope() {
@@ -846,9 +860,33 @@ async function getSignalsCacheScope() {
   return { dataDate, holdingsRowCount: count || 0 };
 }
 
-function makeSignalsCacheKey(signalType: string | null | undefined, days: number, scope: { dataDate: string; holdingsRowCount: number }, universe: 'active' | 'reference' | 'all' = 'active') {
-  const t = String(signalType || 'all');
-  return `signals:v2:${universe}:${t}:days=${days}:date=${scope.dataDate}:rows=${scope.holdingsRowCount}`;
+function makeSignalsCacheKey(
+  signalType:
+    string | null | undefined,
+  days: number,
+  scope: {
+    dataDate: string;
+    holdingsRowCount: number;
+  },
+  universe:
+    'active' | 'reference' | 'all' =
+      'active',
+  compact = false,
+) {
+  const type =
+    String(signalType || 'all');
+
+  const prefix =
+    compact
+      ? 'signals:v3:compact'
+      : 'signals:v2';
+
+  return (
+    `${prefix}:${universe}:${type}` +
+    `:days=${days}` +
+    `:date=${scope.dataDate}` +
+    `:rows=${scope.holdingsRowCount}`
+  );
 }
 
 async function readSignalsCache(signalType: string | null | undefined, days: number, scope: { dataDate: string; holdingsRowCount: number }, universe: 'active' | 'reference' | 'all' = 'active') {
@@ -883,30 +921,121 @@ async function readSignalsCache(signalType: string | null | undefined, days: num
   };
 }
 
-async function writeSignalsCache(signalType: string | null | undefined, days: number, scope: { dataDate: string; holdingsRowCount: number }, payload: any, universe: 'active' | 'reference' | 'all' = 'active') {
+async function writeSignalsCache(
+  signalType:
+    string | null | undefined,
+  days: number,
+  scope: {
+    dataDate: string;
+    holdingsRowCount: number;
+  },
+  payload: any,
+  universe:
+    'active' | 'reference' | 'all' =
+      'active',
+) {
   if (!hasSupabaseEnv) return;
   if (!scope.dataDate) return;
 
-  const cacheKey = makeSignalsCacheKey(signalType, days, scope, universe);
-  const cacheSignalType = makeSignalsCacheSignalType(signalType, universe);
+  const updatedAt =
+    new Date().toISOString();
 
-  const row = {
-    cache_key: cacheKey,
-    data_date: scope.dataDate,
-    holdings_row_count: scope.holdingsRowCount,
-    days,
-    signal_type: cacheSignalType,
-    payload,
-    updated_at: new Date().toISOString(),
-  };
+  const fullCacheKey =
+    makeSignalsCacheKey(
+      signalType,
+      days,
+      scope,
+      universe,
+      false,
+    );
 
-  const { error } = await supabase
-    .from('signals_cache')
-    .upsert(row, { onConflict: 'cache_key' });
+  const compactCacheKey =
+    makeSignalsCacheKey(
+      signalType,
+      days,
+      scope,
+      universe,
+      true,
+    );
+
+  const fullSignalType =
+    makeSignalsCacheSignalType(
+      signalType,
+      universe,
+      false,
+    );
+
+  const compactSignalType =
+    makeSignalsCacheSignalType(
+      signalType,
+      universe,
+      true,
+    );
+
+  const compactPayload =
+    compactSignalsPayload(
+      payload,
+    );
+
+  const rows = [
+    {
+      cache_key:
+        fullCacheKey,
+      data_date:
+        scope.dataDate,
+      holdings_row_count:
+        scope.holdingsRowCount,
+      days,
+      signal_type:
+        fullSignalType,
+      payload,
+      updated_at:
+        updatedAt,
+    },
+    {
+      cache_key:
+        compactCacheKey,
+      data_date:
+        scope.dataDate,
+      holdings_row_count:
+        scope.holdingsRowCount,
+      days,
+      signal_type:
+        compactSignalType,
+      payload:
+        compactPayload,
+      updated_at:
+        updatedAt,
+    },
+  ];
+
+  const { error } =
+    await supabase
+      .from('signals_cache')
+      .upsert(
+        rows,
+        {
+          onConflict:
+            'cache_key',
+        },
+      );
 
   if (error) {
-    const msg = String(error.message || '');
-    if (!msg.includes('does not exist')) console.warn('[signals_cache] write failed:', msg);
+    const message =
+      String(
+        error.message || '',
+      );
+
+    if (
+      !message.includes(
+        'does not exist',
+      )
+    ) {
+      console.warn(
+        '[signals_cache] full/compact write failed:',
+        message,
+      );
+    }
   }
 }
 
