@@ -12242,6 +12242,29 @@ body {
 }
 
 .bottom-taskbar-icon-v120 {
+  position: relative;
+}
+
+.bottom-taskbar-badge-v120 {
+  position: absolute;
+  top: -5px;
+  left: calc(50% + 7px);
+  display: grid;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #d84c5b;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1;
+  font-style: normal;
+}
+
+.bottom-taskbar-icon-v120 {
   font-size: 22px;
   line-height: 1;
 }

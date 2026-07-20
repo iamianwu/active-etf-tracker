@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { useWatchlist } from '@/lib/watchlist';
 import styles from './HomeV2PageClient.module.css';
 
 type Universe = 'active' | 'reference';
@@ -60,12 +61,6 @@ type SearchIndexPayload = {
   etfs?: EtfIndexRow[];
   generated_at?: string;
   updated_at?: string;
-};
-
-type Favorite = {
-  code?: string;
-  name?: string;
-  type?: 'stock' | 'etf';
 };
 
 type EtfOperation = {
@@ -325,26 +320,6 @@ async function loadSearchIndex(
   return response.json();
 }
 
-function readFavorites(): Favorite[] {
-  if (typeof window === 'undefined') {
-    return [];
-  }
-
-  try {
-    const raw = JSON.parse(
-      window.localStorage.getItem(
-        'active_etf_favorites_v89',
-      ) || '[]',
-    );
-
-    return Array.isArray(raw)
-      ? raw
-      : [];
-  } catch {
-    return [];
-  }
-}
-
 export default function HomeV2PageClient() {
   const [
     activeData,
@@ -367,10 +342,9 @@ export default function HomeV2PageClient() {
     null,
   );
 
-  const [
-    favorites,
-    setFavorites,
-  ] = useState<Favorite[]>([]);
+  const {
+    items: favorites,
+  } = useWatchlist();
 
   const [
     loading,
@@ -386,10 +360,6 @@ export default function HomeV2PageClient() {
     reloadKey,
     setReloadKey,
   ] = useState(0);
-
-  useEffect(() => {
-    setFavorites(readFavorites());
-  }, []);
 
   useEffect(() => {
     const controller =

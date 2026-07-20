@@ -5,7 +5,8 @@ import HolderChipCard from './HolderChipCard';
 import InstitutionalTradingCard from './InstitutionalTradingCard';
 import {useMemo, useState} from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { rowsOf, quoteOf, stockCode, stockName, etfCode, etfName, fmtFree, fmtPct, fmtSigned, priceOf, changePctOf, marketValueBillionOf, sharesLotsOf, allHoldingHistory, trendRowsFromAny, dateOf, shortDate, sortRows, toneClass, num, toggleFavorite, favoriteExists, type SortDir } from './mobileV89Utils';
+import { useWatchlist } from '@/lib/watchlist';
+import { rowsOf, quoteOf, stockCode, stockName, etfCode, etfName, fmtFree, fmtPct, fmtSigned, priceOf, changePctOf, marketValueBillionOf, sharesLotsOf, allHoldingHistory, trendRowsFromAny, dateOf, shortDate, sortRows, toneClass, num, type SortDir } from './mobileV89Utils';
 
 type Tab = 'overview' | 'whale' | 'rank' | 'detail';
 type SortKey = 'lots' | 'value' | 'delta5' | 'delta20' | 'delta60' | 'weight' | 'code';
@@ -29,12 +30,34 @@ function axisTick(v: any) {
 
 function Header({ code, name }: any) {
   const back = useBack();
-  const [fav, setFav] = useState(false);
+  const {
+    isWatched,
+    toggle,
+  } = useWatchlist();
+
+  const watched =
+    isWatched(code, 'stock');
+
   return (
     <header className="v89-detail-header">
-      <button onClick={back} className="back">‹</button>
+      <button onClick={back} className="back" aria-label="返回">‹</button>
       <div><b>{code}</b><span>{name}</span></div>
-      <button className="star" onClick={() => setFav(toggleFavorite({ code, name, type: 'stock' }))}>{fav || favoriteExists(code, 'stock') ? '★' : '☆'}</button>
+      <button
+        type="button"
+        className="star"
+        aria-label={watched ? `取消追蹤 ${name}` : `加入追蹤 ${name}`}
+        aria-pressed={watched}
+        title={watched ? '取消追蹤' : '加入追蹤'}
+        onClick={() =>
+          toggle({
+            code,
+            name,
+            type: 'stock',
+          })
+        }
+      >
+        {watched ? '★' : '☆'}
+      </button>
     </header>
   );
 }

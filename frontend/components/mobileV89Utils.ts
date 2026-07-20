@@ -1,3 +1,8 @@
+import {
+  toggleWatchlistItem,
+  watchlistHas,
+} from '@/lib/watchlist';
+
 export type SortDir = 'asc' | 'desc';
 
 export function num(v: any, fallback = NaN): number {
@@ -246,27 +251,9 @@ export function allHoldingHistory(input: any): any[] {
 }
 
 export function toggleFavorite(item: { code: string; name: string; type: 'etf' | 'stock' }): boolean {
-  if (typeof window === 'undefined') return false;
-  const key = 'active_etf_favorites_v89';
-  try {
-    const old = JSON.parse(window.localStorage.getItem(key) || '[]');
-    const has = old.some((x: any) => x.code === item.code && x.type === item.type);
-    const next = has
-      ? old.filter((x: any) => !(x.code === item.code && x.type === item.type))
-      : [item, ...old].slice(0, 100);
-    window.localStorage.setItem(key, JSON.stringify(next));
-    return !has;
-  } catch {
-    return false;
-  }
+  return toggleWatchlistItem(item);
 }
 
 export function favoriteExists(code: string, type: 'etf' | 'stock'): boolean {
-  if (typeof window === 'undefined') return false;
-  try {
-    const old = JSON.parse(window.localStorage.getItem('active_etf_favorites_v89') || '[]');
-    return old.some((x: any) => x.code === code && x.type === type);
-  } catch {
-    return false;
-  }
+  return watchlistHas(code, type);
 }

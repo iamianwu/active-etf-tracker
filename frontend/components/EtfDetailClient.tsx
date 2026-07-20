@@ -5,7 +5,8 @@ import HolderChipCard from './HolderChipCard';
 import InstitutionalTradingCard from './InstitutionalTradingCard';
 import { useMemo, useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { rowsOf, quoteOf, etfCode, etfName, stockCode, stockName, fmtFree, fmtPct, priceOf, changePctOf, amountBillionOf, volumeOf, marketValueBillionOf, sharesLotsOf, weightOf, trendRowsFromAny, latestDateOf, shortDate, sortRows, toneClass, statusOf, fmtSigned, num, toggleFavorite, favoriteExists, type SortDir } from './mobileV89Utils';
+import { useWatchlist } from '@/lib/watchlist';
+import { rowsOf, quoteOf, etfCode, etfName, stockCode, stockName, fmtFree, fmtPct, priceOf, changePctOf, amountBillionOf, volumeOf, marketValueBillionOf, sharesLotsOf, weightOf, trendRowsFromAny, latestDateOf, shortDate, sortRows, toneClass, statusOf, fmtSigned, num, type SortDir } from './mobileV89Utils';
 
 type Tab = 'overview' | 'live' | 'operation' | 'holdings' | 'basic';
 type SortKey = 'weight' | 'value' | 'shares' | 'price' | 'pct' | 'code';
@@ -127,7 +128,13 @@ export default function EtfDetailClient(props: any) {
   const code = etfCode(quote) || data?.etf_code || data?.code;
   const name = etfName(quote) || data?.etf_name || data?.name;
   const back = useBack();
-  const [fav, setFav] = useState(false);
+  const {
+    isWatched,
+    toggle,
+  } = useWatchlist();
+
+  const watched =
+    isWatched(code, 'etf');
   const [tab, setTab] = useState<Tab>('overview');
   const [sortKey, setSortKey] = useState<SortKey>('weight');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -148,7 +155,7 @@ export default function EtfDetailClient(props: any) {
   return (
     <main className="v89-detail-page">
       <div className="v147-detail-sticky-shell">
-        <header className="v89-detail-header"><button onClick={back} className="back">‹</button><div><b>{code}</b><span>{name}</span></div><button className="star" onClick={() => setFav(toggleFavorite({ code, name, type: 'etf' }))}>{fav || favoriteExists(code, 'etf') ? '★' : '☆'}</button></header>
+        <header className="v89-detail-header"><button onClick={back} className="back" aria-label="返回">‹</button><div><b>{code}</b><span>{name}</span></div><button type="button" className="star" aria-label={watched ? `取消追蹤 ${name}` : `加入追蹤 ${name}`} aria-pressed={watched} title={watched ? '取消追蹤' : '加入追蹤'} onClick={() => toggle({ code, name, type: 'etf' })}>{watched ? '★' : '☆'}</button></header>
         <nav className="v89-detail-tabs five">{([['overview','總覽'],['live','即時'],['operation','操作日報'],['holdings','成分股'],['basic','基本']] as any).map(([k,l]: any) => <button key={k} className={tab===k?'active':''} onClick={() => setTab(k)}>{l}</button>)}</nav>
       </div>
       {tab === 'overview' && <section className="v89-section"><div className="v89-kpi-grid four"><div><span>股價</span><b className={toneClass(changePctOf(quote))}>{fmtFree(priceOf(quote), 2)}</b><small>{fmtPct(changePctOf(quote), 2)}</small></div><div><span>成交金額</span><b>{fmtFree(amountBillionOf(quote), 1)}</b><small>億</small></div><div><span>持股異動</span><b>{Array.isArray(changes) ? changes.length : 0}</b><small>檔</small></div><div><span>資料狀態</span><b className={holdings.length ? 'v89-green' : 'v89-red'}>{holdings.length ? '完整' : '待補'}</b><small>報價 / 成分股</small></div></div><HolderChipCard code={String(code || '')} /><InstitutionalTradingCard code={String(code || '')} isEtf /><h2>淨值 / 股價走勢</h2><Chart rows={chartRows} color={changePctOf(quote) >= 0 ? 'red' : 'green'} /><h2>前五大持股</h2><HoldingRows rows={sortedHoldings.slice(0, 5)} /></section>}
