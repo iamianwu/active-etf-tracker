@@ -16,7 +16,14 @@ SITE_URL = os.getenv(
     "https://active-etf-tracker.vercel.app",
 ).rstrip("/")
 
-MAX_WORKERS = max(1, int(os.getenv("MAX_WORKERS", "4")))
+REQUESTED_MAX_WORKERS = max(
+    1,
+    int(os.getenv("MAX_WORKERS", "4")),
+)
+
+# 避免錯誤的環境設定同時建立數百條 HTTPS 連線，
+# 造成 Too many open files 或遠端 API 壓力。
+MAX_WORKERS = min(16, REQUESTED_MAX_WORKERS)
 REQUEST_TIMEOUT = max(10, int(os.getenv("REQUEST_TIMEOUT", "90")))
 REPORT_PATH = Path(
     os.getenv(
@@ -238,15 +245,40 @@ def fetch_stock_detail(
 def main() -> None:
     cache_buster = time.time_ns()
 
+    # 此同步檢查需要 changed_etfs 的 ETF 明細，
+    # 因此必須使用 full payload；一般網頁仍使用 compact payload。
     signals_payload = get_json(
         f"/api/signals"
         f"?days=1"
         f"&universe=active"
+        f"&full=1"
         f"&cb={cache_buster}"
     )
 
     signal_rows: dict[str, dict[str, Any]] = {}
     collect_signal_rows(signals_payload, signal_rows)
+
+    # 防止 compact payload 或 API schema 改變時，
+    # 將空訊號誤判成數百筆同步錯誤。
+    if signals_payload.get("compact_payload"):
+        raise RuntimeError(
+            "同步檢查收到 compact signals payload；"
+            "此檢查需要 full=1 的 changed_etfs 明細"
+        )
+
+    if not signal_rows:
+        top_level_rows = signals_payload.get("rows")
+        top_level_row_count = (
+            len(top_level_rows)
+            if isinstance(top_level_rows, list)
+            else 0
+        )
+
+        raise RuntimeError(
+            "今日訊號 API 未取得任何含 changed_etfs 的股票列；"
+            f"top_level_rows={top_level_row_count}，"
+            "停止同步比較以避免產生大量假陽性"
+        )
 
     target_date = str(
         signals_payload.get("target_data_date")
