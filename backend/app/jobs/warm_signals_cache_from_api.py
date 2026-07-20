@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import os
 import time
@@ -339,6 +340,627 @@ def compact_signals_payload(data):
     return output
 
 
+def payload_rows(payload: dict) -> list[dict]:
+    for key in (
+        "allRows",
+        "all_changes",
+        *ROW_ALIASES,
+    ):
+        value = payload.get(key)
+
+        if isinstance(value, list):
+            return [
+                row
+                for row in value
+                if isinstance(row, dict)
+            ]
+
+    return []
+
+
+def unique_texts(*values) -> list[str]:
+    output: list[str] = []
+    seen: set[str] = set()
+
+    for value in values:
+        if not isinstance(value, list):
+            continue
+
+        for item in value:
+            text = str(item or "").strip()
+
+            if not text or text in seen:
+                continue
+
+            seen.add(text)
+            output.append(text)
+
+    return output
+
+
+def unique_dicts(
+    *values,
+    keys: tuple[str, ...],
+) -> list[dict]:
+    output: list[dict] = []
+    seen: set[tuple[str, ...]] = set()
+
+    for value in values:
+        if not isinstance(value, list):
+            continue
+
+        for item in value:
+            if not isinstance(item, dict):
+                continue
+
+            identity = tuple(
+                str(item.get(key) or "").strip()
+                for key in keys
+            )
+
+            if not any(identity):
+                identity = (
+                    json.dumps(
+                        item,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ),
+                )
+
+            if identity in seen:
+                continue
+
+            seen.add(identity)
+            output.append(copy.deepcopy(item))
+
+    return output
+
+
+def finite_number(value, default=0.0) -> float:
+    number = signal_number(value)
+    return number if number is not None else float(default)
+
+
+def merged_signal_row(rows: list[dict]) -> dict | None:
+    if not rows:
+        return None
+
+    base = copy.deepcopy(rows[0])
+    stock_code = first_text(
+        base,
+        ["stock_code", "code", "symbol"],
+    )
+
+    sum_fields = (
+        "curr_raw_shares",
+        "prev_raw_shares",
+        "delta_raw_shares",
+        "curr_weight",
+        "prev_weight",
+        "delta_weight",
+        "buy_etf_count",
+        "sell_etf_count",
+        "add_count",
+        "delete_count",
+        "increase_count",
+        "decrease_count",
+        "etf_change_count",
+    )
+
+    for field in sum_fields:
+        base[field] = sum(
+            finite_number(row.get(field))
+            for row in rows
+        )
+
+    changed_etfs = unique_dicts(
+        *[
+            row.get("changed_etfs")
+            for row in rows
+        ],
+        keys=(
+            "etf_code",
+            "stock_code",
+            "status",
+            "data_date",
+            "prev_date",
+        ),
+    )
+    base["changed_etfs"] = changed_etfs
+
+    curr_lots = (
+        finite_number(
+            base.get("curr_raw_shares")
+        )
+        / 1000
+    )
+    prev_lots = (
+        finite_number(
+            base.get("prev_raw_shares")
+        )
+        / 1000
+    )
+    delta_lots = (
+        finite_number(
+            base.get("delta_raw_shares")
+        )
+        / 1000
+    )
+    delta_weight = finite_number(
+        base.get("delta_weight")
+    )
+
+    if abs(delta_lots) < 0.001:
+        return None
+
+    if prev_lots <= 0 < curr_lots:
+        status = "新增"
+    elif curr_lots <= 0 < prev_lots:
+        status = "刪除"
+    elif delta_lots > 0:
+        status = "加碼"
+    elif delta_lots < 0:
+        status = "減碼"
+    elif delta_weight > 0:
+        status = "加碼"
+    elif delta_weight < 0:
+        status = "減碼"
+    else:
+        return None
+
+    price = finite_number(
+        base.get("price")
+    )
+    net_amount_billion = (
+        finite_number(
+            base.get("delta_raw_shares")
+        )
+        * price
+        / 100000000
+    )
+    buy_count = int(
+        finite_number(
+            base.get("buy_etf_count")
+        )
+    )
+    sell_count = int(
+        finite_number(
+            base.get("sell_etf_count")
+        )
+    )
+
+    base.update({
+        "stock_code": stock_code,
+        "code": stock_code,
+        "symbol": stock_code,
+        "status": status,
+        "buy_count": buy_count,
+        "sell_count": sell_count,
+        "add_etf_count": buy_count,
+        "reduce_etf_count": sell_count,
+        "increase_etf_count": int(
+            finite_number(
+                base.get("increase_count")
+            )
+        ),
+        "decrease_etf_count": int(
+            finite_number(
+                base.get("decrease_count")
+            )
+        ),
+        "etf_count": int(
+            finite_number(
+                base.get("etf_change_count")
+            )
+        ),
+        "delta_shares": delta_lots,
+        "delta_shares_lots": delta_lots,
+        "shares_change": delta_lots,
+        "curr_shares": curr_lots,
+        "prev_shares": prev_lots,
+        "current_shares": curr_lots,
+        "net_delta_shares": delta_lots,
+        "net_amount_billion": net_amount_billion,
+        "amount_billion": net_amount_billion,
+        "delta_amount_billion": net_amount_billion,
+        "amount": net_amount_billion,
+        "abs_amount_billion": abs(
+            net_amount_billion
+        ),
+        "consensus": (
+            f"買賣檔數 {buy_count}:{sell_count}"
+        ),
+        "long_short_consensus": (
+            f"買賣檔數 {buy_count}:{sell_count}"
+        ),
+        "buySellText": (
+            f"買賣檔數 {buy_count}:{sell_count}"
+        ),
+    })
+
+    return base
+
+
+def signal_counts(rows: list[dict]) -> dict:
+    return {
+        "total": len(rows),
+        "all": len(rows),
+        "add": sum(
+            row.get("status") == "新增"
+            for row in rows
+        ),
+        "remove": sum(
+            row.get("status") == "刪除"
+            for row in rows
+        ),
+        "increase": sum(
+            row.get("status") == "加碼"
+            for row in rows
+        ),
+        "decrease": sum(
+            row.get("status") == "減碼"
+            for row in rows
+        ),
+    }
+
+
+def top_signal_rows(rows: list[dict]) -> dict:
+    positive = sorted(
+        (
+            row
+            for row in rows
+            if finite_number(
+                row.get("net_amount_billion")
+            ) > 0
+        ),
+        key=lambda row: finite_number(
+            row.get("net_amount_billion")
+        ),
+        reverse=True,
+    )
+    negative = sorted(
+        (
+            row
+            for row in rows
+            if finite_number(
+                row.get("net_amount_billion")
+            ) < 0
+        ),
+        key=lambda row: finite_number(
+            row.get("net_amount_billion")
+        ),
+    )
+    buy = sorted(
+        (
+            row
+            for row in rows
+            if finite_number(
+                row.get("buy_etf_count")
+            ) > 0
+        ),
+        key=lambda row: (
+            finite_number(
+                row.get("buy_etf_count")
+            ),
+            finite_number(
+                row.get("net_amount_billion")
+            ),
+        ),
+        reverse=True,
+    )
+    sell = sorted(
+        (
+            row
+            for row in rows
+            if finite_number(
+                row.get("sell_etf_count")
+            ) > 0
+        ),
+        key=lambda row: (
+            -finite_number(
+                row.get("sell_etf_count")
+            ),
+            finite_number(
+                row.get("net_amount_billion")
+            ),
+        ),
+    )
+
+    return {
+        "topInflow": (
+            positive[0]
+            if positive
+            else None
+        ),
+        "topOutflow": (
+            negative[0]
+            if negative
+            else None
+        ),
+        "topIncreaseEtf": (
+            buy[0]
+            if buy
+            else None
+        ),
+        "topDecreaseEtf": (
+            sell[0]
+            if sell
+            else None
+        ),
+    }
+
+
+def merge_signal_payloads(
+    active: dict,
+    reference: dict,
+    days: int,
+) -> dict:
+    data_dates = {
+        str(
+            payload.get("data_date")
+            or payload.get(
+                "target_data_date"
+            )
+            or ""
+        )
+        for payload in (
+            active,
+            reference,
+        )
+    }
+    data_dates.discard("")
+
+    if len(data_dates) != 1:
+        raise RuntimeError(
+            "cannot merge signals with "
+            f"different data dates: "
+            f"{sorted(data_dates)}"
+        )
+
+    rows_by_code: dict[
+        str,
+        list[dict],
+    ] = {}
+
+    for payload in (
+        active,
+        reference,
+    ):
+        for row in payload_rows(
+            payload
+        ):
+            code = first_text(
+                row,
+                [
+                    "stock_code",
+                    "code",
+                    "symbol",
+                ],
+            )
+
+            if not code:
+                continue
+
+            rows_by_code.setdefault(
+                code,
+                [],
+            ).append(row)
+
+    rows = [
+        merged
+        for grouped in rows_by_code.values()
+        if (
+            merged := merged_signal_row(
+                grouped
+            )
+        ) is not None
+    ]
+    rows.sort(
+        key=lambda row: abs(
+            finite_number(
+                row.get(
+                    "net_amount_billion"
+                )
+            )
+        ),
+        reverse=True,
+    )
+
+    counts = signal_counts(rows)
+    focus = top_signal_rows(rows)
+    data_date = next(iter(data_dates))
+    all_etf_codes = unique_texts(
+        active.get("all_etf_codes"),
+        reference.get(
+            "all_etf_codes"
+        ),
+    )
+    today_etf_codes = unique_texts(
+        active.get(
+            "today_etf_codes"
+        ),
+        reference.get(
+            "today_etf_codes"
+        ),
+    )
+    missing_today_etf_codes = (
+        unique_texts(
+            active.get(
+                "missing_today_etf_codes"
+            ),
+            reference.get(
+                "missing_today_etf_codes"
+            ),
+        )
+    )
+    no_compare_etf_codes = (
+        unique_texts(
+            active.get(
+                "no_compare_etf_codes"
+            ),
+            reference.get(
+                "no_compare_etf_codes"
+            ),
+        )
+    )
+    non_today_etfs = unique_dicts(
+        active.get("non_today_etfs"),
+        reference.get(
+            "non_today_etfs"
+        ),
+        keys=("etf_code",),
+    )
+    total = int(
+        finite_number(
+            active.get(
+                "total_etf_count"
+            )
+        )
+        + finite_number(
+            reference.get(
+                "total_etf_count"
+            )
+        )
+    )
+    fetched = int(
+        finite_number(
+            active.get(
+                "fetched_etf_count"
+            )
+        )
+        + finite_number(
+            reference.get(
+                "fetched_etf_count"
+            )
+        )
+    )
+    included = int(
+        finite_number(
+            active.get(
+                "includedEtfCount"
+            )
+        )
+        + finite_number(
+            reference.get(
+                "includedEtfCount"
+            )
+        )
+    )
+
+    meta = {
+        "data_date": data_date,
+        "target_data_date": data_date,
+        "rangeDays": days,
+        "signalRangeDays": days,
+        "range_days": days,
+        "rangeLabel": (
+            "今日"
+            if days == 1
+            else f"{days}日"
+        ),
+        "comparisonMode": (
+            "前一交易日"
+            if days == 1
+            else f"{days}個交易日前"
+        ),
+        "includedEtfCount": included,
+        "comparable_etf_count": included,
+        "signal_etf_count": included,
+        "fetched_etf_count": fetched,
+        "total_etf_count": total,
+        "all_etf_codes": all_etf_codes,
+        "today_etf_codes": today_etf_codes,
+        "today_etf_count": fetched,
+        "missing_today_etf_count": len(
+            missing_today_etf_codes
+        ),
+        "missing_today_etf_codes": (
+            missing_today_etf_codes
+        ),
+        "missing_today_etf_codes_text": ",".join(
+            missing_today_etf_codes
+        ),
+        "non_today_etf_codes_text": ",".join(
+            missing_today_etf_codes
+        ),
+        "no_compare_etf_count": len(
+            no_compare_etf_codes
+        ),
+        "excluded_compare_etf_count": max(
+            0,
+            total - included,
+        ),
+        "non_today_etf_count": len(
+            missing_today_etf_codes
+        ),
+        "non_today_etfs": non_today_etfs,
+        "missing_etfs": non_today_etfs,
+        "no_compare_etf_codes": (
+            no_compare_etf_codes
+        ),
+        "today_holding_rows": int(
+            finite_number(
+                active.get(
+                    "today_holding_rows"
+                )
+            )
+            + finite_number(
+                reference.get(
+                    "today_holding_rows"
+                )
+            )
+        ),
+        "included_holding_rows": int(
+            finite_number(
+                active.get(
+                    "included_holding_rows"
+                )
+            )
+            + finite_number(
+                reference.get(
+                    "included_holding_rows"
+                )
+            )
+        ),
+        "signal_count": len(rows),
+        "today_change_count": len(rows),
+        "source": (
+            "github_action_merged_active_reference"
+        ),
+        "universe": "all",
+        "etf_universe": "all",
+        "data_note": (
+            f"今日有資料 {fetched}/{total} 檔 ETF；"
+            f"可計算訊號 {included} 檔；"
+            f"未納入 {max(0, total - included)} 檔"
+            f"（{len(missing_today_etf_codes)} 檔非今日資料、"
+            f"{len(no_compare_etf_codes)} 檔缺前日比較）。"
+        ),
+    }
+
+    return {
+        **meta,
+        "rows": rows,
+        "changes": rows,
+        "rawChanges": rows,
+        "items": rows,
+        "signals": rows,
+        "allRows": rows,
+        "all_changes": rows,
+        "counts": counts,
+        "status_counts": counts,
+        "summary": {
+            **meta,
+            "counts": counts,
+            **focus,
+        },
+        "focus": focus,
+        "focusCards": focus,
+        "top_cards": focus,
+        **focus,
+    }
+
+
 def write_cache(
     conn,
     universe: str,
@@ -569,9 +1191,36 @@ def main() -> None:
 
         # 先完成所有 universe 的 1 日資料，再處理 5、10、20 日。
         for days in days_list:
+            payloads_by_universe: dict[
+                str,
+                dict,
+            ] = {}
+
             for universe in universes:
                 try:
-                    payload = fetch_signals(site_url, universe, days)
+                    if (
+                        universe == "all"
+                        and "active" in payloads_by_universe
+                        and "reference" in payloads_by_universe
+                    ):
+                        payload = merge_signal_payloads(
+                            payloads_by_universe["active"],
+                            payloads_by_universe["reference"],
+                            days,
+                        )
+                        print({
+                            "ok": True,
+                            "stage": "merge_all_signals",
+                            "days": days,
+                            "data_date": payload.get("data_date"),
+                            "signal_count": payload.get("signal_count"),
+                        }, flush=True)
+                    else:
+                        payload = fetch_signals(
+                            site_url,
+                            universe,
+                            days,
+                        )
 
                     fetched = int(payload.get("fetched_etf_count") or 0)
                     total = int(payload.get("total_etf_count") or 0)
@@ -586,6 +1235,10 @@ def main() -> None:
                             "refusing incomplete all cache: "
                             f"fetched={fetched} total={total}"
                         )
+
+                    payloads_by_universe[
+                        universe
+                    ] = payload
 
                     meta = write_cache(conn, universe, days, payload)
 
@@ -621,15 +1274,9 @@ def main() -> None:
             "failures": failures,
         }, flush=True)
 
-        critical_failures = [
-            item
-            for item in failures
-            if item["universe"] in {"active", "reference"}
-        ]
-
-        if critical_failures:
+        if failures:
             raise RuntimeError(
-                f"{len(critical_failures)} critical signals cache tasks failed"
+                f"{len(failures)} signals cache tasks failed"
             )
 
 
