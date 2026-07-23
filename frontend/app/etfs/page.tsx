@@ -1,10 +1,13 @@
 export const revalidate = 60;
-import { getEtfListRows } from '@/lib/etfData';
+import { getEtfListRows, getEtfQuoteMetadataMap } from '@/lib/etfData';
 import { REFERENCE_ETFS } from '@/lib/referenceEtfs';
 import EtfListClient from '@/components/EtfListClient';
 
 export default async function EtfsPage() {
-  const activeRows = await getEtfListRows();
+  const [activeRows, referenceQuoteMap] = await Promise.all([
+    getEtfListRows(),
+    getEtfQuoteMetadataMap(REFERENCE_ETFS.map((row) => row.code)),
+  ]);
 
   const active = (activeRows || []).map((r: any) => ({
     ...r,
@@ -12,6 +15,7 @@ export default async function EtfsPage() {
   }));
 
   const reference = REFERENCE_ETFS.map((r) => ({
+    ...(referenceQuoteMap[r.code] || {}),
     ...r,
     etf_group: 'reference',
     etf_code: r.code,

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import {
   getEtfListRows,
+  getEtfQuoteMetadataMap,
 } from '@/lib/etfData';
 
 import {
@@ -12,8 +13,13 @@ export const revalidate = 60;
 
 export async function GET() {
   try {
-    const activeRows =
-      await getEtfListRows();
+    const [activeRows, referenceQuoteMap] =
+      await Promise.all([
+        getEtfListRows(),
+        getEtfQuoteMetadataMap(
+          REFERENCE_ETFS.map((row) => row.code),
+        ),
+      ]);
 
     const active = (
       activeRows || []
@@ -24,6 +30,7 @@ export async function GET() {
 
     const reference =
       REFERENCE_ETFS.map((row) => ({
+        ...(referenceQuoteMap[row.code] || {}),
         ...row,
         etf_code: row.code,
         etf_name: row.name,

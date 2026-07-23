@@ -1,0 +1,496 @@
+.page {
+  --etf-blue: #2f73c9;
+  --etf-ink: #172033;
+  --etf-muted: #7c889b;
+  --etf-line: #e5e9ef;
+  --etf-up: #dc4d5c;
+  --etf-down: #21956f;
+  padding-top: 10px !important;
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+}
+
+.titleRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 6px 0 12px;
+}
+
+.eyebrow {
+  margin: 0 0 5px;
+  color: #8090a8;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.titleRow h1 {
+  margin: 0;
+  color: var(--etf-ink);
+  font-size: 28px;
+  font-weight: 950;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.summary {
+  margin: 5px 0 0;
+  color: var(--etf-muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.controls {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 10px;
+}
+
+.typeSwitch {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid #dfe6ef;
+  border-radius: 13px;
+  background: #eef2f7;
+}
+
+.typeSwitch button {
+  min-width: 0;
+  height: 34px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #657286;
+  font-size: 12.5px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.typeSwitch button.selected {
+  background: #ffffff;
+  color: var(--etf-blue);
+  box-shadow: 0 2px 8px rgba(31, 64, 111, 0.13);
+}
+
+.searchBox {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid #e1e7ef;
+  border-radius: 12px;
+  background: #f5f7fa;
+}
+
+.searchBox > span {
+  color: #7c899c;
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.searchBox input {
+  min-width: 0;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--etf-ink);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.searchBox input::placeholder {
+  color: #95a0af;
+}
+
+.tableArea {
+  position: relative;
+  margin: 0 -14px;
+}
+
+.stickyHeaderViewport,
+.tableViewport {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: #ffffff;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #c9d2df transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.stickyHeader {
+  position: sticky;
+  top: var(--etf-list-sticky-top, 0px);
+  z-index: 30;
+  border-top: 1px solid var(--etf-line);
+  border-bottom: 1px solid var(--etf-line);
+  background: #ffffff;
+}
+
+.stickyHeaderViewport {
+  overflow-x: hidden;
+  touch-action: pan-y;
+  scrollbar-width: none;
+}
+
+.stickyHeaderViewport::-webkit-scrollbar {
+  display: none;
+}
+
+.tableViewport {
+  margin: 0;
+  width: 100%;
+  border-bottom: 1px solid var(--etf-line);
+}
+
+.tableViewport::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tableViewport::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #c9d2df;
+}
+
+.table {
+  min-width: 990px;
+}
+
+.gridRow {
+  display: grid;
+  align-items: stretch;
+}
+
+.allGrid .gridRow {
+  grid-template-columns: 154px 70px 80px 108px 88px 102px 96px 104px 88px 100px;
+}
+
+.tableHeader {
+  min-height: 54px;
+  background: #f4f5f7;
+  color: #5d6775;
+  border-bottom: 1px solid #dfe4ea;
+}
+
+.headerCell {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  padding: 4px 3px;
+  border-right: 1px solid rgba(15, 23, 42, 0.04);
+}
+
+.identityHeader {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: #f4f5f7;
+  box-shadow: 8px 0 12px -12px rgba(15, 23, 42, 0.65);
+}
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.sortLabel {
+  display: grid;
+  gap: 2px;
+}
+
+.sortLabel small {
+  color: #8b95a3;
+  font-size: 9.5px;
+  font-weight: 750;
+}
+
+.sortButton i {
+  display: grid;
+  gap: 0;
+  color: #a4adb9;
+  font-size: 7px;
+  font-style: normal;
+  line-height: 0.8;
+}
+
+.sortButton em {
+  color: inherit;
+  font-style: normal;
+}
+
+.sortButton .arrowActive,
+.sortActive {
+  color: var(--etf-blue);
+}
+
+.plainHeader {
+  color: #5d6775;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.dataRow {
+  min-height: 82px;
+  color: inherit;
+  text-decoration: none;
+  background: #ffffff;
+  border-bottom: 1px solid var(--etf-line);
+}
+
+.dataRow:last-child {
+  border-bottom: 0;
+}
+
+.dataRow:hover,
+.dataRow:focus-visible {
+  background: #f8fbff;
+}
+
+.identityCell {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 9px 9px 9px 8px;
+  background: #ffffff;
+  box-shadow: 9px 0 13px -13px rgba(15, 23, 42, 0.75);
+}
+
+.dataRow:hover .identityCell,
+.dataRow:focus-visible .identityCell {
+  background: #f8fbff;
+}
+
+.identityText {
+  min-width: 0;
+}
+
+.identityText strong,
+.identityText span,
+.identityText small {
+  display: block;
+}
+
+.identityText strong {
+  color: #1d2634;
+  font-size: 17px;
+  font-weight: 850;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+}
+
+.identityText span {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 5px;
+  color: #525d6a;
+  font-size: 12.5px;
+  font-weight: 720;
+  line-height: 1.18;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.identityText small {
+  overflow: hidden;
+  margin-top: 3px;
+  color: #8792a2;
+  font-size: 9.5px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.candle {
+  position: relative;
+  display: block;
+  width: 18px;
+  height: 48px;
+  color: #a8b0bb;
+}
+
+.candle::before {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 8px;
+  width: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  content: '';
+  opacity: 0.75;
+}
+
+.candle i {
+  position: absolute;
+  top: 17px;
+  left: 3px;
+  width: 12px;
+  height: 15px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.candle.down i {
+  top: 22px;
+  height: 12px;
+}
+
+.candle.flat i {
+  top: 23px;
+  left: 2px;
+  width: 14px;
+  height: 2px;
+}
+
+.candle.reference i {
+  top: 19px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.metricCell {
+  display: grid;
+  min-width: 0;
+  place-content: center;
+  padding: 8px 3px;
+  text-align: center;
+}
+
+.metricCell strong,
+.metricCell span {
+  display: block;
+  min-width: 0;
+}
+
+.metricCell strong {
+  overflow: hidden;
+  color: #222b38;
+  font-size: 16px;
+  font-weight: 850;
+  line-height: 1.08;
+  text-overflow: ellipsis;
+}
+
+.metricCell span {
+  overflow: hidden;
+  margin-top: 5px;
+  color: #6f7987;
+  font-size: 11px;
+  font-weight: 720;
+  line-height: 1.12;
+  text-overflow: ellipsis;
+}
+
+.metricCell .accent {
+  color: var(--etf-blue);
+}
+
+.metricCell.up strong,
+.metricCell.up span,
+.up {
+  color: var(--etf-up);
+}
+
+.metricCell.down strong,
+.metricCell.down span,
+.down {
+  color: var(--etf-down);
+}
+
+.metricCell.flat strong,
+.metricCell.flat span,
+.flat,
+.metricCell.muted strong,
+.metricCell.muted span,
+.muted,
+.reference {
+  color: #8d97a5;
+}
+
+.empty {
+  margin: 18px 0 0;
+  padding: 24px;
+  border: 1px dashed #d6dde7;
+  border-radius: 14px;
+  color: #7b8798;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+}
+
+@media (min-width: 461px) {
+  .tableArea {
+    margin-right: 0;
+    margin-left: 0;
+  }
+
+  .stickyHeader,
+  .tableViewport {
+    margin-right: 0;
+    margin-left: 0;
+    width: 100%;
+    border-right: 1px solid var(--etf-line);
+    border-left: 1px solid var(--etf-line);
+  }
+
+  .stickyHeader {
+    border-radius: 12px 12px 0 0;
+  }
+
+  .tableViewport {
+    border-radius: 0 0 12px 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  .table {
+    min-width: 978px;
+  }
+
+  .titleRow h1 {
+    font-size: 26px;
+  }
+
+  .typeSwitch button {
+    padding: 0 4px;
+    font-size: 11.5px;
+  }
+
+  .allGrid .gridRow {
+    grid-template-columns: 146px 70px 80px 104px 88px 102px 96px 104px 88px 100px;
+  }
+
+  .identityText strong {
+    font-size: 16px;
+  }
+}

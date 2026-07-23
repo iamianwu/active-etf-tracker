@@ -1,11 +1,11 @@
-name: Update Pocket ETF Market Data
+name: Update ETF Market Data
 
 on:
   workflow_dispatch:
 jobs:
   update-pocket-etf-market:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +20,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Update Pocket ETF market data
+      - name: Update Pocket and MoneyDJ ETF market data
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PYTHONUNBUFFERED: "1"

@@ -44,6 +44,17 @@ async function getLatestHoldingsDataDateV80() {
   return String(data?.data_date || '').slice(0, 10);
 }
 
+async function getLatestEtfQuotesUpdatedAtV80() {
+  const { data } = await supabase
+    .from('etf_quotes')
+    .select('updated_at')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return String(data?.updated_at || '').slice(0, 19) || 'none';
+}
+
 
 export const ETF_CODES = [
   '00400A',
@@ -301,8 +312,11 @@ async function selectMaybePagedV80(table: string, build: (q: any) => any, pageSi
 }
 
 export async function getEtfListRows() {
-  const appCacheDate = await getLatestHoldingsDataDateV80();
-  const appCacheKey = `etf_list:v1:date=${appCacheDate || 'latest'}`;
+  const [appCacheDate, quoteVersion] = await Promise.all([
+    getLatestHoldingsDataDateV80(),
+    getLatestEtfQuotesUpdatedAtV80(),
+  ]);
+  const appCacheKey = `etf_list:v2:holdings=${appCacheDate || 'latest'}:quotes=${quoteVersion}`;
   const cached = await readEtfListAppCache(appCacheKey);
 
   if (cached && Array.isArray(cached.rows)) {
@@ -382,6 +396,25 @@ export async function getEtfListRows() {
   });
 
   return result;
+}
+
+export async function getEtfQuoteMetadataMap(codes: string[]) {
+  const normalizedCodes = Array.from(new Set(
+    (codes || []).map(normalizeEtfCodeV80).filter(Boolean),
+  ));
+
+  if (!normalizedCodes.length) return {} as Record<string, any>;
+
+  const quotes = await selectMaybe('etf_quotes', (q) =>
+    q.in('etf_code', normalizedCodes),
+  );
+
+  return Object.fromEntries(
+    (quotes || []).map((row: any) => [
+      normalizeEtfCodeV80(row.etf_code || row.code || row.stock_code),
+      row,
+    ]),
+  ) as Record<string, any>;
 }
 
 
