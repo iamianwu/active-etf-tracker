@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any
 
@@ -539,12 +541,19 @@ def update_pocket_etf_market(
     dt_range: int = 260,
     sleep_sec: float = 0.35,
     codes: list[str] | None = None,
+    max_workers: int | None = None,
 ) -> dict[str, Any]:
     selected_codes = list(dict.fromkeys(
         str(code or "").strip().upper()
         for code in (codes if codes is not None else ALL_ETF_CODES)
         if str(code or "").strip()
     ))
+    requested_workers = (
+        max_workers
+        if max_workers is not None
+        else int(os.getenv("POCKET_MAX_WORKERS", "4"))
+    )
+    worker_count = min(8, max(1, requested_workers))
     rows = []
     ph = []
     nh = []
@@ -552,40 +561,66 @@ def update_pocket_etf_market(
 
     print(
         f"Start update_pocket_etf_market: total={len(selected_codes)}, "
-        f"dt_range={dt_range}",
+        f"dt_range={dt_range}, workers={worker_count}",
         flush=True,
     )
 
-    for i, code in enumerate(selected_codes, start=1):
-        try:
-            print(
-                f"[{i}/{len(selected_codes)}] Fetch Pocket ETF market {code}...",
-                flush=True,
-            )
-            history = fetch_quote_history(code, dt_range=dt_range)
-            basic = fetch_basic(code)
-            row = calc_etf_market_row(code, history, basic)
-            p_rows, n_rows = history_rows(code, history)
+    def fetch_one(i: int, code: str) -> dict[str, Any]:
+        print(
+            f"[{i}/{len(selected_codes)}] Fetch Pocket ETF market {code}...",
+            flush=True,
+        )
+        history = fetch_quote_history(code, dt_range=dt_range)
+        basic = fetch_basic(code)
+        row = calc_etf_market_row(code, history, basic)
+        price_rows, nav_rows = history_rows(code, history)
+        return {
+            "index": i,
+            "code": code,
+            "row": row,
+            "price_rows": price_rows,
+            "nav_rows": nav_rows,
+        }
 
-            rows.append(row)
-            ph.extend(p_rows)
-            nh.extend(n_rows)
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        futures = {}
+        for i, code in enumerate(selected_codes, start=1):
+            futures[executor.submit(fetch_one, i, code)] = (i, code)
+            if sleep_sec > 0:
+                time.sleep(sleep_sec)
 
-            print(
-                f"[{i}/{len(selected_codes)}] Done {code}: price={row.get('price')}, "
-                f"change_pct={row.get('change_pct')}, hist={len(p_rows)}, nav={len(n_rows)}",
-                flush=True
-            )
-        except Exception as e:
-            errors.append({"etf_code": code, "error": str(e)})
-            print(f"[{i}/{len(selected_codes)}] Error {code}: {e}", flush=True)
+        for future in as_completed(futures):
+            i, code = futures[future]
+            try:
+                result = future.result()
+                row = result["row"]
+                price_rows = result["price_rows"]
+                nav_rows = result["nav_rows"]
 
-        time.sleep(sleep_sec)
+                rows.append(row)
+                ph.extend(price_rows)
+                nh.extend(nav_rows)
+
+                print(
+                    f"[{i}/{len(selected_codes)}] Done {code}: "
+                    f"price={row.get('price')}, "
+                    f"change_pct={row.get('change_pct')}, "
+                    f"hist={len(price_rows)}, nav={len(nav_rows)}",
+                    flush=True,
+                )
+            except Exception as e:
+                errors.append({"etf_code": code, "error": str(e)})
+                print(
+                    f"[{i}/{len(selected_codes)}] Error {code}: {e}",
+                    flush=True,
+                )
 
     saved = save_all(rows, ph, nh)
 
     return {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
+        "requested": len(selected_codes),
+        "workers": worker_count,
         "saved": saved,
         "price_history_rows": len(ph),
         "nav_history_rows": len(nh),
