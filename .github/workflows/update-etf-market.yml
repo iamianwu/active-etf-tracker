@@ -71,7 +71,7 @@ jobs:
           python -m app.jobs.update_etf_market
 
   update-moneydj-etf-metadata:
-    needs: prepare-etf-schema
+    needs: update-pocket-etf-market
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
