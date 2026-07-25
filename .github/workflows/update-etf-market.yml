@@ -4,6 +4,41 @@ on:
   workflow_dispatch:
 jobs:
   update-pocket-etf-market:
+    name: pocket-${{ matrix.batch_index }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        batch_index: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Update Pocket ETF market batch
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ETF_MARKET_UPDATE_MODE: pocket
+          ETF_MARKET_BATCH_INDEX: ${{ matrix.batch_index }}
+          ETF_MARKET_BATCH_SIZE: "10"
+          POCKET_MAX_WORKERS: "2"
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python -m app.jobs.update_etf_market
+
+  update-moneydj-etf-metadata:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -20,9 +55,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Update Pocket and MoneyDJ ETF market data
+      - name: Update MoneyDJ ETF metadata
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ETF_MARKET_UPDATE_MODE: moneydj
           PYTHONUNBUFFERED: "1"
         run: |
           cd backend
