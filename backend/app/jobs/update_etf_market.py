@@ -41,7 +41,15 @@ def main():
             pocket_result = update_pocket_etf_market(codes=codes)
 
     if mode in {"all", "moneydj"}:
-        moneydj_result = update_moneydj_etf_metadata()
+        raw_moneydj_codes = os.getenv("MONEYDJ_ETF_CODES", "")
+        moneydj_codes = [
+            code.strip().upper()
+            for code in raw_moneydj_codes.split(",")
+            if code.strip()
+        ]
+        moneydj_result = update_moneydj_etf_metadata(
+            codes=moneydj_codes or None,
+        )
 
     result = {
         "mode": mode,

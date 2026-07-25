@@ -2,6 +2,11 @@ name: Update ETF Market Data
 
 on:
   workflow_dispatch:
+    inputs:
+      moneydj_codes:
+        description: Optional comma-separated MoneyDJ ETF codes for a targeted retry
+        required: false
+        default: ""
 jobs:
   prepare-etf-schema:
     runs-on: ubuntu-latest
@@ -34,6 +39,7 @@ jobs:
           PY
 
   update-pocket-etf-market:
+    if: ${{ inputs.moneydj_codes == '' }}
     name: pocket-${{ matrix.batch_index }}
     needs: prepare-etf-schema
     runs-on: ubuntu-latest
@@ -71,6 +77,7 @@ jobs:
           python -m app.jobs.update_etf_market
 
   update-moneydj-etf-metadata:
+    if: ${{ inputs.moneydj_codes == '' }}
     needs: update-pocket-etf-market
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -92,6 +99,36 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ETF_MARKET_UPDATE_MODE: moneydj
+          SKIP_ETF_SCHEMA_ENSURE: "1"
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python -m app.jobs.update_etf_market
+
+  retry-moneydj-etf-metadata:
+    if: ${{ inputs.moneydj_codes != '' }}
+    needs: prepare-etf-schema
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Retry selected MoneyDJ ETF metadata
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ETF_MARKET_UPDATE_MODE: moneydj
+          MONEYDJ_ETF_CODES: ${{ inputs.moneydj_codes }}
           SKIP_ETF_SCHEMA_ENSURE: "1"
           PYTHONUNBUFFERED: "1"
         run: |

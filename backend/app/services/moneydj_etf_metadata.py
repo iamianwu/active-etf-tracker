@@ -261,22 +261,42 @@ def fetch_moneydj_etf_basic(
     *,
     session: requests.Session | None = None,
     timeout: int = 25,
+    retries: int = 3,
 ) -> dict[str, Any]:
     code = str(etf_code or "").strip().upper()
     client = session or requests.Session()
-    response = client.get(
-        MONEYDJ_BASIC_URL,
-        params={"etfid": f"{code}.TW"},
-        headers=HEADERS,
-        timeout=timeout,
-    )
-    response.raise_for_status()
-    if not response.encoding or response.encoding.lower() in {"ascii", "iso-8859-1"}:
-        response.encoding = response.apparent_encoding or "utf-8"
+    last_error: Exception | None = None
 
-    result = parse_moneydj_etf_basic(response.text, expected_code=code)
-    result["source_url"] = response.url
-    return result
+    for attempt in range(1, max(1, retries) + 1):
+        try:
+            response = client.get(
+                MONEYDJ_BASIC_URL,
+                params={"etfid": f"{code}.TW"},
+                headers=HEADERS,
+                timeout=timeout,
+            )
+            response.raise_for_status()
+            if (
+                not response.encoding
+                or response.encoding.lower() in {"ascii", "iso-8859-1"}
+            ):
+                response.encoding = response.apparent_encoding or "utf-8"
+
+            result = parse_moneydj_etf_basic(
+                response.text,
+                expected_code=code,
+            )
+            result["source_url"] = response.url
+            return result
+        except (requests.RequestException, ValueError) as exc:
+            last_error = exc
+            if attempt < max(1, retries):
+                time.sleep(attempt)
+
+    raise RuntimeError(
+        f"MoneyDJ ETF basic failed after {max(1, retries)} attempts: "
+        f"{code}: {last_error}"
+    )
 
 
 def save_moneydj_etf_metadata(rows: Iterable[dict[str, Any]]) -> int:
