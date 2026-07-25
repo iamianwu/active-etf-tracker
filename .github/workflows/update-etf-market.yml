@@ -3,8 +3,39 @@ name: Update ETF Market Data
 on:
   workflow_dispatch:
 jobs:
+  prepare-etf-schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Prepare ETF tables
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd backend
+          python - <<'PY'
+          from app.services.pocket_etf_market import ensure_etf_tables
+
+          ensure_etf_tables()
+          print("ETF tables ready")
+          PY
+
   update-pocket-etf-market:
     name: pocket-${{ matrix.batch_index }}
+    needs: prepare-etf-schema
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -33,12 +64,14 @@ jobs:
           ETF_MARKET_BATCH_INDEX: ${{ matrix.batch_index }}
           ETF_MARKET_BATCH_SIZE: "10"
           POCKET_MAX_WORKERS: "2"
+          SKIP_ETF_SCHEMA_ENSURE: "1"
           PYTHONUNBUFFERED: "1"
         run: |
           cd backend
           python -m app.jobs.update_etf_market
 
   update-moneydj-etf-metadata:
+    needs: prepare-etf-schema
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -59,6 +92,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ETF_MARKET_UPDATE_MODE: moneydj
+          SKIP_ETF_SCHEMA_ENSURE: "1"
           PYTHONUNBUFFERED: "1"
         run: |
           cd backend

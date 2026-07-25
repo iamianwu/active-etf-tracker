@@ -165,6 +165,9 @@ def calc_return(history: list[dict[str, Any]], base_index: int) -> float | None:
     return (latest / base - 1) * 100
 
 def ensure_etf_tables():
+    if os.getenv("SKIP_ETF_SCHEMA_ENSURE", "").strip() == "1":
+        return
+
     init_db()
     with get_conn() as conn:
         if conn.postgres:
