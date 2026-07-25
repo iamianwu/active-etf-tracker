@@ -10,10 +10,26 @@ import requests
 from ..database import get_conn, init_db
 
 try:
-    from ..config import ETF_CODES, ETF_NAMES
+    from ..config import (
+        ETF_CODES,
+        ETF_NAMES,
+        REFERENCE_ETF_CODES,
+        REFERENCE_ETF_NAMES,
+    )
 except Exception:
     ETF_CODES = []
     ETF_NAMES = {}
+    REFERENCE_ETF_CODES = []
+    REFERENCE_ETF_NAMES = {}
+
+ALL_ETF_CODES = list(dict.fromkeys([
+    *ETF_CODES,
+    *REFERENCE_ETF_CODES,
+]))
+ALL_ETF_NAMES = {
+    **REFERENCE_ETF_NAMES,
+    **ETF_NAMES,
+}
 
 API_URL = "https://www.pocket.tw/api/cm/MobileService/ashx/GetDtnoData.ashx"
 
@@ -192,6 +208,7 @@ def ensure_etf_tables():
             extra_cols = {
                 "week_return": "DOUBLE PRECISION",
                 "total_return": "DOUBLE PRECISION",
+                "annualized_return": "DOUBLE PRECISION",
                 "dividend_yield": "DOUBLE PRECISION",
                 "region": "TEXT",
                 "currency": "TEXT",
@@ -244,6 +261,28 @@ def ensure_etf_tables():
               updated_at TEXT
             )
             """)
+            existing_quote_columns = {
+                str(row[1])
+                for row in conn.execute(
+                    "PRAGMA table_info(etf_quotes)"
+                ).fetchall()
+            }
+            sqlite_quote_columns = {
+                "week_return": "REAL",
+                "total_return": "REAL",
+                "annualized_return": "REAL",
+                "dividend_yield": "REAL",
+                "region": "TEXT",
+                "currency": "TEXT",
+                "manager": "TEXT",
+                "company": "TEXT",
+                "custodian": "TEXT",
+            }
+            for col, typ in sqlite_quote_columns.items():
+                if col not in existing_quote_columns:
+                    conn.execute(
+                        f"ALTER TABLE etf_quotes ADD COLUMN {col} {typ}"
+                    )
 
 def calc_etf_market_row(etf_code: str, history: list[dict[str, Any]], basic: dict[str, Any]) -> dict[str, Any]:
     latest = history[0] if history else {}
@@ -273,7 +312,7 @@ def calc_etf_market_row(etf_code: str, history: list[dict[str, Any]], basic: dic
 
     return {
         "etf_code": etf_code,
-        "etf_name": str(_pick(latest, ["股票名稱", "基金名稱"]) or _pick(basic, ["股票名稱", "基金名稱"]) or ETF_NAMES.get(etf_code) or etf_code),
+        "etf_name": str(_pick(latest, ["股票名稱", "基金名稱"]) or _pick(basic, ["股票名稱", "基金名稱"]) or ALL_ETF_NAMES.get(etf_code) or etf_code),
         "full_name": str(_pick(basic, ["基金全名", "基金名稱"]) or ""),
         "price": price,
         "change": change,
@@ -289,11 +328,12 @@ def calc_etf_market_row(etf_code: str, history: list[dict[str, Any]], basic: dic
         "dividend_frequency": _pick(basic, ["配息制度", "配息頻率"]),
         "week_return": calc_return(history, 5),
         "total_return": calc_return(history, len(history) - 1),
+        "annualized_return": None,
         "dividend_yield": _to_float(_pick(basic, ["殖利率", "配息率"])),
         "region": _pick(latest, ["投資區域"]) or _pick(basic, ["投資區域"]),
         "currency": _pick(basic, ["計算幣別"]) or "NTD",
         "manager": _pick(basic, ["經理人", "基金經理人"]),
-        "company": _pick(basic, ["投信公司", "發行公司"]),
+        "company": _pick(basic, ["投信公司", "發行公司", "發行商"]),
         "custodian": _pick(basic, ["保管銀行"]),
         "updated_at": datetime.now().isoformat(timespec="seconds"),
     }
@@ -348,9 +388,10 @@ def save_all(rows: list[dict[str, Any]], price_history: list[dict[str, Any]], na
                       etf_code, etf_name, price, change, change_pct, volume, amount,
                       nav, premium_pct, aum_billion, expense_ratio, inception_date,
                       holder_count, dividend_frequency, week_return, total_return,
-                      dividend_yield, region, currency, manager, company, custodian, updated_at
+                      annualized_return, dividend_yield, region, currency, manager,
+                      company, custodian, updated_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT (etf_code) DO UPDATE SET
                       etf_name=EXCLUDED.etf_name,
                       price=EXCLUDED.price,
@@ -361,18 +402,19 @@ def save_all(rows: list[dict[str, Any]], price_history: list[dict[str, Any]], na
                       nav=EXCLUDED.nav,
                       premium_pct=EXCLUDED.premium_pct,
                       aum_billion=EXCLUDED.aum_billion,
-                      expense_ratio=EXCLUDED.expense_ratio,
-                      inception_date=EXCLUDED.inception_date,
-                      holder_count=EXCLUDED.holder_count,
-                      dividend_frequency=EXCLUDED.dividend_frequency,
-                      week_return=EXCLUDED.week_return,
-                      total_return=EXCLUDED.total_return,
-                      dividend_yield=EXCLUDED.dividend_yield,
-                      region=EXCLUDED.region,
-                      currency=EXCLUDED.currency,
-                      manager=EXCLUDED.manager,
-                      company=EXCLUDED.company,
-                      custodian=EXCLUDED.custodian,
+                      expense_ratio=COALESCE(EXCLUDED.expense_ratio, etf_quotes.expense_ratio),
+                      inception_date=COALESCE(EXCLUDED.inception_date, etf_quotes.inception_date),
+                      holder_count=COALESCE(EXCLUDED.holder_count, etf_quotes.holder_count),
+                      dividend_frequency=COALESCE(NULLIF(EXCLUDED.dividend_frequency, ''), etf_quotes.dividend_frequency),
+                      week_return=COALESCE(EXCLUDED.week_return, etf_quotes.week_return),
+                      total_return=COALESCE(EXCLUDED.total_return, etf_quotes.total_return),
+                      annualized_return=COALESCE(EXCLUDED.annualized_return, etf_quotes.annualized_return),
+                      dividend_yield=COALESCE(EXCLUDED.dividend_yield, etf_quotes.dividend_yield),
+                      region=COALESCE(NULLIF(EXCLUDED.region, ''), etf_quotes.region),
+                      currency=COALESCE(NULLIF(EXCLUDED.currency, ''), etf_quotes.currency),
+                      manager=COALESCE(NULLIF(EXCLUDED.manager, ''), etf_quotes.manager),
+                      company=COALESCE(NULLIF(EXCLUDED.company, ''), etf_quotes.company),
+                      custodian=COALESCE(NULLIF(EXCLUDED.custodian, ''), etf_quotes.custodian),
                       updated_at=EXCLUDED.updated_at
                     """,
                     (
@@ -380,8 +422,9 @@ def save_all(rows: list[dict[str, Any]], price_history: list[dict[str, Any]], na
                         r["volume"], r["amount"], r["nav"], r["premium_pct"], r["aum_billion"],
                         r["expense_ratio"], r["inception_date"], r["holder_count"],
                         r["dividend_frequency"], r["week_return"], r["total_return"],
-                        r["dividend_yield"], r["region"], r["currency"], r["manager"],
-                        r["company"], r["custodian"], r["updated_at"],
+                        r["annualized_return"], r["dividend_yield"], r["region"],
+                        r["currency"], r["manager"], r["company"], r["custodian"],
+                        r["updated_at"],
                     ),
                 )
             else:
@@ -391,17 +434,19 @@ def save_all(rows: list[dict[str, Any]], price_history: list[dict[str, Any]], na
                       etf_code, etf_name, price, change, change_pct, volume, amount,
                       nav, premium_pct, aum_billion, expense_ratio, inception_date,
                       holder_count, dividend_frequency, week_return, total_return,
-                      dividend_yield, region, currency, manager, company, custodian, updated_at
+                      annualized_return, dividend_yield, region, currency, manager,
+                      company, custodian, updated_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         r["etf_code"], r["etf_name"], r["price"], r["change"], r["change_pct"],
                         r["volume"], r["amount"], r["nav"], r["premium_pct"], r["aum_billion"],
                         r["expense_ratio"], r["inception_date"], r["holder_count"],
                         r["dividend_frequency"], r["week_return"], r["total_return"],
-                        r["dividend_yield"], r["region"], r["currency"], r["manager"],
-                        r["company"], r["custodian"], r["updated_at"],
+                        r["annualized_return"], r["dividend_yield"], r["region"],
+                        r["currency"], r["manager"], r["company"], r["custodian"],
+                        r["updated_at"],
                     ),
                 )
 
@@ -417,14 +462,14 @@ def save_all(rows: list[dict[str, Any]], price_history: list[dict[str, Any]], na
                   etf_name=EXCLUDED.etf_name,
                   full_name=EXCLUDED.full_name,
                   aum_billion=EXCLUDED.aum_billion,
-                  expense_ratio=EXCLUDED.expense_ratio,
-                  inception_date=EXCLUDED.inception_date,
-                  holder_count=EXCLUDED.holder_count,
-                  dividend_frequency=EXCLUDED.dividend_frequency,
-                  manager=EXCLUDED.manager,
-                  company=EXCLUDED.company,
-                  custodian=EXCLUDED.custodian,
-                  region=EXCLUDED.region,
+                  expense_ratio=COALESCE(EXCLUDED.expense_ratio, etf_basic_info.expense_ratio),
+                  inception_date=COALESCE(EXCLUDED.inception_date, etf_basic_info.inception_date),
+                  holder_count=COALESCE(EXCLUDED.holder_count, etf_basic_info.holder_count),
+                  dividend_frequency=COALESCE(NULLIF(EXCLUDED.dividend_frequency, ''), etf_basic_info.dividend_frequency),
+                  manager=COALESCE(NULLIF(EXCLUDED.manager, ''), etf_basic_info.manager),
+                  company=COALESCE(NULLIF(EXCLUDED.company, ''), etf_basic_info.company),
+                  custodian=COALESCE(NULLIF(EXCLUDED.custodian, ''), etf_basic_info.custodian),
+                  region=COALESCE(NULLIF(EXCLUDED.region, ''), etf_basic_info.region),
                   updated_at=EXCLUDED.updated_at
                 """ if conn.postgres else """
                 INSERT OR REPLACE INTO etf_basic_info(
@@ -490,17 +535,33 @@ def save_all(rows: list[dict[str, Any]], price_history: list[dict[str, Any]], na
 
     return len(rows)
 
-def update_pocket_etf_market(dt_range: int = 260, sleep_sec: float = 0.35) -> dict[str, Any]:
+def update_pocket_etf_market(
+    dt_range: int = 260,
+    sleep_sec: float = 0.35,
+    codes: list[str] | None = None,
+) -> dict[str, Any]:
+    selected_codes = list(dict.fromkeys(
+        str(code or "").strip().upper()
+        for code in (codes if codes is not None else ALL_ETF_CODES)
+        if str(code or "").strip()
+    ))
     rows = []
     ph = []
     nh = []
     errors = []
 
-    print(f"Start update_pocket_etf_market: total={len(ETF_CODES)}, dt_range={dt_range}", flush=True)
+    print(
+        f"Start update_pocket_etf_market: total={len(selected_codes)}, "
+        f"dt_range={dt_range}",
+        flush=True,
+    )
 
-    for i, code in enumerate(ETF_CODES, start=1):
+    for i, code in enumerate(selected_codes, start=1):
         try:
-            print(f"[{i}/{len(ETF_CODES)}] Fetch Pocket ETF market {code}...", flush=True)
+            print(
+                f"[{i}/{len(selected_codes)}] Fetch Pocket ETF market {code}...",
+                flush=True,
+            )
             history = fetch_quote_history(code, dt_range=dt_range)
             basic = fetch_basic(code)
             row = calc_etf_market_row(code, history, basic)
@@ -511,13 +572,13 @@ def update_pocket_etf_market(dt_range: int = 260, sleep_sec: float = 0.35) -> di
             nh.extend(n_rows)
 
             print(
-                f"[{i}/{len(ETF_CODES)}] Done {code}: price={row.get('price')}, "
+                f"[{i}/{len(selected_codes)}] Done {code}: price={row.get('price')}, "
                 f"change_pct={row.get('change_pct')}, hist={len(p_rows)}, nav={len(n_rows)}",
                 flush=True
             )
         except Exception as e:
             errors.append({"etf_code": code, "error": str(e)})
-            print(f"[{i}/{len(ETF_CODES)}] Error {code}: {e}", flush=True)
+            print(f"[{i}/{len(selected_codes)}] Error {code}: {e}", flush=True)
 
         time.sleep(sleep_sec)
 

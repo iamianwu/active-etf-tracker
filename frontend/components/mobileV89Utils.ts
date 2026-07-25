@@ -120,7 +120,12 @@ export function marketValueBillionOf(r: any): number {
 export function sharesLotsOf(r: any): number {
   const lots = num(r?.shares_lots ?? r?.lots ?? r?.holding_lots ?? r?.share_lots);
   if (Number.isFinite(lots)) return lots;
-  const shares = num(r?.shares ?? r?.holding_shares ?? r?.share_count);
+  const shares = num(
+    r?.shares ??
+    r?.total_shares ??
+    r?.holding_shares ??
+    r?.share_count
+  );
   return Number.isFinite(shares) ? shares / 1000 : NaN;
 }
 

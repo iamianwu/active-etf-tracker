@@ -377,7 +377,7 @@ export default function EtfListClient(props: any) {
               const code = etfCode(row);
               const isRef = isReferenceEtfRow(row);
               const changePct = changePctOf(row);
-              const href = isRef ? '/reference-etfs' : `/etf/${code}?from=etfs`;
+              const href = `/etf/${code}?from=etfs`;
               const tone = directionClass(changePct);
 
               return (
@@ -391,28 +391,28 @@ export default function EtfListClient(props: any) {
                     </span>
                   </div>
 
-                  <MetricCell primary={isRef ? '—' : fmtFree(priceOf(row), 2)} />
+                  <MetricCell primary={fmtFree(priceOf(row), 2)} />
                   <MetricCell
-                    primary={isRef ? '—' : formatSignedNumber(changeOf(row), 2)}
-                    secondary={isRef ? '參考對照' : fmtPct(changePct, 2)}
-                    tone={isRef ? styles.muted : tone}
+                    primary={formatSignedNumber(changeOf(row), 2)}
+                    secondary={fmtPct(changePct, 2)}
+                    tone={tone}
                   />
                   <MetricCell
-                    primary={isRef ? '—' : fmtFree(volumeOf(row), 0)}
-                    secondary={isRef ? '無即時行情' : `(${fmtFree(amountBillionOf(row), 2)} 億)`}
-                    accent={!isRef}
+                    primary={fmtFree(volumeOf(row), 0)}
+                    secondary={`(${fmtFree(amountBillionOf(row), 2)} 億)`}
+                    accent
                   />
-                  <MetricCell primary={isRef ? '—' : fmtPct(weekReturnOf(row), 1)} tone={isRef ? styles.muted : directionClass(weekReturnOf(row))} />
+                  <MetricCell primary={fmtPct(weekReturnOf(row), 1)} tone={directionClass(weekReturnOf(row))} />
                   <MetricCell
-                    primary={isRef ? '—' : fmtPct(totalReturnOf(row), 1)}
-                    secondary={isRef ? '參考對照' : inceptionDateOf(row) || '成立以來'}
-                    tone={isRef ? styles.muted : directionClass(totalReturnOf(row))}
+                    primary={fmtPct(totalReturnOf(row), 1)}
+                    secondary={inceptionDateOf(row) || '成立以來'}
+                    tone={directionClass(totalReturnOf(row))}
                   />
                   <MetricCell
-                    primary={isRef ? '—' : fmtPct(dividendYieldOf(row), 2)}
-                    secondary={isRef ? '—' : dividendFrequencyOf(row)}
+                    primary={fmtPct(dividendYieldOf(row), 2)}
+                    secondary={dividendFrequencyOf(row)}
                   />
-                  <MetricCell primary={isRef ? '—' : formatBillionOrDash(aumOf(row), 0)} />
+                  <MetricCell primary={formatBillionOrDash(aumOf(row), 0)} />
                   <MetricCell primary={formatPercentOrDash(feeOf(row), 2)} />
                   <MetricCell primary={isRef ? referenceMarketOf(row) : etfRegion(row)} />
                 </Link>

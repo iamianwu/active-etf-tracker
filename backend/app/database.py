@@ -39,6 +39,15 @@ CREATE TABLE IF NOT EXISTS etf_quotes (
     inception_date TEXT,
     holder_count INTEGER,
     dividend_frequency TEXT,
+    week_return REAL,
+    total_return REAL,
+    annualized_return REAL,
+    dividend_yield REAL,
+    region TEXT,
+    currency TEXT,
+    manager TEXT,
+    company TEXT,
+    custodian TEXT,
     updated_at TEXT
 );
 
@@ -48,6 +57,11 @@ CREATE TABLE IF NOT EXISTS stock_quotes (
     price REAL,
     change REAL,
     change_pct REAL,
+    market_cap_billion REAL,
+    market_cap_source TEXT,
+    market_cap_updated_at TEXT,
+    industry_code TEXT,
+    industry_name TEXT,
     updated_at TEXT
 );
 
@@ -82,6 +96,15 @@ CREATE TABLE IF NOT EXISTS etf_quotes (
     inception_date TEXT,
     holder_count INTEGER,
     dividend_frequency TEXT,
+    week_return DOUBLE PRECISION,
+    total_return DOUBLE PRECISION,
+    annualized_return DOUBLE PRECISION,
+    dividend_yield DOUBLE PRECISION,
+    region TEXT,
+    currency TEXT,
+    manager TEXT,
+    company TEXT,
+    custodian TEXT,
     updated_at TEXT
 );
 
@@ -91,6 +114,11 @@ CREATE TABLE IF NOT EXISTS stock_quotes (
     price DOUBLE PRECISION,
     change DOUBLE PRECISION,
     change_pct DOUBLE PRECISION,
+    market_cap_billion DOUBLE PRECISION,
+    market_cap_source TEXT,
+    market_cap_updated_at TEXT,
+    industry_code TEXT,
+    industry_name TEXT,
     updated_at TEXT
 );
 

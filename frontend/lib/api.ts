@@ -370,7 +370,19 @@ async function getConstituentSummary() {
   const targetDate = String(latestRow?.data_date || "").slice(0, 10);
   if (!targetDate) return [];
 
-  const appCacheKey = `holdings_summary:v1:date=${targetDate}`;
+  const { data: marketCapVersionRow } = await supabase
+    .from("stock_quotes")
+    .select("market_cap_updated_at")
+    .not("market_cap_updated_at", "is", null)
+    .order("market_cap_updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const marketCapVersion = String(
+    marketCapVersionRow?.market_cap_updated_at || "none"
+  ).slice(0, 19);
+  const appCacheKey =
+    `holdings_summary:v2:date=${targetDate}:market_caps=${marketCapVersion}`;
   const cached = await readAppCache(appCacheKey);
 
   if (cached && Array.isArray((cached as any).rows)) {
@@ -400,6 +412,7 @@ async function getConstituentSummary() {
     const price = sq.price ?? null;
     const changePct = sq.change_pct ?? null;
     const quoteDate = sq.updated_at ?? null;
+    const marketCapBillion = Number(sq.market_cap_billion || 0) || null;
 
     if (!grouped[code]) {
       grouped[code] = {
@@ -412,6 +425,8 @@ async function getConstituentSummary() {
         price,
         change_pct: changePct,
         quote_date: quoteDate,
+        market_cap_billion: marketCapBillion,
+        market_cap_updated_at: sq.market_cap_updated_at ?? null,
         etfs: [],
       };
     }
@@ -424,6 +439,10 @@ async function getConstituentSummary() {
 
   const out = Object.values(grouped).map((g: any) => {
     g.market_value_billion = g.price ? g.total_shares * Number(g.price) / 100000000 : null;
+    g.estimated_holding_pct =
+      g.market_value_billion && g.market_cap_billion
+        ? g.market_value_billion / g.market_cap_billion * 100
+        : null;
     g.etfs = g.etfs.join(", ");
     return g;
   });

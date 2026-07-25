@@ -1,0 +1,46 @@
+.industryList {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e3eaf3;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.industryRow {
+  display: grid;
+  grid-template-columns: minmax(96px, 1fr) minmax(92px, 1.3fr) 54px;
+  gap: 9px;
+  align-items: center;
+}
+
+.industryRow > span {
+  overflow: hidden;
+  color: #596577;
+  font-size: 13px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.industryRow > i {
+  display: block;
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: #edf2f8;
+}
+
+.industryRow > i > em {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #3978cb;
+}
+
+.industryRow > b {
+  color: #182032;
+  font-size: 13px;
+  font-weight: 950;
+  text-align: right;
+}

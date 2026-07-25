@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { rowsOf, stockCode, stockName, fmtFree, fmtPct, priceOf, changePctOf, marketValueBillionOf, sharesLotsOf, sortRows, toneClass, num, type SortDir } from './mobileV89Utils';
+import styles from './HoldingsClient.module.css';
 
-type SortKey = 'value' | 'etfs' | 'price' | 'pct' | 'shares' | 'name';
+type SortKey = 'value' | 'etfs' | 'price' | 'pct' | 'shares' | 'ratio' | 'name';
 function etfCountOf(r: any) { return num(r?.etf_count ?? r?.holding_etf_count ?? r?.active_etf_count ?? r?.count, 0); }
+function estimatedHoldingPctOf(r: any) { return num(r?.estimated_holding_pct ?? r?.estimatedHoldingPct); }
 function SortButton({ label, k, sortKey, sortDir, onClick }: any) { const active = sortKey === k; return <button className={active ? 'active' : ''} onClick={onClick}>{label}<span>{active ? (sortDir === 'desc' ? '↓' : '↑') : '↕'}</span></button>; }
 
 export default function HoldingsClient(props: any) {
@@ -20,6 +22,7 @@ export default function HoldingsClient(props: any) {
     if (sortKey === 'price') return priceOf(r);
     if (sortKey === 'pct') return changePctOf(r);
     if (sortKey === 'shares') return sharesLotsOf(r);
+    if (sortKey === 'ratio') return estimatedHoldingPctOf(r);
     if (sortKey === 'name') return stockName(r);
     return marketValueBillionOf(r);
   }, sortDir), [filtered, sortKey, sortDir]);
@@ -38,15 +41,19 @@ export default function HoldingsClient(props: any) {
         <SortButton label="ETF檔數" k="etfs" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('etfs')} />
         <SortButton label="股價" k="price" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('price')} />
         <SortButton label="漲跌幅" k="pct" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('pct')} />
+        <SortButton label="持股張數" k="shares" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('shares')} />
+        <SortButton label="估個股比重" k="ratio" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('ratio')} />
       </div>
-      <section className="v89-holding-cards">
+      <section className={styles.cards}>
         {sorted.map((r, i) => {
           const code = stockCode(r);
+          const estimatedPct = estimatedHoldingPctOf(r);
           return (
-            <Link key={`${code}-${i}`} href={`/stock/${code}?from=holdings`} className="v89-stock-card">
-              <div><b>{stockName(r)}</b><span>{code}</span><small>持有 ETF {fmtFree(etfCountOf(r), 0)} 檔</small></div>
-              <div><strong>{fmtFree(priceOf(r), 1)}</strong><em className={toneClass(changePctOf(r))}>{fmtPct(changePctOf(r), 2)}</em></div>
-              <div><span>持股市值</span><b>{fmtFree(marketValueBillionOf(r), 2)} 億</b></div>
+            <Link key={`${code}-${i}`} href={`/stock/${code}?from=holdings`} className={styles.card}>
+              <div className={styles.identity}><b>{stockName(r)}</b><span>{code}</span></div>
+              <div className={styles.quote}><strong>{fmtFree(priceOf(r), 1)}</strong><em className={toneClass(changePctOf(r))}>{fmtPct(changePctOf(r), 2)}</em></div>
+              <div className={styles.metric}><span>持股市值</span><b>{fmtFree(marketValueBillionOf(r), 2)} 億</b><small>{fmtFree(sharesLotsOf(r), 0)} 張</small></div>
+              <div className={styles.metric}><span>主動式檔數</span><b>{fmtFree(etfCountOf(r), 0)} 檔</b><small>估比重 {Number.isFinite(estimatedPct) ? `${fmtFree(estimatedPct, 2)}%` : '-'}</small></div>
             </Link>
           );
         })}

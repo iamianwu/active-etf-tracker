@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useWatchlist } from '@/lib/watchlist';
 import { rowsOf, quoteOf, etfCode, etfName, stockCode, stockName, fmtFree, fmtPct, priceOf, changePctOf, amountBillionOf, volumeOf, marketValueBillionOf, sharesLotsOf, weightOf, trendRowsFromAny, latestDateOf, shortDate, sortRows, toneClass, statusOf, fmtSigned, num, type SortDir } from './mobileV89Utils';
+import styles from './EtfDetailClient.module.css';
 
 type Tab = 'overview' | 'live' | 'operation' | 'holdings' | 'basic';
 type SortKey = 'weight' | 'value' | 'shares' | 'price' | 'pct' | 'code';
@@ -18,6 +19,16 @@ function holdingDateOfRows(rows: any[]) {
     if (d && (!best || d > best)) best = d;
   }
   return best;
+}
+
+function numberWithUnit(value: any, digits: number, unit: string) {
+  const parsed = num(value);
+  return Number.isFinite(parsed) ? `${fmtFree(parsed, digits)}${unit}` : '-';
+}
+
+function textOrDash(value: any) {
+  const text = String(value ?? '').trim();
+  return text || '-';
 }
 
 function useBack() { return () => { if (typeof window !== 'undefined' && window.history.length > 1) window.history.back(); else window.location.href = '/etfs'; }; }
@@ -142,6 +153,13 @@ export default function EtfDetailClient(props: any) {
   const holdingDate = holdingDateOfRows(holdings);
   const changes = data?.changes || data?.operationRows || data?.operation_rows || data?.changeRows || [];
   const chartRows = trendRowsFromAny(data);
+  const industryDistribution = Array.isArray(data?.industry_distribution)
+    ? data.industry_distribution
+    : [];
+  const premiumPct = num(quote?.premium_pct);
+  const weekReturn = num(quote?.week_return);
+  const totalReturn = num(quote?.total_return);
+  const annualizedReturn = num(quote?.annualized_return);
   const sortedHoldings = useMemo(() => sortRows(holdings, (r: any) => {
     if (sortKey === 'value') return marketValueBillionOf(r);
     if (sortKey === 'shares') return sharesLotsOf(r);
@@ -158,11 +176,54 @@ export default function EtfDetailClient(props: any) {
         <header className="v89-detail-header"><button onClick={back} className="back" aria-label="返回">‹</button><div><b>{code}</b><span>{name}</span></div><button type="button" className="star" aria-label={watched ? `取消追蹤 ${name}` : `加入追蹤 ${name}`} aria-pressed={watched} title={watched ? '取消追蹤' : '加入追蹤'} onClick={() => toggle({ code, name, type: 'etf' })}>{watched ? '★' : '☆'}</button></header>
         <nav className="v89-detail-tabs five">{([['overview','總覽'],['live','即時'],['operation','操作日報'],['holdings','成分股'],['basic','基本']] as any).map(([k,l]: any) => <button key={k} className={tab===k?'active':''} onClick={() => setTab(k)}>{l}</button>)}</nav>
       </div>
-      {tab === 'overview' && <section className="v89-section"><div className="v89-kpi-grid four"><div><span>股價</span><b className={toneClass(changePctOf(quote))}>{fmtFree(priceOf(quote), 2)}</b><small>{fmtPct(changePctOf(quote), 2)}</small></div><div><span>成交金額</span><b>{fmtFree(amountBillionOf(quote), 1)}</b><small>億</small></div><div><span>持股異動</span><b>{Array.isArray(changes) ? changes.length : 0}</b><small>檔</small></div><div><span>資料狀態</span><b className={holdings.length ? 'v89-green' : 'v89-red'}>{holdings.length ? '完整' : '待補'}</b><small>報價 / 成分股</small></div></div><HolderChipCard code={String(code || '')} /><InstitutionalTradingCard code={String(code || '')} isEtf /><h2>淨值 / 股價走勢</h2><Chart rows={chartRows} color={changePctOf(quote) >= 0 ? 'red' : 'green'} /><h2>前五大持股</h2><HoldingRows rows={sortedHoldings.slice(0, 5)} /></section>}
+      {tab === 'overview' && <section className="v89-section">
+        <div className="v89-kpi-grid four">
+          <div><span>股價</span><b className={toneClass(changePctOf(quote))}>{fmtFree(priceOf(quote), 2)}</b><small>{fmtPct(changePctOf(quote), 2)}</small></div>
+          <div><span>成交金額</span><b>{fmtFree(amountBillionOf(quote), 1)}</b><small>億</small></div>
+          <div><span>持股異動</span><b>{Array.isArray(changes) ? changes.length : 0}</b><small>檔</small></div>
+          <div><span>資料狀態</span><b className={holdings.length ? 'v89-green' : 'v89-red'}>{holdings.length ? '完整' : '待補'}</b><small>報價 / 成分股</small></div>
+        </div>
+        <h2>報酬與淨值</h2>
+        <div className="v89-kpi-grid four">
+          <div><span>ETF 淨值</span><b>{fmtFree(quote?.nav, 2)}</b><small>{textOrDash(quote?.currency)}</small></div>
+          <div><span>折溢價</span><b className={toneClass(premiumPct)}>{fmtPct(premiumPct, 2)}</b><small>{Number.isFinite(premiumPct) ? (premiumPct > 0 ? '溢價' : premiumPct < 0 ? '折價' : '平價') : '尚無資料'}</small></div>
+          <div><span>1 週報酬</span><b className={toneClass(weekReturn)}>{fmtPct(weekReturn, 1)}</b><small>含配息績效</small></div>
+          <div><span>成立以來</span><b className={toneClass(totalReturn)}>{fmtPct(totalReturn, 1)}</b><small>累積報酬</small></div>
+        </div>
+        <HolderChipCard code={String(code || '')} />
+        <InstitutionalTradingCard code={String(code || '')} isEtf />
+        <h2>淨值 / 股價走勢</h2>
+        <Chart rows={chartRows} color={changePctOf(quote) >= 0 ? 'red' : 'green'} />
+        <h2>產業分布</h2>
+        <IndustryDistribution rows={industryDistribution} />
+        <h2>前五大持股</h2>
+        <HoldingRows rows={sortedHoldings.slice(0, 5)} />
+      </section>}
       {tab === 'live' && <section className="v89-section"><div className="v89-stock-quote"><div><span>股價</span><b className={toneClass(changePctOf(quote))}>{fmtFree(priceOf(quote), 2)}</b><small>{fmtPct(changePctOf(quote), 2)}</small></div><div><span>成交量</span><b>{fmtFree(volumeOf(quote), 0)}</b><small>{fmtFree(amountBillionOf(quote), 1)} 億</small></div></div></section>}
       {tab === 'operation' && <section className="v89-section"><h1>操作日報</h1><OperationRows changes={Array.isArray(changes) ? changes : []} /></section>}
       {tab === 'holdings' && <section className="v89-section"><div className="v89-sort-row sticky"><SortButton label="權重" k="weight" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('weight')} /><SortButton label="市值" k="value" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('value')} /><SortButton label="張數" k="shares" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('shares')} /><SortButton label="漲跌幅" k="pct" sortKey={sortKey} sortDir={sortDir} onClick={() => toggleSort('pct')} /></div><HoldingRows rows={sortedHoldings} /></section>}
-      {tab === 'basic' && <section className="v89-section"><div className="v89-info-card"><p><span>資產規模</span><b>{fmtFree(quote?.aum_billion ?? quote?.fund_size_billion, 1)} 億</b></p><p><span>內扣費用</span><b>{Number.isFinite(num(quote?.expense_ratio)) ? fmtFree(quote?.expense_ratio, 2) + '%' : '-'}</b></p><p><span>成立日</span><b>{quote?.inception_date || quote?.listing_date || '-'}</b></p><p><span>持股日</span><b>{shortDate(holdingDate)}</b></p><p><span>報價更新</span><b>{shortDate(latestDateOf(quote))}</b></p></div></section>}
+      {tab === 'basic' && <section className="v89-section">
+        <h2>基本資料</h2>
+        <div className="v89-info-card">
+          <p><span>資產規模</span><b>{numberWithUnit(quote?.aum_billion ?? quote?.fund_size_billion, 1, ' 億')}</b></p>
+          <p><span>內扣費用</span><b>{numberWithUnit(quote?.expense_ratio, 2, '%')}</b></p>
+          <p><span>投資區域</span><b>{textOrDash(quote?.region)}</b></p>
+          <p><span>殖利率</span><b>{numberWithUnit(quote?.dividend_yield, 2, '%')}</b></p>
+          <p><span>配息頻率</span><b>{textOrDash(quote?.dividend_frequency)}</b></p>
+          <p><span>1 週報酬</span><b className={toneClass(weekReturn)}>{fmtPct(weekReturn, 1)}</b></p>
+          <p><span>成立以來累積報酬</span><b className={toneClass(totalReturn)}>{fmtPct(totalReturn, 1)}</b></p>
+          <p><span>成立以來年化報酬</span><b className={toneClass(annualizedReturn)}>{fmtPct(annualizedReturn, 1)}</b></p>
+          <p><span>ETF 淨值</span><b>{fmtFree(quote?.nav, 2)}</b></p>
+          <p><span>折溢價</span><b className={toneClass(premiumPct)}>{fmtPct(premiumPct, 2)}</b></p>
+          <p><span>發行公司</span><b>{textOrDash(quote?.company)}</b></p>
+          <p><span>基金經理人</span><b>{textOrDash(quote?.manager)}</b></p>
+          <p><span>保管機構</span><b>{textOrDash(quote?.custodian)}</b></p>
+          <p><span>計價幣別</span><b>{textOrDash(quote?.currency)}</b></p>
+          <p><span>成立日</span><b>{quote?.inception_date || quote?.listing_date || '-'}</b></p>
+          <p><span>持股日</span><b>{shortDate(holdingDate)}</b></p>
+          <p><span>報價更新</span><b>{shortDate(latestDateOf(quote))}</b></p>
+        </div>
+      </section>}
     </main>
   );
 }
@@ -170,6 +231,35 @@ export default function EtfDetailClient(props: any) {
 function Chart({ rows, color }: any) {
   if (!Array.isArray(rows) || rows.length < 2) return <div className="v89-empty-box">目前沒有足夠的歷史資料</div>;
   return <div className="v89-chart-box"><ResponsiveContainer width="100%" height={190}><AreaChart data={rows}><CartesianGrid strokeDasharray="4 4" vertical={false} /><XAxis dataKey="date" tickFormatter={(v) => shortDate(v)} minTickGap={20} /><YAxis width={38} domain={['auto','auto']} /><Tooltip /><Area type="monotone" dataKey="value" stroke={color==='red'?'#df555d':'#27a575'} fill={color==='red'?'#fff1f2':'#ecfdf5'} strokeWidth={2.2} /></AreaChart></ResponsiveContainer></div>;
+}
+
+function IndustryDistribution({ rows }: { rows: any[] }) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return <div className="v89-empty-box">產業分類資料更新中</div>;
+  }
+
+  const visibleRows = rows.slice(0, 8);
+  const maxWeight = Math.max(
+    ...visibleRows.map((row) => num(row?.weight, 0)),
+    1,
+  );
+
+  return (
+    <div className={styles.industryList}>
+      {visibleRows.map((row) => {
+        const weight = num(row?.weight, 0);
+        return (
+          <div className={styles.industryRow} key={String(row?.industry)}>
+            <span>{textOrDash(row?.industry)}</span>
+            <i aria-hidden="true">
+              <em style={{ width: `${Math.max(2, weight / maxWeight * 100)}%` }} />
+            </i>
+            <b>{fmtFree(weight, 2)}%</b>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function HoldingRows({ rows }: { rows: any[] }) {

@@ -21,6 +21,11 @@ on:
         required: true
         type: boolean
         default: true
+      run_stock_market_caps:
+        description: "Run Update Stock Market Caps"
+        required: true
+        type: boolean
+        default: true
       run_institutional_trading:
         description: "Run Update Institutional Trading"
         required: true
@@ -96,6 +101,12 @@ jobs:
                 name: 'Update Official Close Quotes',
                 file: 'update-official-close-quotes.yml',
                 enabled: isEnabled('run_official_quotes'),
+                timeoutMinutes: 35,
+              },
+              {
+                name: 'Update Stock Market Caps',
+                file: 'update-stock-market-caps.yml',
+                enabled: isEnabled('run_stock_market_caps'),
                 timeoutMinutes: 35,
               },
               {

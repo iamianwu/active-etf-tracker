@@ -195,6 +195,7 @@ function normalizeQuote(code: string, q?: any) {
     dividend_yield: num(q?.dividend_yield),
     week_return: num(q?.week_return),
     total_return: num(q?.total_return),
+    annualized_return: num(q?.annualized_return),
     region: q?.region || null,
     currency: q?.currency || 'NTD',
     manager: q?.manager || null,
@@ -467,6 +468,8 @@ export async function getEtfDetailData(code: string) {
         ...r,
         price,
         change_pct: num(stockQuote.change_pct),
+        industry_code: stockQuote.industry_code || null,
+        industry_name: stockQuote.industry_name || '其他',
         market_value_billion: price ? shares * price / 100000000 : null,
       };
     })
@@ -552,6 +555,20 @@ export async function getEtfDetailData(code: string) {
 
   const totalStockWeight = currentRows.reduce((s: number, r: any) => s + (num(r.weight) || 0), 0);
   const totalValue = currentRows.reduce((s: number, r: any) => s + (num(r.market_value_billion) || 0), 0);
+  const industryMap: Record<string, number> = {};
+
+  for (const row of currentRows) {
+    const industry = String(row.industry_name || '其他').trim() || '其他';
+    industryMap[industry] =
+      (industryMap[industry] || 0) + (num(row.weight) || 0);
+  }
+
+  const industryDistribution = Object.entries(industryMap)
+    .map(([industry, weight]) => ({
+      industry,
+      weight,
+    }))
+    .sort((a, b) => b.weight - a.weight);
 
   return {
     code: normalizedCode,
@@ -566,6 +583,7 @@ export async function getEtfDetailData(code: string) {
     date_stats: dateStats,
     changes,
     change_summary: changeSummary,
+    industry_distribution: industryDistribution,
     summary: {
       stock_weight: totalStockWeight,
       holding_count: currentRows.length,
