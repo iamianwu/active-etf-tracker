@@ -121,7 +121,11 @@ jobs:
                 name: 'Update Pocket ETF Market Data',
                 file: 'update-etf-market.yml',
                 enabled: isEnabled('run_etf_market'),
-                timeoutMinutes: 30,
+                // This workflow normally takes about 35 minutes because the
+                // Pocket batches are intentionally rate-limited. Keep enough
+                // headroom so the daily pipeline can continue to rebuild the
+                // search, signals, and app caches afterward.
+                timeoutMinutes: 60,
               },
               {
                 name: 'Rebuild Search Index',
