@@ -109,7 +109,7 @@ export default function AdminEtfStatusPage() {
           <a className="admin-etf-back" href="/admin">← 管理</a>
           <h1>ETF 資料健康檢查</h1>
           <p>
-            檢查 27 檔主動式 ETF 的報價更新、持股日、持股數與今日訊號納入狀態。
+            檢查 29 檔主動式 ETF 的報價更新、持股日、持股數與今日訊號納入狀態。
           </p>
         </div>
 

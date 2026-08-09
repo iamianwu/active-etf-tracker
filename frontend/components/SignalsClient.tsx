@@ -11,7 +11,7 @@ type SortKey = 'code' | 'inflow' | 'outflow' | 'absAmount' | 'lots' | 'price' | 
 type SortDir = 'asc' | 'desc';
 type FilterKey = '全部' | Status;
 
-const TOTAL_ACTIVE_ETFS = 27;
+const TOTAL_ACTIVE_ETFS = 29;
 const STATUSES: Status[] = ['新增', '刪除', '加碼', '減碼'];
 
 function num(v: any, fallback = 0): number {
@@ -770,6 +770,8 @@ const ETF_NAME_FALLBACK_V121: Record<string, string> = {
   "00404A": "主動聯博動能50",
   "00405A": "主動富邦台灣龍耀",
   "00406A": "主動中信台灣收益",
+  "00407A": "主動凱基台灣",
+  "00410A": "主動永豐科技趨勢",
   "00980A": "主動野村臺灣優選",
   "00981A": "主動統一台股增長",
   "00982A": "主動群益台灣強棒",
