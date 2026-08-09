@@ -70,7 +70,7 @@ def main():
     }, flush=True)
 
     urls = [
-        f"{site_url}/api/stock-detail?{urlencode({'code': code})}"
+        f"{site_url}/api/stock-detail?{urlencode({'code': code, 'fresh': '1'})}"
         for code in codes
     ]
 
