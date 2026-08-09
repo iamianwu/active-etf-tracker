@@ -9,7 +9,7 @@ concurrency:
 jobs:
   warm-signals-cache:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     steps:
       - uses: actions/checkout@v4
@@ -29,9 +29,31 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SITE_URL: https://active-etf-tracker.vercel.app
           SIGNAL_UNIVERSES: active,reference,all
-          SIGNAL_DAYS: 1,5,10,20
           SIGNALS_CACHE_SLEEP_SEC: "0.5"
           PYTHONUNBUFFERED: "1"
         run: |
           cd backend
-          python -m app.jobs.warm_signals_cache_from_api
+
+          for days in 1 5 10 20; do
+            completed=false
+
+            for attempt in 1 2; do
+              echo "Warming signals cache: days=${days}, attempt=${attempt}/2"
+
+              if SIGNAL_DAYS="${days}" \
+                python -m app.jobs.warm_signals_cache_from_api; then
+                completed=true
+                break
+              fi
+
+              if [ "${attempt}" -lt 2 ]; then
+                echo "Transient failure for days=${days}; retrying in 15 seconds."
+                sleep 15
+              fi
+            done
+
+            if [ "${completed}" != "true" ]; then
+              echo "Signals cache failed after retries: days=${days}"
+              exit 1
+            fi
+          done

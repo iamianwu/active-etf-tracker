@@ -68,7 +68,7 @@ concurrency:
 jobs:
   run-daily-pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 360
 
     steps:
       - name: Run workflows in order
@@ -137,7 +137,7 @@ jobs:
                 name: 'Warm Signals Cache',
                 file: 'warm-signals-cache.yml',
                 enabled: isEnabled('run_signals_cache'),
-                timeoutMinutes: 60,
+                timeoutMinutes: 90,
               },
               {
                 name: 'Warm App Cache',
