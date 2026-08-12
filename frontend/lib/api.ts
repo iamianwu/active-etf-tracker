@@ -1061,6 +1061,11 @@ async function writeSignalsCache(
 
 async function getSignals(signalType?: string | null, signalRangeDaysInput: any = 1, universeInput: any = 'active') {
   const toDate = (v: any) => String(v ?? '').slice(0, 10);
+  const daysBefore = (dateText: string, days: number) => {
+    const date = new Date(`${dateText}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() - days);
+    return date.toISOString().slice(0, 10);
+  };
   const n = (v: any) => {
     const x = Number(v);
     return Number.isFinite(x) ? x : 0;
@@ -1128,6 +1133,16 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
       };
     }
 
+    // 只需涵蓋前 N 個交易日。保留至少 90 個日曆日的緩衝，
+    // 避免每次為了找比較日期而重讀 ETF 自成立以來的全部持股。
+    const holdingsDateFloor = daysBefore(
+      targetDate,
+      Math.max(90, signalRangeDays * 5),
+    );
+
+    // 價格只需要 targetDate 當日或最近一個可用交易日。
+    const priceDateFloor = daysBefore(targetDate, 45);
+
     // 2) 今天所有 holdings。只有有 targetDate 的 ETF 可以進今日訊號。
     const todayRowsAll = await selectAll(
       'holdings',
@@ -1150,6 +1165,7 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
       'etf_code,data_date',
       (q) => q
         .in('etf_code', universeEtfs)
+        .gte('data_date', holdingsDateFloor)
         .lte('data_date', targetDate)
         .order('etf_code', { ascending: true })
         .order('data_date', { ascending: true })
@@ -1335,6 +1351,7 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
             'stock_code,trade_date,stock_name,close,change,change_pct,volume,amount,source,updated_at',
             (q) => q
               .in('stock_code', stockCodes)
+              .gte('trade_date', priceDateFloor)
               .lte('trade_date', targetDate)
               .order('trade_date', { ascending: false })
           )
@@ -1364,6 +1381,7 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
             'stock_code,trade_date,close,change_pct,volume',
             (q) => q
               .in('stock_code', stockCodes)
+              .gte('trade_date', priceDateFloor)
               .lte('trade_date', targetDate)
               .order('trade_date', { ascending: false })
           )
