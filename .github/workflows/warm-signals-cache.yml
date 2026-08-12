@@ -28,8 +28,9 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SITE_URL: https://active-etf-tracker.vercel.app
-          SIGNAL_UNIVERSES: active,reference,all
           SIGNALS_CACHE_SLEEP_SEC: "0.5"
+          REFERENCE_CHUNK_SIZE: "8"
+          REFERENCE_CHUNK_WORKERS: "3"
           PYTHONUNBUFFERED: "1"
         run: |
           cd backend
@@ -40,8 +41,10 @@ jobs:
             for attempt in 1 2; do
               echo "Warming signals cache: days=${days}, attempt=${attempt}/2"
 
-              if SIGNAL_DAYS="${days}" \
-                python -m app.jobs.warm_signals_cache_from_api; then
+              if SIGNAL_DAYS="${days}" SIGNAL_UNIVERSES="active" \
+                python -m app.jobs.warm_signals_cache_from_api && \
+                SIGNAL_DAYS="${days}" \
+                python -m app.jobs.warm_reference_signals_cache_from_api; then
                 completed=true
                 break
               fi

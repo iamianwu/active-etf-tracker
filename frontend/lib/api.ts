@@ -1059,7 +1059,12 @@ async function writeSignalsCache(
   }
 }
 
-async function getSignals(signalType?: string | null, signalRangeDaysInput: any = 1, universeInput: any = 'active') {
+export async function getSignals(
+  signalType?: string | null,
+  signalRangeDaysInput: any = 1,
+  universeInput: any = 'active',
+  etfCodesOverride?: string[],
+) {
   const toDate = (v: any) => String(v ?? '').slice(0, 10);
   const daysBefore = (dateText: string, days: number) => {
     const date = new Date(`${dateText}T00:00:00Z`);
@@ -1088,11 +1093,14 @@ async function getSignals(signalType?: string | null, signalRangeDaysInput: any 
     : rawUniverse === 'all'
       ? 'all'
       : 'active';
-  const totalEtfCodes: string[] = universe === 'reference'
+  const configuredEtfCodes: string[] = universe === 'reference'
     ? referenceEtfCodes
     : universe === 'all'
       ? Array.from(new Set([...activeEtfCodes, ...referenceEtfCodes]))
       : activeEtfCodes;
+  const totalEtfCodes: string[] = Array.isArray(etfCodesOverride) && etfCodesOverride.length
+    ? Array.from(new Set(etfCodesOverride.map(codeKey).filter(Boolean)))
+    : configuredEtfCodes;
   const signalRangeDays = Math.max(1, Math.trunc(n(signalRangeDaysInput || 1)) || 1);
   const pageSize = 1000;
 
