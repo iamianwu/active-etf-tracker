@@ -230,13 +230,13 @@ def detail_operations(
 
 def fetch_stock_detail(
     code: str,
+    target_date: str,
 ) -> tuple[str, dict[str, Any]]:
-    cache_buster = time.time_ns()
-
     payload = get_json(
         f"/api/stock-detail"
         f"?code={code}"
-        f"&cb={cache_buster}"
+        f"&operationsOnly=1"
+        f"&date={target_date}"
     )
 
     return code, payload
@@ -318,7 +318,11 @@ def main() -> None:
         max_workers=MAX_WORKERS,
     ) as executor:
         futures = {
-            executor.submit(fetch_stock_detail, code): code
+            executor.submit(
+                fetch_stock_detail,
+                code,
+                target_date,
+            ): code
             for code in sorted(all_codes)
         }
 
