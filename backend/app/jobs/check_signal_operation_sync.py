@@ -4,7 +4,6 @@ import json
 import os
 import re
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
@@ -16,14 +15,6 @@ SITE_URL = os.getenv(
     "https://active-etf-tracker.vercel.app",
 ).rstrip("/")
 
-REQUESTED_MAX_WORKERS = max(
-    1,
-    int(os.getenv("MAX_WORKERS", "4")),
-)
-
-# 避免錯誤的環境設定同時建立數百條 HTTPS 連線，
-# 造成 Too many open files 或遠端 API 壓力。
-MAX_WORKERS = min(16, REQUESTED_MAX_WORKERS)
 REQUEST_TIMEOUT = max(10, int(os.getenv("REQUEST_TIMEOUT", "90")))
 REPORT_PATH = Path(
     os.getenv(
@@ -142,31 +133,6 @@ def collect_signal_rows(
             collect_signal_rows(value, output)
 
 
-def collect_stock_codes(
-    obj: Any,
-    output: set[str],
-) -> None:
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            if key in {"stock_code", "code", "symbol"}:
-                code = str(value or "").strip()
-
-                if re.fullmatch(r"\d{4}", code):
-                    output.add(code)
-
-            collect_stock_codes(value, output)
-
-    elif isinstance(obj, list):
-        for value in obj:
-            collect_stock_codes(value, output)
-
-    elif isinstance(obj, str):
-        value = obj.strip()
-
-        if re.fullmatch(r"\d{4}", value):
-            output.add(value)
-
-
 def signal_operations(
     row: dict[str, Any],
 ) -> dict[str, dict[str, Any]]:
@@ -228,20 +194,6 @@ def detail_operations(
     return result
 
 
-def fetch_stock_detail(
-    code: str,
-    target_date: str,
-) -> tuple[str, dict[str, Any]]:
-    payload = get_json(
-        f"/api/stock-detail"
-        f"?code={code}"
-        f"&operationsOnly=1"
-        f"&date={target_date}"
-    )
-
-    return code, payload
-
-
 def main() -> None:
     cache_buster = time.time_ns()
 
@@ -297,57 +249,55 @@ def main() -> None:
     if not target_date:
         raise RuntimeError("無法取得今日訊號資料日期")
 
-    codes_payload = get_json(
-        f"/api/stock-cache-codes?cb={cache_buster}"
+    snapshot_payload = get_json(
+        f"/api/signal-operation-snapshot"
+        f"?date={target_date}"
+    )
+    snapshot_date = str(
+        snapshot_payload.get("data_date")
+        or ""
+    )[:10]
+
+    if snapshot_date != target_date:
+        raise RuntimeError(
+            "批次操作快照日期不符："
+            f"expected={target_date}, actual={snapshot_date or '-'}"
+        )
+
+    raw_snapshot_rows = (
+        snapshot_payload.get("operation_records")
+        or snapshot_payload.get("operationRecords")
+        or []
     )
 
-    all_codes: set[str] = set()
-    collect_stock_codes(codes_payload, all_codes)
-    all_codes.update(signal_rows.keys())
+    if not isinstance(raw_snapshot_rows, list):
+        raise RuntimeError("批次操作快照缺少 operation_records")
+
+    detail_payloads: dict[str, dict[str, Any]] = {}
+
+    for row in raw_snapshot_rows:
+        if not isinstance(row, dict):
+            continue
+
+        code = stock_code_of(row)
+        if not code:
+            continue
+
+        detail_payloads.setdefault(
+            code,
+            {"operation_records": []},
+        )["operation_records"].append(row)
+
+    all_codes = set(signal_rows) | set(detail_payloads)
 
     print(f"資料日：{target_date}")
     print(f"今日訊號股票數：{len(signal_rows)}")
-    print(f"待檢查股票數：{len(all_codes)}")
-    print(f"並行數：{MAX_WORKERS}")
+    print(f"批次操作快照股票數：{len(detail_payloads)}")
+    print(f"批次操作明細數：{len(raw_snapshot_rows)}")
+    print(f"待比對股票數：{len(all_codes)}")
     print()
 
-    detail_payloads: dict[str, dict[str, Any]] = {}
     fetch_errors: list[dict[str, Any]] = []
-
-    with ThreadPoolExecutor(
-        max_workers=MAX_WORKERS,
-    ) as executor:
-        futures = {
-            executor.submit(
-                fetch_stock_detail,
-                code,
-                target_date,
-            ): code
-            for code in sorted(all_codes)
-        }
-
-        completed = 0
-
-        for future in as_completed(futures):
-            code = futures[future]
-
-            try:
-                fetched_code, payload = future.result()
-                detail_payloads[fetched_code] = payload
-
-            except Exception as exc:
-                fetch_errors.append({
-                    "stock_code": code,
-                    "error": str(exc),
-                })
-
-            completed += 1
-
-            if completed % 50 == 0 or completed == len(futures):
-                print(
-                    f"已檢查 API："
-                    f"{completed}/{len(futures)}"
-                )
 
     mismatches: list[dict[str, Any]] = []
 
@@ -468,6 +418,11 @@ def main() -> None:
         "site_url": SITE_URL,
         "target_date": target_date,
         "signal_stock_count": len(signal_rows),
+        "snapshot_stock_count": len(detail_payloads),
+        "snapshot_operation_count": len(raw_snapshot_rows),
+        "snapshot_included_etf_count": snapshot_payload.get(
+            "included_etf_count"
+        ),
         "audited_stock_count": len(all_codes),
         "fetch_error_count": len(fetch_errors),
         "mismatch_count": len(mismatches),
