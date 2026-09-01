@@ -1,9 +1,9 @@
 name: Run Daily Pipeline
 
 on:
-  # 10:10 UTC = 18:10 Taiwan time
+  # 08:00 UTC = 16:00 Taiwan time
   schedule:
-    - cron: "10 10 * * 1-5"
+    - cron: "0 8 * * 1-5"
   workflow_dispatch:
     inputs:
       run_update_etf:
