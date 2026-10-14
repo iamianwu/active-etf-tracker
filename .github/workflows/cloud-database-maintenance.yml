@@ -1,6 +1,9 @@
 name: Cloud Database Maintenance
 
 on:
+  schedule:
+    # Sunday 03:30 Taiwan time; archive on the hosted runner only.
+    - cron: "30 19 * * 6"
   workflow_dispatch:
     inputs:
       archive_holdings:
@@ -31,6 +34,6 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GH_TOKEN: ${{ github.token }}
-          ARCHIVE_HOLDINGS: ${{ inputs.archive_holdings || 'false' }}
+          ARCHIVE_HOLDINGS: ${{ github.event_name == 'schedule' || inputs.archive_holdings || 'false' }}
           PYTHONUNBUFFERED: "1"
         run: python -m app.jobs.cloud_database_maintenance
