@@ -1,0 +1,36 @@
+name: Cloud Database Maintenance
+
+on:
+  workflow_dispatch:
+    inputs:
+      archive_holdings:
+        description: "Archive holdings older than 90 days to verified GitHub Releases"
+        type: boolean
+        default: false
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cloud-database-maintenance
+  cancel-in-progress: false
+
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install 'psycopg[binary]==3.2.3'
+      - name: Clean obsolete caches and verify cloud archives
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GH_TOKEN: ${{ github.token }}
+          ARCHIVE_HOLDINGS: ${{ inputs.archive_holdings || 'false' }}
+          PYTHONUNBUFFERED: "1"
+        run: python -m app.jobs.cloud_database_maintenance
